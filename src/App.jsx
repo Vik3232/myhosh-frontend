@@ -124,8 +124,14 @@ function App() {
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
     if (numGuests >= 7) return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5 || table.tableNumber === 7;
     
+    // Prevent parties of 1 or 2 from booking Table 1 or 5
+    if (numGuests <= 2 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
+
     // For smaller groups, hide Table 4 by default because it's a bad spot
     if (table.tableNumber === 4) return false;
+
+    // CRITICAL FIX: Block the table if the group is bigger than its capacity
+    if (table.capacity < numGuests) return false;
 
     return true; 
   });
