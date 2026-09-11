@@ -114,6 +114,26 @@ function App() {
     }
   }
 
+  // --- SMART TABLE FILTERING LOGIC ---
+  const availableTables = tables.filter(table => {
+    const numGuests = parseInt(partySize) || 2;
+    
+    // Massive Groups (11-20): Only Table 5
+    if (numGuests >= 11) {
+      return table.tableNumber === 5;
+    }
+    // Large Groups (9-10): Only Tables 2 and 5
+    if (numGuests >= 9) {
+      return table.tableNumber === 2 || table.tableNumber === 5;
+    }
+    // Medium Groups (7-8): Only Tables 1, 2, and 5
+    if (numGuests >= 7) {
+      return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5;
+    }
+    // Small Groups (1-6): Show everything
+    return true; 
+  });
+
   return (
     <div className="restaurant-container">
 
@@ -155,19 +175,26 @@ function App() {
               <div className="form-group">
                 <label>Select Table</label>
                 <select value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
-                  {tables.map(table => (
+                  {/* FIXED: Now mapping over the filtered availableTables */}
+                  {availableTables.map(table => (
                     <option key={table.id} value={table.id}>
                       Table {table.tableNumber}
                     </option>
                   ))}
                 </select>
+                
+                {/* SPECIAL CHEF TABLE WARNING */}
+                {tables.find(t => t.id === parseInt(selectedTable))?.tableNumber === 13 && (
+                  <small style={{color: '#ffcc00', marginTop: '5px', display: 'block', fontWeight: 'bold'}}>
+                    *Note: This table is located directly next to the Chef's Grill.
+                  </small>
+                )}
               </div>
             </div>
 
             <div className="flex-row">
               <div className="form-group">
                 <label>Date</label>
-                {/* FIXED: Added min and max date restrictions here */}
                 <input type="date" required min={minDate} max={maxDate} value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
               <div className="form-group">
