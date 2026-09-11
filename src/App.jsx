@@ -23,7 +23,7 @@ function App() {
 
   // Fetch Tables when app loads
   useEffect(() => {
-    fetch('https://myhosh-backend.onrender.com')
+    fetch('https://myhosh-backend.onrender.com/api/tables')
       .then(response => response.json())
       .then(data => setTables(data))
       .catch(err => console.error("Error fetching tables:", err))
@@ -32,7 +32,7 @@ function App() {
   // MAGIC NEW FEATURE: Fetch Bookings only when the staff opens the admin view
   useEffect(() => {
     if (view === "admin") {
-      fetch('https://myhosh-backend.onrender.com')
+      fetch('https://myhosh-backend.onrender.com/api/tables')
         .then(response => response.json())
         .then(data => setAllBookings(data))
         .catch(err => console.error("Error fetching bookings:", err))
@@ -53,7 +53,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('https://myhosh-backend.onrender.com', {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking)
