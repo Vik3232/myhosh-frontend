@@ -7,8 +7,8 @@ function App() {
 
   // Data States
   const [tables, setTables] = useState([])
-  const [allBookings, setAllBookings] = useState([]) 
-  
+  const [allBookings, setAllBookings] = useState([])
+
   // Form States
   const [message, setMessage] = useState("")
   const [isSuccess, setIsSuccess] = useState(false)
@@ -21,6 +21,13 @@ function App() {
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
 
+  // --- 3-MONTH DATE LIMIT LOGIC ---
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0]; // Today
+  const futureDate = new Date(today);
+  futureDate.setMonth(today.getMonth() + 3);
+  const maxDate = futureDate.toISOString().split('T')[0]; // 3 months from today
+
   // Fetch Tables when app loads
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/tables')
@@ -32,7 +39,6 @@ function App() {
   // Fetch Bookings only when the staff opens the admin view
   useEffect(() => {
     if (view === "admin") {
-      // FIXED: Now correctly fetches /api/bookings instead of tables
       fetch('https://myhosh-backend.onrender.com/api/bookings')
         .then(response => response.json())
         .then(data => setAllBookings(data))
@@ -42,6 +48,39 @@ function App() {
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
+
+    // --- RESTAURANT SCHEDULE RULES ---
+    const selectedDateObj = new Date(date);
+    const dayOfWeek = selectedDateObj.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
+    const selectedTime = time; // format "HH:MM"
+
+    // Rule 1: Closed on Tuesdays
+    if (dayOfWeek === 2) {
+      setIsSuccess(false);
+      setMessage("We are closed on Tuesdays. Please select another day.");
+      return; 
+    }
+
+    // Rule 2: Set specific min/max times depending on the day
+    let minTime = "17:00"; // Assuming Mon-Fri opens at 5:00 PM 
+    let maxTime = "21:00"; // Last booking at 9:00 PM
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) { 
+      minTime = "12:00"; // Weekends open at 12:00 PM
+    }
+
+    if (dayOfWeek === 0) { 
+      maxTime = "20:45"; // Sunday last booking at 8:45 PM
+    }
+
+    // Rule 3: Check if their selected time falls within the allowed window
+    if (selectedTime < minTime || selectedTime > maxTime) {
+      setIsSuccess(false);
+      setMessage(`For the selected day, please choose a time between ${minTime} and ${maxTime}.`);
+      return; 
+    }
+    // ----------------------------------
+
     setMessage("Processing reservation...");
 
     const newBooking = {
@@ -54,7 +93,6 @@ function App() {
     }
 
     try {
-      // FIXED: Now correctly posts to /api/bookings instead of customers
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,7 +116,7 @@ function App() {
 
   return (
     <div className="restaurant-container">
-      
+
       {/* NAVIGATION BAR */}
       <div className="nav-container">
         <button className={`nav-btn ${view === 'customer' ? 'active' : ''}`} onClick={() => setView('customer')}>
@@ -91,10 +129,10 @@ function App() {
 
       <h1 className="restaurant-title">MYHOSH</h1>
       <div className="restaurant-subtitle">London</div>
-      
+
       {/* CONDITIONAL RENDERING: Which screen are we looking at? */}
       {view === "customer" ? (
-        
+
         <div className="booking-panel">
           <h2>Reserve a Table</h2>
           <form onSubmit={handleBookingSubmit}>
@@ -129,11 +167,17 @@ function App() {
             <div className="flex-row">
               <div className="form-group">
                 <label>Date</label>
-                <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+                {/* FIXED: Added min and max date restrictions here */}
+                <input type="date" required min={minDate} max={maxDate} value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
               <div className="form-group">
                 <label>Time</label>
-                <input type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
+                <input
+                  type="time"
+                  required
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                />
               </div>
               <div className="form-group" style={{ flex: '0.5' }}>
                 <label>Guests</label>
@@ -154,10 +198,9 @@ function App() {
 
       ) : (
 
-        /* --- NEW STAFF DASHBOARD --- */
         <div className="booking-panel" style={{ maxWidth: '1000px' }}>
           <h2>Upcoming Reservations</h2>
-          
+
           <table className="admin-table">
             <thead>
               <tr>
@@ -171,9 +214,8 @@ function App() {
             <tbody>
               {allBookings.map(booking => (
                 <tr key={booking.id}>
-                  <td><strong>{booking.bookingDate}</strong> <br/> {booking.bookingTime}</td>
-                  {/* FIXED: Added safety checks (?.) so missing data won't crash the screen */}
-                  <td>{booking.customer?.fullName || "No Name"} <br/> <span style={{fontSize: '0.8rem', color: '#888'}}>{booking.customer?.phone}</span></td>
+                  <td><strong>{booking.bookingDate}</strong> <br /> {booking.bookingTime}</td>
+                  <td>{booking.customer?.fullName || "No Name"} <br /> <span style={{ fontSize: '0.8rem', color: '#888' }}>{booking.customer?.phone}</span></td>
                   <td>{booking.restaurantTable?.tableNumber || "N/A"}</td>
                   <td>{booking.partySize} Guests</td>
                   <td>{booking.specialRequests || "None"}</td>
@@ -181,8 +223,8 @@ function App() {
               ))}
             </tbody>
           </table>
-          
-          {allBookings.length === 0 && <p style={{textAlign: 'center', marginTop: '20px'}}>No reservations found.</p>}
+
+          {allBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found.</p>}
         </div>
 
       )}
