@@ -62,7 +62,7 @@ function App() {
     }
 
     // Rule 2: Set specific min/max times depending on the day
-    let minTime = "17:00"; // Assuming Mon-Fri opens at 5:00 PM 
+    let minTime = "16:00"; // Assuming Mon-Fri opens at 4:00 PM 
     let maxTime = "21:00"; // Last booking at 9:00 PM
 
     if (dayOfWeek === 0 || dayOfWeek === 6) { 
