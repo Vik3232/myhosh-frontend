@@ -136,6 +136,17 @@ function App() {
     return true; 
   });
 
+  // --- PREVENT GHOST STATE GLITCH ---
+  // Automatically select the first available table if the current one becomes invalid
+  useEffect(() => {
+    if (availableTables.length > 0) {
+      const currentTableIsValid = availableTables.some(t => t.id.toString() === selectedTable.toString());
+      if (!currentTableIsValid) {
+        setSelectedTable(availableTables[0].id.toString());
+      }
+    }
+  }, [tables, partySize]);
+
   return (
     <div className="restaurant-container">
       <div className="nav-container">
