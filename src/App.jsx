@@ -7,7 +7,7 @@ function App() {
 
   // Data States
   const [tables, setTables] = useState([])
-  const [allBookings, setAllBookings] = useState([]) // New state for staff dashboard
+  const [allBookings, setAllBookings] = useState([]) 
   
   // Form States
   const [message, setMessage] = useState("")
@@ -29,10 +29,11 @@ function App() {
       .catch(err => console.error("Error fetching tables:", err))
   }, [])
 
-  // MAGIC NEW FEATURE: Fetch Bookings only when the staff opens the admin view
+  // Fetch Bookings only when the staff opens the admin view
   useEffect(() => {
     if (view === "admin") {
-      fetch('https://myhosh-backend.onrender.com/api/tables')
+      // FIXED: Now correctly fetches /api/bookings instead of tables
+      fetch('https://myhosh-backend.onrender.com/api/bookings')
         .then(response => response.json())
         .then(data => setAllBookings(data))
         .catch(err => console.error("Error fetching bookings:", err))
@@ -53,7 +54,8 @@ function App() {
     }
 
     try {
-      const response = await fetch('https://myhosh-backend.onrender.com/api/customers', {
+      // FIXED: Now correctly posts to /api/bookings instead of customers
+      const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking)
@@ -117,7 +119,7 @@ function App() {
                 <select value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
                   {tables.map(table => (
                     <option key={table.id} value={table.id}>
-                      Table {table.tableNumber} - {table.location}
+                      Table {table.tableNumber}
                     </option>
                   ))}
                 </select>
@@ -170,8 +172,9 @@ function App() {
               {allBookings.map(booking => (
                 <tr key={booking.id}>
                   <td><strong>{booking.bookingDate}</strong> <br/> {booking.bookingTime}</td>
-                  <td>{booking.customer.fullName} <br/> <span style={{fontSize: '0.8rem', color: '#888'}}>{booking.customer.phone}</span></td>
-                  <td>{booking.restaurantTable.tableNumber}</td>
+                  {/* FIXED: Added safety checks (?.) so missing data won't crash the screen */}
+                  <td>{booking.customer?.fullName || "No Name"} <br/> <span style={{fontSize: '0.8rem', color: '#888'}}>{booking.customer?.phone}</span></td>
+                  <td>{booking.restaurantTable?.tableNumber || "N/A"}</td>
                   <td>{booking.partySize} Guests</td>
                   <td>{booking.specialRequests || "None"}</td>
                 </tr>
