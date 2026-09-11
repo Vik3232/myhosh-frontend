@@ -3,7 +3,7 @@ import './App.css'
 
 function App() {
   // Navigation State
-  const [view, setView] = useState("customer") // Can be "customer" or "admin"
+  const [view, setView] = useState("customer") 
 
   // Data States
   const [tables, setTables] = useState([])
@@ -21,14 +21,14 @@ function App() {
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
 
-  // --- 3-MONTH DATE LIMIT LOGIC ---
+  // --- DATE LIMIT LOGIC ---
   const today = new Date();
-  const minDate = today.toISOString().split('T')[0]; // Today
+  const minDate = today.toISOString().split('T')[0]; 
   const futureDate = new Date(today);
   futureDate.setMonth(today.getMonth() + 3);
-  const maxDate = futureDate.toISOString().split('T')[0]; // 3 months from today
+  const maxDate = futureDate.toISOString().split('T')[0]; 
 
-  // Fetch Tables when app loads
+  // Fetch Tables
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/tables')
       .then(response => response.json())
@@ -36,7 +36,7 @@ function App() {
       .catch(err => console.error("Error fetching tables:", err))
   }, [])
 
-  // Fetch Bookings only when the staff opens the admin view
+  // Fetch Bookings (Staff View)
   useEffect(() => {
     if (view === "admin") {
       fetch('https://myhosh-backend.onrender.com/api/bookings')
@@ -49,10 +49,9 @@ function App() {
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
 
-    // --- RESTAURANT SCHEDULE RULES ---
     const selectedDateObj = new Date(date);
-    const dayOfWeek = selectedDateObj.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
-    const selectedTime = time; // format "HH:MM"
+    const dayOfWeek = selectedDateObj.getDay(); 
+    const selectedTime = time; 
 
     // Rule 1: Closed on Tuesdays
     if (dayOfWeek === 2) {
@@ -61,25 +60,36 @@ function App() {
       return; 
     }
 
-    // Rule 2: Set specific min/max times depending on the day
-    let minTime = "16:00"; // Assuming Mon-Fri opens at 4:00 PM 
-    let maxTime = "21:00"; // Last booking at 9:00 PM
+    // Rule 2: Opening and Closing Times
+    let minTime = "16:00"; // Mon-Fri
+    let maxTime = "21:00"; 
 
     if (dayOfWeek === 0 || dayOfWeek === 6) { 
-      minTime = "12:00"; // Weekends open at 12:00 PM
+      minTime = "12:00"; // Weekends
     }
-
     if (dayOfWeek === 0) { 
-      maxTime = "20:45"; // Sunday last booking at 8:45 PM
+      maxTime = "20:45"; // Sunday early close
     }
 
-    // Rule 3: Check if their selected time falls within the allowed window
+    // Rule 3: Time window validation
     if (selectedTime < minTime || selectedTime > maxTime) {
       setIsSuccess(false);
       setMessage(`For the selected day, please choose a time between ${minTime} and ${maxTime}.`);
       return; 
     }
-    // ----------------------------------
+
+    // Rule 4: Same-Day Cutoff Logic
+    if (date === minDate) {
+      const currentHour = today.getHours().toString().padStart(2, '0');
+      const currentMinute = today.getMinutes().toString().padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      
+      if (currentTimeStr >= minTime) {
+        setIsSuccess(false);
+        setMessage(`Online reservations for today closed at ${minTime}. Please call the restaurant directly for walk-in availability.`);
+        return;
+      }
+    }
 
     setMessage("Processing reservation...");
 
@@ -117,26 +127,15 @@ function App() {
   // --- SMART TABLE FILTERING LOGIC ---
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
-    
-    // Massive Groups (11-20): Only Table 5
-    if (numGuests >= 11) {
-      return table.tableNumber === 5;
-    }
-    // Large Groups (9-10): Only Tables 2 and 5
-    if (numGuests >= 9) {
-      return table.tableNumber === 2 || table.tableNumber === 5;
-    }
-    // Medium Groups (7-8): Only Tables 1, 2, and 5
-    if (numGuests >= 7) {
-      return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5;
-    }
-    // Small Groups (1-6): Show everything
+    if (numGuests >= 11) return table.tableNumber === 5;
+    if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
+    if (numGuests >= 7) return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5;
     return true; 
   });
 
   return (
     <div className="restaurant-container">
-
+      
       {/* NAVIGATION BAR */}
       <div className="nav-container">
         <button className={`nav-btn ${view === 'customer' ? 'active' : ''}`} onClick={() => setView('customer')}>
@@ -150,9 +149,7 @@ function App() {
       <h1 className="restaurant-title">MYHOSH</h1>
       <div className="restaurant-subtitle">London</div>
 
-      {/* CONDITIONAL RENDERING: Which screen are we looking at? */}
       {view === "customer" ? (
-
         <div className="booking-panel">
           <h2>Reserve a Table</h2>
           <form onSubmit={handleBookingSubmit}>
@@ -175,15 +172,25 @@ function App() {
               <div className="form-group">
                 <label>Select Table</label>
                 <select value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
-                  {/* FIXED: Now mapping over the filtered availableTables */}
-                  {availableTables.map(table => (
-                    <option key={table.id} value={table.id}>
-                      Table {table.tableNumber}
-                    </option>
-                  ))}
+                  {availableTables.map(table => {
+                    
+                    // --- ALL TABLE LOCATIONS DEFINED HERE ---
+                    let locationText = " - Main Restaurant"; // Default for 2, 3, 4, 6, 7, 8, 9, 10
+                    
+                    if (table.tableNumber === 1 || table.tableNumber === 5) {
+                      locationText = " - Window Seat";
+                    } else if (table.tableNumber === 13) {
+                      locationText = " - Chef's Grill";
+                    }
+
+                    return (
+                      <option key={table.id} value={table.id}>
+                        Table {table.tableNumber} (Up to {table.capacity}){locationText}
+                      </option>
+                    )
+                  })}
                 </select>
                 
-                {/* SPECIAL CHEF TABLE WARNING */}
                 {tables.find(t => t.id === parseInt(selectedTable))?.tableNumber === 13 && (
                   <small style={{color: '#ffcc00', marginTop: '5px', display: 'block', fontWeight: 'bold'}}>
                     *Note: This table is located directly next to the Chef's Grill.
@@ -199,12 +206,7 @@ function App() {
               </div>
               <div className="form-group">
                 <label>Time</label>
-                <input
-                  type="time"
-                  required
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                />
+                <input type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
               </div>
               <div className="form-group" style={{ flex: '0.5' }}>
                 <label>Guests</label>
@@ -219,15 +221,11 @@ function App() {
 
             <button type="submit" className="submit-btn">REQUEST RESERVATION</button>
           </form>
-
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
         </div>
-
       ) : (
-
         <div className="booking-panel" style={{ maxWidth: '1000px' }}>
           <h2>Upcoming Reservations</h2>
-
           <table className="admin-table">
             <thead>
               <tr>
@@ -250,10 +248,8 @@ function App() {
               ))}
             </tbody>
           </table>
-
           {allBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found.</p>}
         </div>
-
       )}
     </div>
   )
