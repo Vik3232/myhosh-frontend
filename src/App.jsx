@@ -30,14 +30,13 @@ function App() {
       .catch(err => console.error("Error fetching tables:", err))
   }, [])
 
+  // Fetch Bookings immediately so the customer view can check for double bookings
   useEffect(() => {
-    if (view === "admin") {
-      fetch('https://myhosh-backend.onrender.com/api/bookings')
-        .then(response => response.json())
-        .then(data => setAllBookings(data))
-        .catch(err => console.error("Error fetching bookings:", err))
-    }
-  }, [view])
+    fetch('https://myhosh-backend.onrender.com/api/bookings')
+      .then(response => response.json())
+      .then(data => setAllBookings(data))
+      .catch(err => console.error("Error fetching bookings:", err))
+  }, [view, isSuccess]) // Refresh when they switch views or successfully book a table
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -117,21 +116,35 @@ function App() {
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
     
-    // If party is huge (over 20), return nothing so it forces them to call
+    // 1. Group Size Constraints
     if (numGuests > 20) return false; 
-    
     if (numGuests >= 11) return table.tableNumber === 5;
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
     if (numGuests >= 7) return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5 || table.tableNumber === 7;
-    
-    // Prevent parties of 1 or 2 from booking Table 1 or 5
     if (numGuests <= 2 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
-
-    // For smaller groups, hide Table 4 by default because it's a bad spot
     if (table.tableNumber === 4) return false;
-
-    // CRITICAL FIX: Block the table if the group is bigger than its capacity
     if (table.capacity < numGuests) return false;
+
+    // 2. FRONTEND DOUBLE BOOKING PREVENTION
+    if (date && time) {
+      const selectedStart = new Date(`${date}T${time}`);
+      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000); // Add 120 mins
+
+      for (let booking of allBookings) {
+        // If there is already a booking on this exact date for this exact table
+        if (booking.bookingDate === date && booking.restaurantTable?.id === table.id) {
+          
+          const bookingTimeParts = booking.bookingTime.split(':');
+          const existingStart = new Date(`${date}T${bookingTimeParts[0]}:${bookingTimeParts[1]}`);
+          const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
+          
+          // If the 120-minute windows overlap, hide the table from the dropdown
+          if (selectedStart < existingEnd && selectedEnd > existingStart) {
+            return false; 
+          }
+        }
+      }
+    }
 
     return true; 
   });
@@ -145,7 +158,7 @@ function App() {
         setSelectedTable(availableTables[0].id.toString());
       }
     }
-  }, [tables, partySize]);
+  }, [tables, partySize, date, time]); // Also run this if the date/time changes and a table vanishes!
 
   return (
     <div className="restaurant-container">
@@ -188,7 +201,7 @@ function App() {
                 {/* FALLBACK LOGIC: If no tables match their group size, hide dropdown and tell them to call */}
                 {availableTables.length === 0 ? (
                   <div style={{ padding: '10px', backgroundColor: '#333', color: '#ffcc00', borderRadius: '5px', fontSize: '0.9rem' }}>
-                    No tables available for this party size online. Please call us directly!
+                    No tables available for this time/party size online. Please try another time or call us directly!
                   </div>
                 ) : (
                   <select value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
