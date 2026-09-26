@@ -79,6 +79,51 @@ function App() {
       }
     }
 
+    // --- COMMERCIAL FEATURE: ANTI-SPAM PHONE NUMBER BLOCK ---
+    const phoneAlreadyBooked = allBookings.some(
+      (booking) => booking.bookingDate === date && booking.customer?.phone === phone
+    );
+
+    if (phoneAlreadyBooked) {
+      setIsSuccess(false);
+      setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
+      return; 
+    }
+    // --------------------------------------------------------
+
+    setMessage("Processing reservation...");
+
+    const newBooking = {
+      customer: { fullName, email, phone },
+      restaurantTable: { id: parseInt(selectedTable) },
+      bookingDate: date,
+      bookingTime: time + ":00",
+      partySize: parseInt(partySize),
+      specialRequests: requests
+    }
+
+    try {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking)
+      });
+
+      if (response.ok) {
+        setIsSuccess(true);
+        setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
+        setFullName(""); setEmail(""); setPhone(""); setRequests("");
+      } else {
+        const errorText = await response.text();
+        setIsSuccess(false);
+        setMessage(errorText || "Failed to secure reservation. Please try another time.");
+      }
+    } catch (err) {
+      setIsSuccess(false);
+      setMessage("System error: Unable to connect to the reservation network.");
+    }
+  }
+
     setMessage("Processing reservation...");
 
     const newBooking = {
