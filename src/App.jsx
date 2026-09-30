@@ -45,6 +45,7 @@ function App() {
     const dayOfWeek = selectedDateObj.getDay(); 
     const selectedTime = time; 
 
+    // --- 1. Basic Business Hours Checks ---
     if (dayOfWeek === 2) {
       setIsSuccess(false);
       setMessage("We are closed on Tuesdays. Please select another day.");
@@ -79,51 +80,30 @@ function App() {
       }
     }
 
-    // --- COMMERCIAL FEATURE: ANTI-SPAM PHONE NUMBER BLOCK ---
-    const phoneAlreadyBooked = allBookings.some(
-      (booking) => booking.bookingDate === date && booking.customer?.phone === phone
-    );
-
-    if (phoneAlreadyBooked) {
-      setIsSuccess(false);
-      setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
-      return; 
-    }
-    // --------------------------------------------------------
-
-    setMessage("Processing reservation...");
-
-    const newBooking = {
-      customer: { fullName, email, phone },
-      restaurantTable: { id: parseInt(selectedTable) },
-      bookingDate: date,
-      bookingTime: time + ":00",
-      partySize: parseInt(partySize),
-      specialRequests: requests
-    }
-
+    // --- 2. COMMERCIAL FEATURE: LIVE ANTI-SPAM PHONE NUMBER BLOCK ---
+    setMessage("Verifying availability...");
+    
     try {
-      const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBooking)
+      const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
+      const liveBookings = await liveResponse.json();
+
+      const cleanInputPhone = phone.replace(/\D/g, '');
+
+      const phoneAlreadyBooked = liveBookings.some((booking) => {
+        const existingPhone = booking.customer?.phone?.replace(/\D/g, '') || "";
+        return booking.bookingDate === date && existingPhone === cleanInputPhone;
       });
 
-      if (response.ok) {
-        setIsSuccess(true);
-        setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
-        setFullName(""); setEmail(""); setPhone(""); setRequests("");
-      } else {
-        const errorText = await response.text();
+      if (phoneAlreadyBooked) {
         setIsSuccess(false);
-        setMessage(errorText || "Failed to secure reservation. Please try another time.");
+        setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
+        return; 
       }
     } catch (err) {
-      setIsSuccess(false);
-      setMessage("System error: Unable to connect to the reservation network.");
+      console.error("Failed to verify anti-spam status", err);
     }
-  }
 
+    // --- 3. Process the Actual Booking ---
     setMessage("Processing reservation...");
 
     const newBooking = {
@@ -343,6 +323,6 @@ function App() {
       )}
     </div>
   )
-}
+
 
 export default App
