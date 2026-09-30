@@ -30,13 +30,12 @@ function App() {
       .catch(err => console.error("Error fetching tables:", err))
   }, [])
 
-  // Fetch Bookings immediately so the customer view can check for double bookings
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/bookings')
       .then(response => response.json())
       .then(data => setAllBookings(data))
       .catch(err => console.error("Error fetching bookings:", err))
-  }, [view, isSuccess]) // Refresh when they switch views or successfully book a table
+  }, [view, isSuccess]) 
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -141,7 +140,6 @@ function App() {
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
     
-    // 1. Group Size Constraints
     if (numGuests > 20) return false; 
     if (numGuests >= 11) return table.tableNumber === 5;
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
@@ -150,20 +148,16 @@ function App() {
     if (table.tableNumber === 4) return false;
     if (table.capacity < numGuests) return false;
 
-    // 2. FRONTEND DOUBLE BOOKING PREVENTION
     if (date && time) {
       const selectedStart = new Date(`${date}T${time}`);
-      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000); // Add 120 mins
+      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000); 
 
       for (let booking of allBookings) {
-        // If there is already a booking on this exact date for this exact table
         if (booking.bookingDate === date && booking.restaurantTable?.id === table.id) {
-          
           const bookingTimeParts = booking.bookingTime.split(':');
           const existingStart = new Date(`${date}T${bookingTimeParts[0]}:${bookingTimeParts[1]}`);
           const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
           
-          // If the 120-minute windows overlap, hide the table from the dropdown
           if (selectedStart < existingEnd && selectedEnd > existingStart) {
             return false; 
           }
@@ -175,7 +169,6 @@ function App() {
   });
 
   // --- PREVENT GHOST STATE GLITCH ---
-  // Automatically select the first available table if the current one becomes invalid
   useEffect(() => {
     if (availableTables.length > 0) {
       const currentTableIsValid = availableTables.some(t => t.id.toString() === selectedTable.toString());
@@ -183,7 +176,8 @@ function App() {
         setSelectedTable(availableTables[0].id.toString());
       }
     }
-  }, [tables, partySize, date, time]); // Also run this if the date/time changes and a table vanishes!
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables, partySize, date, time]); 
 
   return (
     <div className="restaurant-container">
@@ -223,7 +217,6 @@ function App() {
               <div className="form-group">
                 <label>Select Table</label>
                 
-                {/* FALLBACK LOGIC: If no tables match their group size, hide dropdown and tell them to call */}
                 {availableTables.length === 0 ? (
                   <div style={{ padding: '10px', backgroundColor: '#333', color: '#ffcc00', borderRadius: '5px', fontSize: '0.9rem' }}>
                     No tables available for this time/party size online. Please try another time or call us directly!
@@ -274,7 +267,6 @@ function App() {
               <textarea rows="2" value={requests} onChange={(e) => setRequests(e.target.value)} />
             </div>
 
-            {/* ONLY show submit button if tables are available */}
             {availableTables.length > 0 && (
               <button type="submit" className="submit-btn">REQUEST RESERVATION</button>
             )}
@@ -282,7 +274,6 @@ function App() {
 
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
 
-          {/* PERMANENT PHONE NUMBER FOOTER */}
           <div style={{ marginTop: '25px', paddingTop: '15px', borderTop: '1px solid #444', textAlign: 'center' }}>
             <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
               No availability or booking a large event? Call us directly!
@@ -323,6 +314,6 @@ function App() {
       )}
     </div>
   )
-
+}
 
 export default App
