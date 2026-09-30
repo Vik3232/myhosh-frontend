@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 
 function App() {
+  // --- STATE VARIABLES ---
   const [view, setView] = useState("customer") 
   const [tables, setTables] = useState([])
   const [allBookings, setAllBookings] = useState([])
@@ -17,18 +18,19 @@ function App() {
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
 
+  // --- STAFF AUTHENTICATION STATES ---
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState("")
+
+  // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
   const minDate = today.toISOString().split('T')[0]; 
   const futureDate = new Date(today);
   futureDate.setMonth(today.getMonth() + 3);
   const maxDate = futureDate.toISOString().split('T')[0]; 
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [loginId, setLoginId] = useState("")
-  const [loginPassword, setLoginPassword] = useState("")
-  const [loginError, setLoginError] = useState("")
-  const STAFF_ID = "hoshadmin"
-  const STAFF_PASSWORD = "hoshadmin2026"
 
+  // --- DATA FETCHING ---
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/tables')
       .then(response => response.json())
@@ -43,25 +45,7 @@ function App() {
       .catch(err => console.error("Error fetching bookings:", err))
   }, [view, isSuccess]) 
 
-  const handleAdminLogin = (e) => {
-    e.preventDefault();
-    if (loginId === STAFF_ID && loginPassword === STAFF_PASSWORD) {
-      setIsAuthenticated(true);
-      setLoginError("");
-    } else {
-      setLoginError("❌ Invalid security credentials.");
-      setLoginId("");
-      setLoginPassword("");
-    }
-  }
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setLoginId("");
-    setLoginPassword("");
-    setView("customer");
-  }
-
+  // --- BOOKING SUBMISSION LOGIC ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
 
@@ -69,7 +53,7 @@ function App() {
     const dayOfWeek = selectedDateObj.getDay(); 
     const selectedTime = time; 
 
-    // --- 1. Basic Business Hours Checks ---
+    // 1. Basic Business Hours Checks
     if (dayOfWeek === 2) {
       setIsSuccess(false);
       setMessage("We are closed on Tuesdays. Please select another day.");
@@ -104,38 +88,36 @@ function App() {
       }
     }
 
-    // --- 2. COMMERCIAL FEATURE: LIVE ANTI-SPAM PHONE NUMBER BLOCK ---
-  
-   setMessage("Verifying availability...");
+    // 2. COMMERCIAL FEATURE: STRICT LIVE ANTI-SPAM PHONE BLOCK
+    setMessage("Verifying availability...");
     
-   try {
-     const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
-     if (!liveResponse.ok) throw new Error("Network response was not OK");
-     const liveBookings = await liveResponse.json();
+    try {
+      const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
+      if (!liveResponse.ok) throw new Error("Network response was not OK");
+      const liveBookings = await liveResponse.json();
 
-     // Force everything to string and strip all non-numbers
-     const cleanInputPhone = String(phone).replace(/\D/g, '');
-     const inputDate = String(date);
+      const cleanInputPhone = String(phone).replace(/\D/g, '');
+      const inputDate = String(date);
 
-     const phoneAlreadyBooked = liveBookings.some((booking) => {
-       const existingPhone = String(booking.customer?.phone || "").replace(/\D/g, '');
-       const existingDate = String(booking.bookingDate);
-       return existingDate === inputDate && existingPhone === cleanInputPhone;
-     });
+      const phoneAlreadyBooked = liveBookings.some((booking) => {
+        const existingPhone = String(booking.customer?.phone || "").replace(/\D/g, '');
+        const existingDate = String(booking.bookingDate);
+        return existingDate === inputDate && existingPhone === cleanInputPhone;
+      });
 
-     if (phoneAlreadyBooked) {
-       setIsSuccess(false);
-       setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
-       return; // HALTS EXECUTION INSTANTLY
-     }
-   } catch (err) {
-     console.error("Anti-spam security check failed to complete:", err);
-     setIsSuccess(false);
-     setMessage("System verification timeout. Please click submit again.");
-     return; // HALTS EXECUTION IF THE CHECK FAILS. NEVER LETS IT THROUGH.
-   }
-   
-    // --- 3. Process the Actual Booking ---
+      if (phoneAlreadyBooked) {
+        setIsSuccess(false);
+        setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
+        return; 
+      }
+    } catch (err) {
+      console.error("Anti-spam security check failed to complete:", err);
+      setIsSuccess(false);
+      setMessage("System verification timeout. Please click submit again.");
+      return; 
+    }
+
+    // 3. Process the Actual Booking
     setMessage("Processing reservation...");
 
     const newBooking = {
@@ -212,6 +194,25 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tables, partySize, date, time]); 
 
+  // --- STAFF SECURITY GATEWAY LOGIC ---
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (loginPassword === "hoshadmin2026") { 
+      setIsAuthenticated(true);
+      setLoginError("");
+    } else {
+      setLoginError("❌ Invalid security credentials.");
+      setLoginPassword("");
+    }
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setLoginPassword("");
+    setView("customer");
+  }
+
+  // --- UI RENDER ---
   return (
     <div className="restaurant-container">
       <div className="nav-container">
@@ -325,20 +326,10 @@ function App() {
               <p style={{ color: '#888', marginBottom: '20px' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
                 <div className="form-group">
-                  <input
-                    type="text"
-                    placeholder="Enter Staff ID"
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
-                    required
-                    style={{ textAlign: 'center', letterSpacing: '2px' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <input
-                    type="password"
-                    placeholder="Enter Staff Password"
-                    value={loginPassword}
+                  <input 
+                    type="password" 
+                    placeholder="Enter Staff Password" 
+                    value={loginPassword} 
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                     style={{ textAlign: 'center', letterSpacing: '2px' }}
@@ -385,6 +376,6 @@ function App() {
       )}
     </div>
   )
-
 }
+
 export default App
