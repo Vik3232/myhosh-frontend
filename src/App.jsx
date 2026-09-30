@@ -22,6 +22,12 @@ function App() {
   const futureDate = new Date(today);
   futureDate.setMonth(today.getMonth() + 3);
   const maxDate = futureDate.toISOString().split('T')[0]; 
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loginId, setLoginId] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState("")
+  const STAFF_ID = "hoshadmin"
+  const STAFF_PASSWORD = "hoshadmin2026"
 
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/tables')
@@ -36,6 +42,25 @@ function App() {
       .then(data => setAllBookings(data))
       .catch(err => console.error("Error fetching bookings:", err))
   }, [view, isSuccess]) 
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (loginId === STAFF_ID && loginPassword === STAFF_PASSWORD) {
+      setIsAuthenticated(true);
+      setLoginError("");
+    } else {
+      setLoginError("❌ Invalid security credentials.");
+      setLoginId("");
+      setLoginPassword("");
+    }
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setLoginId("");
+    setLoginPassword("");
+    setView("customer");
+  }
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -294,34 +319,72 @@ function App() {
         </div>
       ) : (
         <div className="booking-panel" style={{ maxWidth: '1000px' }}>
-          <h2>Upcoming Reservations</h2>
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Date & Time</th>
-                <th>Guest Name</th>
-                <th>Table #</th>
-                <th>Party Size</th>
-                <th>Special Requests</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allBookings.map(booking => (
-                <tr key={booking.id}>
-                  <td><strong>{booking.bookingDate}</strong> <br /> {booking.bookingTime}</td>
-                  <td>{booking.customer?.fullName || "No Name"} <br /> <span style={{ fontSize: '0.8rem', color: '#888' }}>{booking.customer?.phone}</span></td>
-                  <td>{booking.restaurantTable?.tableNumber || "N/A"}</td>
-                  <td>{booking.partySize} Guests</td>
-                  <td>{booking.specialRequests || "None"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {allBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found.</p>}
+          {!isAuthenticated ? (
+            <div className="login-container" style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}>
+              <h2>Staff Gateway</h2>
+              <p style={{ color: '#888', marginBottom: '20px' }}>Authorized personnel only.</p>
+              <form onSubmit={handleAdminLogin}>
+                <div className="form-group">
+                  <input
+                    type="text"
+                    placeholder="Enter Staff ID"
+                    value={loginId}
+                    onChange={(e) => setLoginId(e.target.value)}
+                    required
+                    style={{ textAlign: 'center', letterSpacing: '2px' }}
+                  />
+                </div>
+                <div className="form-group">
+                  <input
+                    type="password"
+                    placeholder="Enter Staff Password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                    style={{ textAlign: 'center', letterSpacing: '2px' }}
+                  />
+                </div>
+                {loginError && <div style={{ color: '#ff4444', margin: '10px 0', fontSize: '0.9rem' }}>{loginError}</div>}
+                <button type="submit" className="submit-btn" style={{ marginTop: '15px' }}>ACCESS SYSTEM</button>
+              </form>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
+                <h2 style={{ margin: 0 }}>Live Reservations Dashboard</h2>
+                <button onClick={handleLogout} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>
+                  Secure Logout
+                </button>
+              </div>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Guest Name</th>
+                    <th>Table #</th>
+                    <th>Party Size</th>
+                    <th>Special Requests</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allBookings.map(booking => (
+                    <tr key={booking.id}>
+                      <td><strong>{booking.bookingDate}</strong> <br /> {booking.bookingTime}</td>
+                      <td>{booking.customer?.fullName || "No Name"} <br /> <span style={{ fontSize: '0.8rem', color: '#888' }}>{booking.customer?.phone}</span></td>
+                      <td>{booking.restaurantTable?.tableNumber || "N/A"}</td>
+                      <td>{booking.partySize} Guests</td>
+                      <td>{booking.specialRequests || "None"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {allBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found.</p>}
+            </>
+          )}
         </div>
       )}
     </div>
   )
-}
 
+}
 export default App
