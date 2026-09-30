@@ -80,28 +80,36 @@ function App() {
     }
 
     // --- 2. COMMERCIAL FEATURE: LIVE ANTI-SPAM PHONE NUMBER BLOCK ---
-    setMessage("Verifying availability...");
+  
+   setMessage("Verifying availability...");
     
-    try {
-      const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
-      const liveBookings = await liveResponse.json();
+   try {
+     const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
+     if (!liveResponse.ok) throw new Error("Network response was not OK");
+     const liveBookings = await liveResponse.json();
 
-      const cleanInputPhone = phone.replace(/\D/g, '');
+     // Force everything to string and strip all non-numbers
+     const cleanInputPhone = String(phone).replace(/\D/g, '');
+     const inputDate = String(date);
 
-      const phoneAlreadyBooked = liveBookings.some((booking) => {
-        const existingPhone = booking.customer?.phone?.replace(/\D/g, '') || "";
-        return booking.bookingDate === date && existingPhone === cleanInputPhone;
-      });
+     const phoneAlreadyBooked = liveBookings.some((booking) => {
+       const existingPhone = String(booking.customer?.phone || "").replace(/\D/g, '');
+       const existingDate = String(booking.bookingDate);
+       return existingDate === inputDate && existingPhone === cleanInputPhone;
+     });
 
-      if (phoneAlreadyBooked) {
-        setIsSuccess(false);
-        setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
-        return; 
-      }
-    } catch (err) {
-      console.error("Failed to verify anti-spam status", err);
-    }
-
+     if (phoneAlreadyBooked) {
+       setIsSuccess(false);
+       setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
+       return; // HALTS EXECUTION INSTANTLY
+     }
+   } catch (err) {
+     console.error("Anti-spam security check failed to complete:", err);
+     setIsSuccess(false);
+     setMessage("System verification timeout. Please click submit again.");
+     return; // HALTS EXECUTION IF THE CHECK FAILS. NEVER LETS IT THROUGH.
+   }
+   
     // --- 3. Process the Actual Booking ---
     setMessage("Processing reservation...");
 
