@@ -277,16 +277,17 @@ function App() {
       });
 
       if (response.ok) {
-        // Remove locally from state instantly
         setAllBookings(prev => prev.filter(b => b.id !== bookingId));
       } else {
-        alert("Failed to cancel booking. Please try again.");
+        const errorText = await response.text();
+        alert(`Server Error ${response.status}: ${errorText || "Action rejected by backend"}`);
       }
     } catch (err) {
       console.error("Cancel error:", err);
-      alert("Network error: Could not reach backend server.");
+      alert(`Network connection failure: ${err.message}`);
     }
   };
+
 
   // --- REASSIGN TABLE (STAFF & ADMIN) ---
   const handleReassignTable = async (bookingId, newTableId) => {
