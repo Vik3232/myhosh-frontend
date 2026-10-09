@@ -30,6 +30,7 @@ function App() {
  const [newStaffPassword, setNewStaffPassword] = useState("")
  const [newStaffRole, setNewStaffRole] = useState("STAFF")
  const [staffRegMessage, setStaffRegMessage] = useState("")
+ const [adminDateFilter, setAdminDateFilter] = useState("ALL")
 
   // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
@@ -274,6 +275,19 @@ function App() {
     setView("customer");
   };
 
+  // --- ADMIN DASHBOARD DATE FILTER LOGIC ---
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tomorrowObj = new Date();
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+  const tomorrowStr = tomorrowObj.toISOString().split('T')[0];
+
+  const displayedBookings = allBookings.filter(b => {
+    if (adminDateFilter === "ALL") return true;
+    return b.bookingDate === adminDateFilter;
+  });
+
+  const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
+
   // --- UI RENDER ---
   return (
     <div className="restaurant-container">
@@ -415,7 +429,7 @@ function App() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
                 <div>
                   <h2 style={{ margin: 0 }}>Live Reservations Dashboard</h2>
                   <small style={{ color: '#ffcc00' }}>
@@ -471,6 +485,41 @@ function App() {
                 </div>
               )}
 
+              {/* FILTER TOOLBAR & SHIFT METRICS */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', backgroundColor: '#181818', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#aaa', fontWeight: 'bold' }}>FILTER SERVICE:</span>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminDateFilter("ALL")}
+                    style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === "ALL" ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === "ALL" ? '#000' : '#fff', fontWeight: 'bold' }}>
+                    All Dates
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminDateFilter(todayStr)}
+                    style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === todayStr ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === todayStr ? '#000' : '#fff', fontWeight: 'bold' }}>
+                    Today
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminDateFilter(tomorrowStr)}
+                    style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === tomorrowStr ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === tomorrowStr ? '#000' : '#fff', fontWeight: 'bold' }}>
+                    Tomorrow
+                  </button>
+                  <input 
+                    type="date"
+                    value={adminDateFilter === "ALL" ? "" : adminDateFilter}
+                    onChange={(e) => setAdminDateFilter(e.target.value || "ALL")}
+                    style={{ padding: '5px 10px', background: '#222', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '20px', fontSize: '0.9rem' }}>
+                  <div>Reservations: <strong style={{ color: '#ffcc00' }}>{displayedBookings.length}</strong></div>
+                  <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
+                </div>
+              </div>
+
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -482,7 +531,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {allBookings.map(booking => (
+                  {displayedBookings.map(booking => (
                     <tr key={booking.id}>
                       <td><strong>{booking.bookingDate}</strong> <br /> {booking.bookingTime}</td>
                       <td>{booking.customer?.fullName || "No Name"} <br /> <span style={{ fontSize: '0.8rem', color: '#888' }}>{booking.customer?.phone}</span></td>
@@ -493,7 +542,7 @@ function App() {
                   ))}
                 </tbody>
               </table>
-              {allBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found.</p>}
+              {displayedBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found for this selection.</p>}
             </>
           )}
         </div>
