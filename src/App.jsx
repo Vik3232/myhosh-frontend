@@ -387,13 +387,14 @@ function App() {
               <h2>Staff Gateway</h2>
               <p style={{ color: '#888', marginBottom: '20px' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
-                <div className="form-group" style={{ marginBottom: '15px' }}>
+              <div className="form-group" style={{ marginBottom: '15px' }}>
                   <input 
                     type="text" 
                     placeholder="Staff Username" 
                     value={loginUsername} 
                     onChange={(e) => setLoginUsername(e.target.value)}
                     required
+                    autoComplete="off"
                     style={{ textAlign: 'center' }}
                   />
                 </div>
@@ -404,6 +405,7 @@ function App() {
                     value={loginPassword} 
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                     style={{ textAlign: 'center' }}
                   />
                 </div>
