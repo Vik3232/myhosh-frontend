@@ -342,6 +342,30 @@ function App() {
     }
   };
 
+  // --- UPDATE BOOKING TIME (STAFF & ADMIN) ---
+  const handleUpdateTime = async (bookingId, newTime) => {
+    if (!newTime) return;
+
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${bookingId}/time`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingTime: newTime })
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setAllBookings(prev => prev.map(b => b.id === bookingId ? updated : b));
+        alert("Booking time updated successfully.");
+      } else {
+        alert("Failed to update booking time.");
+      }
+    } catch (err) {
+      console.error("Time update error:", err);
+      alert("Network error updating time.");
+    }
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
@@ -454,7 +478,17 @@ function App() {
             </div>
 
             {availableTables.length > 0 && (
-              <button type="submit" className="submit-btn">REQUEST RESERVATION</button>
+              <button 
+              type="submit" 
+              className="submit-btn" 
+              disabled={isLoggingIn}
+              style={{ 
+                cursor: isLoggingIn ? 'not-allowed' : 'pointer',
+                opacity: isLoggingIn ? 0.7 : 1,
+                letterSpacing: '1px'
+              }}>
+              {isLoggingIn ? "VERIFYING CREDENTIALS..." : "ACCESS SYSTEM"}
+            </button>
             )}
           </form>
 
@@ -665,30 +699,75 @@ function App() {
                               <div style={{ clear: 'both' }}></div>
                             </div>
 
-                            {/* Card Actions: Move Table & Cancel */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid #2a2a2a', gap: '8px' }}>
-                              <select 
-                                defaultValue=""
-                                onChange={(e) => {
-                                  handleReassignTable(booking.id, e.target.value);
-                                  e.target.value = "";
-                                }}
-                                style={{ flex: '1', padding: '6px', fontSize: '0.8rem', background: '#222', color: '#ccc', border: '1px solid #444', borderRadius: '4px' }}>
-                                <option value="" disabled>Move Table...</option>
-                                {tables.map(t => (
-                                  <option key={t.id} value={t.id} disabled={t.id === booking.restaurantTable?.id}>
-                                    Table {t.tableNumber} (Seats {t.capacity})
-                                  </option>
-                                ))}
-                              </select>
+                            {/* CARD ACTION TOOLBAR (IN-LINE) */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #282828' }}>
+                                 <span style={{ fontSize: '0.75rem', color: '#777' }}>
+                                   Booking #{booking.id}
+                                 </span>
+                                 <button
+                                   type="button"
+                                   onClick={() => setEditingBookingId(editingBookingId === booking.id ? null : booking.id)}
+                                   style={{
+                                     background: editingBookingId === booking.id ? '#ffcc00' : '#262626',
+                                     color: editingBookingId === booking.id ? '#000' : '#ffcc00',
+                                     border: '1px solid #444',
+                                     padding: '5px 12px',
+                                     borderRadius: '4px',
+                                     cursor: 'pointer',
+                                     fontSize: '0.78rem',
+                                     fontWeight: 'bold'
+                                   }}>
+                                   {editingBookingId === booking.id ? "✕ Close Edit" : "⚙️ Edit Booking"}
+                                 </button>
+                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => setCancelModalBooking(booking)}
-                                style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#3d1212', color: '#ff7777', border: '1px solid #6b2020', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                CANCEL
-                              </button>
-                            </div>
+                               {/* COLLAPSIBLE INLINE EDIT OPTIONS */}
+                               {editingBookingId === booking.id && (
+                                 <div style={{ background: '#141414', border: '1px solid #ffcc00', borderRadius: '6px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                                   <div style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#ffcc00', letterSpacing: '0.5px' }}>
+                                     RESERVATION CONTROLS
+                                   </div>
+
+                                   {/* 1. Change Sitting Time */}
+                                   <div>
+                                     <label style={{ display: 'block', fontSize: '0.72rem', color: '#aaa', marginBottom: '3px' }}>Change Sitting Time:</label>
+                                     <select
+                                       defaultValue={booking.bookingTime}
+                                       onChange={(e) => handleUpdateTime(booking.id, e.target.value)}
+                                       style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: '#202020', color: '#fff', border: '1px solid #444', borderRadius: '4px' }}>
+                                       {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map(slot => (
+                                         <option key={slot} value={slot}>{slot}</option>
+                                       ))}
+                                     </select>
+                                   </div>
+
+                                   {/* 2. Reassign Table */}
+                                   <div>
+                                     <label style={{ display: 'block', fontSize: '0.72rem', color: '#aaa', marginBottom: '3px' }}>Reassign Table:</label>
+                                     <select
+                                       value={booking.restaurantTable?.id || ""}
+                                       onChange={(e) => handleReassignTable(booking.id, e.target.value)}
+                                       style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: '#202020', color: '#fff', border: '1px solid #444', borderRadius: '4px' }}>
+                                       {tables.map(t => (
+                                         <option key={t.id} value={t.id}>
+                                           Table {t.tableNumber} (Seats {t.capacity})
+                                         </option>
+                                       ))}
+                                     </select>
+                                   </div>
+
+                                   {/* 3. Cancel Booking Option */}
+                                   <div style={{ paddingTop: '6px', borderTop: '1px solid #262626', display: 'flex', justifyContent: 'flex-end' }}>
+                                     <button
+                                       type="button"
+                                       onClick={() => setCancelModalBooking(booking)}
+                                       style={{ width: '100%', padding: '6px 10px', fontSize: '0.75rem', background: '#3d1212', color: '#ff7777', border: '1px solid #6b2020', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                       ✕ Cancel Reservation (Notify Guest)
+                                     </button>
+                                   </div>
+                                 </div>
+                               )}
+                               
 
                           </div>
                         ))}
