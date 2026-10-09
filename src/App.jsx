@@ -18,10 +18,18 @@ function App() {
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
 
-  // --- STAFF AUTHENTICATION STATES ---
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [loginPassword, setLoginPassword] = useState("")
-  const [loginError, setLoginError] = useState("")
+ // --- STAFF AUTHENTICATION STATES ---
+ const [isAuthenticated, setIsAuthenticated] = useState(false)
+ const [currentUser, setCurrentUser] = useState(null) // stores { id, username, role }
+ const [loginUsername, setLoginUsername] = useState("")
+ const [loginPassword, setLoginPassword] = useState("")
+ const [loginError, setLoginError] = useState("")
+
+ // --- NEW STAFF REGISTRATION STATES (ADMIN ONLY) ---
+ const [newStaffUsername, setNewStaffUsername] = useState("")
+ const [newStaffPassword, setNewStaffPassword] = useState("")
+ const [newStaffRole, setNewStaffRole] = useState("STAFF")
+ const [staffRegMessage, setStaffRegMessage] = useState("")
 
   // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
@@ -194,23 +202,77 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tables, partySize, date, time]); 
 
-  // --- STAFF SECURITY GATEWAY LOGIC ---
-  const handleAdminLogin = (e) => {
+ 
+  // --- STAFF SECURITY GATEWAY LOGIC (BACKEND INTEGRATED) ---
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
-    if (loginPassword === "hoshadmin2026") { 
-      setIsAuthenticated(true);
-      setLoginError("");
-    } else {
-      setLoginError("❌ Invalid security credentials.");
-      setLoginPassword("");
+    setLoginError("");
+
+    try {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/staff/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: loginUsername.trim(),
+          password: loginPassword
+        })
+      });
+
+      if (response.ok) {
+        const staffData = await response.json();
+        setIsAuthenticated(true);
+        setCurrentUser(staffData);
+        setLoginUsername("");
+        setLoginPassword("");
+        setLoginError("");
+      } else {
+        const errorText = await response.text();
+        setLoginError(errorText || "Invalid username or password.");
+      }
+    } catch (err) {
+      console.error("Login connection error:", err);
+      setLoginError("Unable to reach authentication server. Please try again.");
     }
-  }
+  };
+
+  const handleCreateStaff = async (e) => {
+    e.preventDefault();
+    setStaffRegMessage("Creating account...");
+
+    try {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/staff/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: newStaffUsername.trim(),
+          password: newStaffPassword,
+          role: newStaffRole
+        })
+      });
+
+      if (response.ok) {
+        setStaffRegMessage(`Account created successfully for ${newStaffUsername} (${newStaffRole}).`);
+        setNewStaffUsername("");
+        setNewStaffPassword("");
+        setNewStaffRole("STAFF");
+      } else {
+        const errText = await response.text();
+        setStaffRegMessage(`Error: ${errText || "Could not create user."}`);
+      }
+    } catch (err) {
+      console.error("Staff creation error:", err);
+      setStaffRegMessage("Error: Failed to connect to server.");
+    }
+  };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setCurrentUser(null);
+    setLoginUsername("");
     setLoginPassword("");
+    setStaffRegMessage("");
     setView("customer");
-  }
+  };
 
   // --- UI RENDER ---
   return (
@@ -325,14 +387,24 @@ function App() {
               <h2>Staff Gateway</h2>
               <p style={{ color: '#888', marginBottom: '20px' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Staff Username" 
+                    value={loginUsername} 
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    required
+                    style={{ textAlign: 'center' }}
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '15px' }}>
                   <input 
                     type="password" 
-                    placeholder="Enter Staff Password" 
+                    placeholder="Staff Password" 
                     value={loginPassword} 
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
-                    style={{ textAlign: 'center', letterSpacing: '2px' }}
+                    style={{ textAlign: 'center' }}
                   />
                 </div>
                 {loginError && <div style={{ color: '#ff4444', margin: '10px 0', fontSize: '0.9rem' }}>{loginError}</div>}
@@ -342,11 +414,61 @@ function App() {
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
-                <h2 style={{ margin: 0 }}>Live Reservations Dashboard</h2>
+                <div>
+                  <h2 style={{ margin: 0 }}>Live Reservations Dashboard</h2>
+                  <small style={{ color: '#ffcc00' }}>
+                    Logged in as: <strong>{currentUser?.username}</strong> ({currentUser?.role})
+                  </small>
+                </div>
                 <button onClick={handleLogout} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>
                   Secure Logout
                 </button>
               </div>
+
+              {/* ADMIN-ONLY PANEL: CREATE NEW STAFF */}
+              {currentUser?.role === "ADMIN" && (
+                <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #333' }}>
+                  <h3 style={{ marginTop: 0, color: '#ffcc00' }}>Admin Control: Register New Staff Member</h3>
+                  <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <div style={{ flex: '1', minWidth: '160px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Username</label>
+                      <input 
+                        type="text" 
+                        required 
+                        value={newStaffUsername} 
+                        onChange={(e) => setNewStaffUsername(e.target.value)} 
+                        placeholder="e.g. manager1"
+                      />
+                    </div>
+                    <div style={{ flex: '1', minWidth: '160px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Password</label>
+                      <input 
+                        type="password" 
+                        required 
+                        value={newStaffPassword} 
+                        onChange={(e) => setNewStaffPassword(e.target.value)} 
+                        placeholder="Temporary password"
+                      />
+                    </div>
+                    <div style={{ width: '130px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Role</label>
+                      <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value)}>
+                        <option value="STAFF">STAFF</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="submit-btn" style={{ padding: '10px 20px', width: 'auto' }}>
+                      CREATE ACCOUNT
+                    </button>
+                  </form>
+                  {staffRegMessage && (
+                    <div style={{ marginTop: '10px', fontSize: '0.85rem', color: staffRegMessage.startsWith('Error') ? '#ff4444' : '#00ff88' }}>
+                      {staffRegMessage}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <table className="admin-table">
                 <thead>
                   <tr>
