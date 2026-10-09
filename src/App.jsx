@@ -266,6 +266,51 @@ function App() {
     }
   };
 
+  // --- CANCEL BOOKING (STAFF & ADMIN) ---
+  const handleCancelBooking = async (bookingId, guestName) => {
+    const confirmCancel = window.confirm(`Are you sure you want to cancel the reservation for ${guestName || "this guest"}?`);
+    if (!confirmCancel) return;
+
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${bookingId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        // Remove locally from state instantly
+        setAllBookings(prev => prev.filter(b => b.id !== bookingId));
+      } else {
+        alert("Failed to cancel booking. Please try again.");
+      }
+    } catch (err) {
+      console.error("Cancel error:", err);
+      alert("Network error: Could not reach backend server.");
+    }
+  };
+
+  // --- REASSIGN TABLE (STAFF & ADMIN) ---
+  const handleReassignTable = async (bookingId, newTableId) => {
+    if (!newTableId) return;
+
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${bookingId}/table/${newTableId}`, {
+        method: 'PUT'
+      });
+
+      if (response.ok) {
+        const updatedBooking = await response.json();
+        // Update booking in local state
+        setAllBookings(prev => prev.map(b => b.id === bookingId ? updatedBooking : b));
+      } else {
+        const errorMsg = await response.text();
+        alert(`Cannot reassign table: ${errorMsg}`);
+      }
+    } catch (err) {
+      console.error("Reassign error:", err);
+      alert("Network error: Could not reassign table.");
+    }
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
@@ -519,30 +564,74 @@ function App() {
                   <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
                 </div>
               </div>
-
               <table className="admin-table">
                 <thead>
                   <tr>
                     <th>Date & Time</th>
                     <th>Guest Name</th>
-                    <th>Table #</th>
+                    <th>Current Table</th>
                     <th>Party Size</th>
                     <th>Special Requests</th>
+                    <th style={{ textAlign: 'center' }}>Staff Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedBookings.map(booking => (
                     <tr key={booking.id}>
-                      <td><strong>{booking.bookingDate}</strong> <br /> {booking.bookingTime}</td>
-                      <td>{booking.customer?.fullName || "No Name"} <br /> <span style={{ fontSize: '0.8rem', color: '#888' }}>{booking.customer?.phone}</span></td>
-                      <td>{booking.restaurantTable?.tableNumber || "N/A"}</td>
+                      <td>
+                        <strong>{booking.bookingDate}</strong> <br /> 
+                        {booking.bookingTime}
+                      </td>
+                      <td>
+                        {booking.customer?.fullName || "No Name"} <br /> 
+                        <span style={{ fontSize: '0.8rem', color: '#888' }}>{booking.customer?.phone}</span>
+                      </td>
+                      <td>
+                        <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>
+                          Table {booking.restaurantTable?.tableNumber || "N/A"}
+                        </span>
+                        <div style={{ fontSize: '0.75rem', color: '#777' }}>
+                          (Cap: {booking.restaurantTable?.capacity || "N/A"})
+                        </div>
+                      </td>
                       <td>{booking.partySize} Guests</td>
                       <td>{booking.specialRequests || "None"}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                          {/* Reassign Table Dropdown */}
+                          <select 
+                            defaultValue=""
+                            onChange={(e) => {
+                              handleReassignTable(booking.id, e.target.value);
+                              e.target.value = ""; // reset dropdown back to default
+                            }}
+                            style={{ padding: '4px 8px', fontSize: '0.8rem', background: '#222', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer' }}>
+                            <option value="" disabled>Move Table...</option>
+                            {tables.map(t => (
+                              <option 
+                                key={t.id} 
+                                value={t.id} 
+                                disabled={t.id === booking.restaurantTable?.id}>
+                                Table {t.tableNumber} (Seats {t.capacity})
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Cancel Booking Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleCancelBooking(booking.id, booking.customer?.fullName)}
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', background: '#441111', color: '#ff6666', border: '1px solid #772222', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                            CANCEL
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {displayedBookings.length === 0 && <p style={{ textAlign: 'center', marginTop: '20px' }}>No reservations found for this selection.</p>}
+              
             </>
           )}
         </div>
