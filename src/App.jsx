@@ -36,6 +36,8 @@ function App() {
  const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
  const [customReasonText, setCustomReasonText] = useState("");
  const [activeNotes, setActiveNotes] = useState({});
+ const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [editingBookingId, setEditingBookingId] = useState(null); // stores which card is in edit mode
 
   // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
@@ -212,34 +214,31 @@ function App() {
   // --- STAFF SECURITY GATEWAY LOGIC (BACKEND INTEGRATED) ---
   const handleAdminLogin = async (e) => {
     e.preventDefault();
-    setLoginError("");
+    setIsLoggingIn(true);
 
     try {
-      const response = await fetch('https://myhosh-backend.onrender.com/api/staff/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: loginUsername.trim(),
-          password: loginPassword
-        })
+      const response = await fetch("https://myhosh-backend.onrender.com/api/staff/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
       });
 
       if (response.ok) {
         const staffData = await response.json();
-        setIsAuthenticated(true);
         setCurrentUser(staffData);
-        setLoginUsername("");
-        setLoginPassword("");
-        setLoginError("");
+        setIsAuthenticated(true);
+        fetchBookings();
       } else {
-        const errorText = await response.text();
-        setLoginError(errorText || "Invalid username or password.");
+        alert("Invalid staff username or password.");
       }
     } catch (err) {
-      console.error("Login connection error:", err);
-      setLoginError("Unable to reach authentication server. Please try again.");
+      console.error("Login error:", err);
+      alert("Network error: Backend server might be waking up on Render. Please wait 15 seconds and try again.");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
+
 
   const handleCreateStaff = async (e) => {
     e.preventDefault();
