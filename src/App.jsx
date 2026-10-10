@@ -33,6 +33,7 @@ function App() {
  const [adminDateFilter, setAdminDateFilter] = useState("ALL")
  // --- CANCELLATION MODAL & NOTES STATES ---
  const [cancelModalBooking, setCancelModalBooking] = useState(null);
+ const [isProcessing, setIsProcessing] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
   const [modalNoteText, setModalNoteText] = useState("");
  const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
@@ -303,32 +304,35 @@ function App() {
     }
   };
 
-  // --- CONFIRM CANCEL WITH REASON ---
-  const handleConfirmCancellation = async () => {
-    if (!cancelModalBooking) return;
-    const finalReason = cancelReason === "Other" ? customReasonText : cancelReason;
+ // --- CONFIRM CANCEL WITH REASON ---
+ const handleConfirmCancellation = async () => {
+  if (!cancelModalBooking) return;
+  const finalReason = cancelReason === "Other" ? customReasonText : cancelReason;
 
-    try {
-      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${cancelModalBooking.id}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: finalReason })
-      });
+  setIsProcessing(true); // Locks the UI and shows "Processing..."
 
-      if (response.ok) {
-        setAllBookings(prev => prev.filter(b => b.id !== cancelModalBooking.id));
-        alert(`Reservation cancelled. Customer notified with reason: "${finalReason}"`);
-        setCancelModalBooking(null);
-        setCustomReasonText("");
-      } else {
-        const errorText = await response.text();
-        alert(`Failed! Status: ${response.status}. Reason: ${errorText} | ID: ${cancelModalBooking.id}`);
-      }
-    } catch (err) {
-      console.error("Cancel error:", err);
-      alert("Network error processing cancellation.");
+  try {
+    const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${cancelModalBooking.id}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: finalReason })
+    });
+
+    if (response.ok) {
+      setAllBookings(prev => prev.filter(b => b.id !== cancelModalBooking.id));
+      alert(`Reservation cancelled. Customer notified with reason: "${finalReason}"`);
+      setCancelModalBooking(null);
+      setCustomReasonText("");
+    } else {
+      alert("Failed to process cancellation.");
     }
-  };
+  } catch (err) {
+    console.error("Cancel error:", err);
+    alert("Network error processing cancellation.");
+  } finally {
+    setIsProcessing(false); // Unlocks the UI when finished
+  }
+};
 
   // --- REASSIGN TABLE (STAFF & ADMIN) ---
   const handleReassignTable = async (bookingId, newTableId) => {
