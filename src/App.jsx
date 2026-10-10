@@ -59,7 +59,14 @@ function App() {
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/bookings')
       .then(response => response.json())
-      .then(data => setAllBookings(data))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAllBookings(data);
+        } else {
+          console.error("Backend error:", data);
+          setAllBookings([]); // Safety net!
+        }
+      })
       .catch(err => console.error("Error fetching bookings:", err))
   }, [view, isSuccess]) 
 
