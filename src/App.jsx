@@ -33,7 +33,6 @@ function App() {
  const [adminDateFilter, setAdminDateFilter] = useState("ALL")
  // --- CANCELLATION MODAL & NOTES STATES ---
  const [cancelModalBooking, setCancelModalBooking] = useState(null);
- const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
   const [modalNoteText, setModalNoteText] = useState("");
  const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
