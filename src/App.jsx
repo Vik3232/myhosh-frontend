@@ -33,6 +33,9 @@ function App() {
  const [adminDateFilter, setAdminDateFilter] = useState("ALL")
  // --- CANCELLATION MODAL & NOTES STATES ---
  const [cancelModalBooking, setCancelModalBooking] = useState(null);
+ const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [editModalBooking, setEditModalBooking] = useState(null);
+  const [modalNoteText, setModalNoteText] = useState("");
  const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
  const [customReasonText, setCustomReasonText] = useState("");
  const [activeNotes, setActiveNotes] = useState({});
@@ -233,11 +236,12 @@ function App() {
       }
     } catch (err) {
       console.error("Login error:", err);
-      alert("Network error: Backend server might be waking up on Render. Please wait 15 seconds and try again.");
+      alert("Network error: Server may be waking up. Please wait 10 seconds and try again.");
     } finally {
       setIsLoggingIn(false);
     }
   };
+   
 
 
   const handleCreateStaff = async (e) => {
@@ -366,6 +370,80 @@ function App() {
     }
   };
 
+  // --- OPEN EDIT POPUP MODAL ---
+  const handleOpenEdit = (booking) => {
+    setEditModalBooking(booking);
+    setModalNoteText(booking.staffNotes || "");
+  };
+
+  // --- SAVE STAFF NOTE FROM MODAL ---
+  const handleSaveModalNote = async () => {
+    if (!editModalBooking) return;
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/notes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: modalNoteText })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
+        setEditModalBooking(updated);
+        alert("Staff note saved successfully.");
+      } else {
+        alert("Failed to save note.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error saving note.");
+    }
+  };
+
+  // --- UPDATE TIME FROM MODAL ---
+  const handleModalTimeChange = async (newTime) => {
+    if (!newTime || !editModalBooking) return;
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/time`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingTime: newTime })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
+        setEditModalBooking(updated);
+        alert(`Time updated to ${newTime}.`);
+      } else {
+        alert("Failed to update time.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error updating time.");
+    }
+  };
+
+  // --- REASSIGN TABLE FROM MODAL ---
+  const handleModalTableChange = async (newTableId) => {
+    if (!newTableId || !editModalBooking) return;
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/table/${newTableId}`, {
+        method: 'PUT'
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
+        setEditModalBooking(updated);
+        alert("Table reassigned successfully.");
+      } else {
+        const errMsg = await response.text();
+        alert(`Could not reassign table: ${errMsg}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error reassigning table.");
+    }
+  };
+  
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
@@ -534,7 +612,32 @@ function App() {
                   />
                 </div>
                 {loginError && <div style={{ color: '#ff4444', margin: '10px 0', fontSize: '0.9rem' }}>{loginError}</div>}
-                <button type="submit" className="submit-btn" style={{ marginTop: '15px' }}>ACCESS SYSTEM</button>
+                <button 
+                  type="submit" 
+                  disabled={isLoggingIn}
+                  style={{ 
+                    cursor: isLoggingIn ? 'wait' : 'pointer',
+                    opacity: isLoggingIn ? 0.75 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    padding: '12px',
+                    background: '#ffcc00',
+                    color: '#000',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    borderRadius: '4px',
+                    letterSpacing: '1px'
+                  }}>
+                  {isLoggingIn ? "AUTHENTICATING & CONNECTING..." : "ACCESS SYSTEM"}
+                </button>
+                {isLoggingIn && (
+                  <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ffcc00', marginTop: '10px' }}>
+                    Connecting to database, please wait...
+                  </p>
+                )}
               </form>
             </div>
           ) : (
@@ -647,12 +750,12 @@ function App() {
                         </span>
                       </div>
 
-                      {/* BOOKING CARDS GRID */}
+                      {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
                         {dateBookings.map(booking => (
-                          <div key={booking.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
-
-                            {/* Card Header: Time & Table */}
+                          <div key={booking.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
+                            
+                            {/* Card Top: Time & Table Tag */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a2a2a', paddingBottom: '8px' }}>
                               <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ffcc00' }}>
                                 ⏰ {booking.bookingTime}
@@ -660,9 +763,9 @@ function App() {
                               <span style={{ background: '#2b2304', color: '#ffcc00', border: '1px solid #665200', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
                                 Table {booking.restaurantTable?.tableNumber || "N/A"} ({booking.partySize} Guests)
                               </span>
-                             </div>
+                            </div>
 
-                            {/* Guest Information */}
+                            {/* Guest Details */}
                             <div>
                               <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: '#fff' }}>
                                 {booking.customer?.fullName || "No Name"}
@@ -671,103 +774,40 @@ function App() {
                                 📞 {booking.customer?.phone || "N/A"} <br />
                                 ✉️ {booking.customer?.email || "N/A"}
                               </div>
+
                               {booking.specialRequests && (
                                 <div style={{ marginTop: '8px', padding: '6px 10px', background: '#242424', borderRadius: '4px', fontSize: '0.8rem', color: '#ddd' }}>
                                   <strong>Guest Note:</strong> {booking.specialRequests}
                                 </div>
                               )}
+
+                              {/* Compact preview of staff note if one exists */}
+                              {booking.staffNotes && (
+                                <div style={{ marginTop: '6px', padding: '6px 10px', background: '#1c1b12', borderLeft: '3px solid #ffcc00', borderRadius: '2px', fontSize: '0.78rem', color: '#ffea88' }}>
+                                  <strong>Staff Note:</strong> {booking.staffNotes}
+                                </div>
+                              )}
                             </div>
 
-                            {/* Staff Internal Notes Field */}
-                            <div style={{ background: '#141414', border: '1px solid #262626', borderRadius: '6px', padding: '10px' }}>
-                              <label style={{ display: 'block', fontSize: '0.75rem', color: '#ffcc00', fontWeight: 'bold', marginBottom: '4px' }}>
-                                📝 STAFF INTERNAL NOTES:
-                              </label>
-                              <textarea
-                                rows="2"
-                                placeholder="Add notes (e.g. VIP, anniversary, high chair)..."
-                                value={activeNotes[booking.id] !== undefined ? activeNotes[booking.id] : (booking.staffNotes || "")}
-                                onChange={(e) => setActiveNotes({ ...activeNotes, [booking.id]: e.target.value })}
-                                style={{ width: '100%', background: '#202020', border: '1px solid #3d3d3d', color: '#fff', borderRadius: '4px', padding: '6px', fontSize: '0.8rem', resize: 'vertical' }}
-                              />
+                            {/* Card Footer: Edit Button Only (No Screen Expansion) */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
                               <button
                                 type="button"
-                                onClick={() => handleSaveNote(booking.id)}
-                                style={{ marginTop: '6px', padding: '4px 10px', fontSize: '0.75rem', background: '#2e2e2e', color: '#ffcc00', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer', float: 'right' }}>
-                                Save Note
+                                onClick={() => handleOpenEdit(booking)}
+                                style={{
+                                  background: '#2b2b2b',
+                                  color: '#ffcc00',
+                                  border: '1px solid #444',
+                                  padding: '6px 14px',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 'bold'
+                                }}>
+                                ⚙️ Edit Reservation
                               </button>
-                              <div style={{ clear: 'both' }}></div>
                             </div>
-
-                            {/* CARD ACTION TOOLBAR (IN-LINE) */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #282828' }}>
-                                 <span style={{ fontSize: '0.75rem', color: '#777' }}>
-                                   Booking #{booking.id}
-                                 </span>
-                                 <button
-                                   type="button"
-                                   onClick={() => setEditingBookingId(editingBookingId === booking.id ? null : booking.id)}
-                                   style={{
-                                     background: editingBookingId === booking.id ? '#ffcc00' : '#262626',
-                                     color: editingBookingId === booking.id ? '#000' : '#ffcc00',
-                                     border: '1px solid #444',
-                                     padding: '5px 12px',
-                                     borderRadius: '4px',
-                                     cursor: 'pointer',
-                                     fontSize: '0.78rem',
-                                     fontWeight: 'bold'
-                                   }}>
-                                   {editingBookingId === booking.id ? "✕ Close Edit" : "⚙️ Edit Booking"}
-                                 </button>
-                               </div>
-
-                               {/* COLLAPSIBLE INLINE EDIT OPTIONS */}
-                               {editingBookingId === booking.id && (
-                                 <div style={{ background: '#141414', border: '1px solid #ffcc00', borderRadius: '6px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-                                   <div style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#ffcc00', letterSpacing: '0.5px' }}>
-                                     RESERVATION CONTROLS
-                                   </div>
-
-                                   {/* 1. Change Sitting Time */}
-                                   <div>
-                                     <label style={{ display: 'block', fontSize: '0.72rem', color: '#aaa', marginBottom: '3px' }}>Change Sitting Time:</label>
-                                     <select
-                                       defaultValue={booking.bookingTime}
-                                       onChange={(e) => handleUpdateTime(booking.id, e.target.value)}
-                                       style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: '#202020', color: '#fff', border: '1px solid #444', borderRadius: '4px' }}>
-                                       {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map(slot => (
-                                         <option key={slot} value={slot}>{slot}</option>
-                                       ))}
-                                     </select>
-                                   </div>
-
-                                   {/* 2. Reassign Table */}
-                                   <div>
-                                     <label style={{ display: 'block', fontSize: '0.72rem', color: '#aaa', marginBottom: '3px' }}>Reassign Table:</label>
-                                     <select
-                                       value={booking.restaurantTable?.id || ""}
-                                       onChange={(e) => handleReassignTable(booking.id, e.target.value)}
-                                       style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: '#202020', color: '#fff', border: '1px solid #444', borderRadius: '4px' }}>
-                                       {tables.map(t => (
-                                         <option key={t.id} value={t.id}>
-                                           Table {t.tableNumber} (Seats {t.capacity})
-                                         </option>
-                                       ))}
-                                     </select>
-                                   </div>
-
-                                   {/* 3. Cancel Booking Option */}
-                                   <div style={{ paddingTop: '6px', borderTop: '1px solid #262626', display: 'flex', justifyContent: 'flex-end' }}>
-                                     <button
-                                       type="button"
-                                       onClick={() => setCancelModalBooking(booking)}
-                                       style={{ width: '100%', padding: '6px 10px', fontSize: '0.75rem', background: '#3d1212', color: '#ff7777', border: '1px solid #6b2020', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                       ✕ Cancel Reservation (Notify Guest)
-                                     </button>
-                                   </div>
-                                 </div>
-                               )}
-                               
 
                           </div>
                         ))}
@@ -781,7 +821,102 @@ function App() {
                 )}
               </div>
 
-              {/* CANCELLATION MODAL (POPUP) */}
+              {/* 1. EDIT RESERVATION POPUP MODAL */}
+              {editModalBooking && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9998 }}>
+                  <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '90%', maxWidth: '500px', color: '#fff', maxHeight: '90vh', overflowY: 'auto' }}>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '15px' }}>
+                      <h3 style={{ margin: 0, color: '#ffcc00' }}>Edit Reservation</h3>
+                      <button 
+                        onClick={() => setEditModalBooking(null)}
+                        style={{ background: 'transparent', border: 'none', color: '#aaa', fontSize: '1.2rem', cursor: 'pointer' }}>
+                        ✕
+                      </button>
+                    </div>
+
+                    <p style={{ fontSize: '0.9rem', color: '#ccc', margin: '0 0 15px 0' }}>
+                      Guest: <strong>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})
+                    </p>
+
+                    {/* Change Sitting Time */}
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '5px' }}>
+                        Change Sitting Time:
+                      </label>
+                      <select
+                        value={editModalBooking.bookingTime}
+                        onChange={(e) => handleModalTimeChange(e.target.value)}
+                        style={{ width: '100%', padding: '8px', background: '#252525', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
+                        {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map(slot => (
+                          <option key={slot} value={slot}>{slot}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Reassign Table */}
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '5px' }}>
+                        Reassign Table:
+                      </label>
+                      <select
+                        value={editModalBooking.restaurantTable?.id || ""}
+                        onChange={(e) => handleModalTableChange(e.target.value)}
+                        style={{ width: '100%', padding: '8px', background: '#252525', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
+                        {tables.map(t => (
+                          <option key={t.id} value={t.id}>
+                            Table {t.tableNumber} (Seats {t.capacity})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Staff Internal Notes (Inside Modal Only) */}
+                    <div style={{ marginBottom: '15px', background: '#141414', padding: '12px', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#ffcc00', fontWeight: 'bold', marginBottom: '6px' }}>
+                        📝 STAFF INTERNAL NOTES:
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="Add notes for staff (e.g. VIP guest, anniversary, high chair needed)..."
+                        value={modalNoteText}
+                        onChange={(e) => setModalNoteText(e.target.value)}
+                        style={{ width: '100%', background: '#202020', border: '1px solid #444', color: '#fff', borderRadius: '4px', padding: '8px', fontSize: '0.85rem', resize: 'vertical' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveModalNote}
+                        style={{ marginTop: '8px', padding: '6px 14px', background: '#333', color: '#ffcc00', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', float: 'right' }}>
+                        Save Note
+                      </button>
+                      <div style={{ clear: 'both' }}></div>
+                    </div>
+
+                    {/* Bottom Modal Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #333' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = editModalBooking;
+                          setEditModalBooking(null);
+                          setCancelModalBooking(target);
+                        }}
+                        style={{ padding: '8px 14px', background: '#3d1212', color: '#ff7777', border: '1px solid #6b2020', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        Cancel Reservation
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditModalBooking(null)}
+                        style={{ padding: '8px 18px', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                        Done
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* 2. CANCELLATION REASON MODAL (POPUP) */}
               {cancelModalBooking && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
                   <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '90%', maxWidth: '460px', color: '#fff' }}>
@@ -830,7 +965,8 @@ function App() {
                     </div>
                   </div>
                 </div>
-              )}  
+              )}
+                                  
                  
               
             </>
