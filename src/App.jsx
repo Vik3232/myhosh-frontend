@@ -749,9 +749,10 @@ function App() {
                           {dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}
                         </span>
                       </div>
+                    
 
-                      {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
+                     {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
+                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
                         {dateBookings.map(booking => (
                           <div key={booking.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
                             
@@ -966,9 +967,8 @@ function App() {
                   </div>
                 </div>
               )}
-                                  
-                 
-              
+
+
             </>
           )}
         </div>
