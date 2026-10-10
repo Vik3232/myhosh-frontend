@@ -321,7 +321,8 @@ function App() {
         setCancelModalBooking(null);
         setCustomReasonText("");
       } else {
-        alert("Failed to process cancellation.");
+        const errorText = await response.text();
+        alert(`Failed! Status: ${response.status}. Reason: ${errorText} | ID: ${cancelModalBooking.id}`);
       }
     } catch (err) {
       console.error("Cancel error:", err);
