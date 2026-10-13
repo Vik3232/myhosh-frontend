@@ -36,7 +36,19 @@ function App() {
   useEffect(() => {
     sessionStorage.setItem('myhosh_auth', isAuthenticated);
   }, [isAuthenticated]);
-  const [currentUser, setCurrentUser] = useState(null) // stores { id, username, role }
+  // --- SECURE STAFF IDENTITY LOCK ---
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedUser = sessionStorage.getItem('myhosh_currentUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    if (currentUser) {
+      sessionStorage.setItem('myhosh_currentUser', JSON.stringify(currentUser));
+    } else {
+      sessionStorage.removeItem('myhosh_currentUser');
+    }
+  }, [currentUser]); // stores { id, username, role }
   const [loginUsername, setLoginUsername] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
@@ -604,12 +616,10 @@ const handleExportCSV = () => {
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
     setCurrentUser(null);
-    setLoginUsername("");
-    setLoginPassword("");
-    setStaffRegMessage("");
-    setView("customer");
+    setIsAuthenticated(false);
+    setView('customer');
+    sessionStorage.clear(); // <-- Wipes the browser memory completely clean!
   };
 
   // --- ADMIN DASHBOARD DATE FILTER LOGIC ---
