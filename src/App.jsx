@@ -3,7 +3,16 @@ import './App.css'
 
 function App() {
   // --- STATE VARIABLES ---
-  const [view, setView] = useState("customer")
+  // --- NEW: SECURE SESSION LOCK ---
+  // This checks if they were already logged in before the refresh
+  const [view, setView] = useState(() => {
+    return sessionStorage.getItem('myhosh_session') || 'customer';
+  });
+
+  // This instantly saves their status anytime they log in or click Secure Logout
+  useEffect(() => {
+    sessionStorage.setItem('myhosh_session', view);
+  }, [view]);
   const [tables, setTables] = useState([])
   const [allBookings, setAllBookings] = useState([])
 
