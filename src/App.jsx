@@ -51,8 +51,8 @@ function App() {
   const maxDate = futureDate.toISOString().split('T')[0];
 
   // --- DATA FETCHING ---
- 
-    // DATA FETCHING
+
+  // DATA FETCHING
   useEffect(() => {
     // 1. RESTORED: Fetch Tables so the dropdown works perfectly again!
     fetch('https://myhosh-backend.onrender.com/api/tables')
@@ -100,28 +100,38 @@ function App() {
 
   // --- NEW: INSTANT WALK-IN FUNCTION ---
   const handleSeatWalkIn = async () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    // --- BUSINESS HOURS RESTRICTION ---
+    // Currently set to 17 (5:00 PM) to 23 (11:00 PM). Change these numbers if your hours are different!
+    const openHour = 17;
+    const closeHour = 23;
+
+    if (currentHour < openHour || currentHour >= closeHour) {
+      alert(`Walk-ins can only be seated during active business hours (${openHour}:00 - ${closeHour}:00).`);
+      return;
+    }
+
     if (!walkInDetails.tableId) {
       alert("Please select a table or 'Other' to seat the walk-in.");
       return;
     }
-    
+
     let finalTableId = walkInDetails.tableId;
     let guestName = "Walk-In Guest";
 
-    // If they chose 'OTHER', we bypass the strict table selection
     if (finalTableId === 'OTHER') {
       if (tables.length === 0) return;
-      finalTableId = tables[0].id; // Fallback to first table ID to satisfy backend requirements
+      finalTableId = tables[0].id;
       guestName = `Walk-In Guest (Location: ${walkInDetails.customLocation || 'Other'})`;
     }
 
-    const now = new Date();
-    
     const newBooking = {
       customer: { fullName: guestName, email: "walkin@myhosh.local", phone: "N/A" },
       restaurantTable: { id: parseInt(finalTableId) },
-      bookingDate: now.toISOString().split('T')[0],
-      bookingTime: now.toTimeString().split(' ')[0].substring(0, 5), // Uses exact minute to bypass overlap blocker
+      bookingDate: now.toISOString().split('T')[0], // Strictly forces today's date
+      bookingTime: now.toTimeString().split(' ')[0].substring(0, 5),
       partySize: parseInt(walkInDetails.partySize),
       status: "ARRIVED"
     };
@@ -134,7 +144,7 @@ function App() {
       });
       if (response.ok) {
         setShowWalkInModal(false);
-        setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); // Clear for next time
+        setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' });
         fetchBookings();
       } else {
         alert("That table is currently occupied! Please select another.");
@@ -642,18 +652,18 @@ function App() {
             </div>
 
             {availableTables.length > 0 && (
- <button 
- type="submit" 
- className="submit-btn" 
- disabled={message === "Processing reservation..." || message === "Verifying availability..."}
- style={{ 
- cursor: (message === "Processing reservation..." || message === "Verifying availability...") ? 'wait' : 'pointer',
- opacity: (message === "Processing reservation..." || message === "Verifying availability...") ? 0.7 : 1,
- letterSpacing: '1px'
- }}>
- Reserve a Table
- </button>
- )}
+              <button
+                type="submit"
+                className="submit-btn"
+                disabled={message === "Processing reservation..." || message === "Verifying availability..."}
+                style={{
+                  cursor: (message === "Processing reservation..." || message === "Verifying availability...") ? 'wait' : 'pointer',
+                  opacity: (message === "Processing reservation..." || message === "Verifying availability...") ? 0.7 : 1,
+                  letterSpacing: '1px'
+                }}>
+                Reserve a Table
+              </button>
+            )}
           </form>
 
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
@@ -783,69 +793,72 @@ function App() {
                   )}
                 </div>
               )}
-{/* MASTER NAVIGATION TOOLBAR */}
-<div style={{ backgroundColor: '#181818', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
-          
-{/* Top Row: Dashboard Toggles & Walk-Ins */}
-<div style={{ display: 'flex', gap: '10px', marginBottom: '15px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
-                style={{ padding: '8px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                Today's Bookings
-              </button>
-              <button
-                onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
-                style={{ padding: '8px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-              >
-                Booking History
-              </button>
-            </div>
-            
-            <button
-              onClick={() => setShowWalkInModal(true)}
-              style={{ padding: '8px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)' }}
-            >
-              + Seat Walk-In
-            </button>
-          </div>
+              {/* MASTER NAVIGATION TOOLBAR */}
+              <div style={{ backgroundColor: '#181818', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
 
-          {/* Middle Row: Filters and Arrows Side-by-Side */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid #333' }}>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <span style={{ color: '#888', fontSize: '0.85rem', fontWeight: 'bold', letterSpacing: '1px' }}>FILTER:</span>
-              
-              {/* Quick Buttons */}
-              <button onClick={() => setAdminDateFilter('ALL')} style={{ background: adminDateFilter === 'ALL' ? '#ffcc00' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>All Dates</button>
-              <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} style={{ background: adminDateFilter === new Date().toISOString().split('T')[0] ? '#ffcc00' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Today</button>
-              <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} style={{ background: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#ffcc00' : '#333', color: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Tomorrow</button>
+                {/* Top Row: Dashboard Toggles & Walk-Ins */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
+                      style={{ padding: '8px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      Today's Bookings
+                    </button>
+                    <button
+                      onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
+                      style={{ padding: '8px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      Booking History
+                    </button>
+                  </div>
 
-              <span style={{ color: '#444' }}>|</span>
+                  {/* ONLY SHOW WALK-IN BUTTON IF THE DASHBOARD IS SET TO 'TODAY' */}
+                  {adminDateFilter === new Date().toISOString().split('T')[0] && (
+                    <button
+                      onClick={() => setShowWalkInModal(true)}
+                      style={{ padding: '8px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)' }}
+                    >
+                      + Seat Walk-In
+                    </button>
+                  )}
+                </div>
 
-              {/* Arrows & Calendar Side-by-Side */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&larr;</button>
-                
-                <input
-                  type="date"
-                  value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
-                  onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')}
-                  style={{ padding: '7px 12px', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff', outline: 'none', fontWeight: 'bold', cursor: 'pointer' }}
-                />
-                
-                <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&rarr;</button>
+                {/* Middle Row: Filters and Arrows Side-by-Side */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid #333' }}>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                    <span style={{ color: '#888', fontSize: '0.85rem', fontWeight: 'bold', letterSpacing: '1px' }}>FILTER:</span>
+
+                    {/* Quick Buttons */}
+                    <button onClick={() => setAdminDateFilter('ALL')} style={{ background: adminDateFilter === 'ALL' ? '#ffcc00' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>All Dates</button>
+                    <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} style={{ background: adminDateFilter === new Date().toISOString().split('T')[0] ? '#ffcc00' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Today</button>
+                    <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} style={{ background: adminDateFilter === (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0] })() ? '#ffcc00' : '#333', color: adminDateFilter === (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0] })() ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Tomorrow</button>
+
+                    <span style={{ color: '#444' }}>|</span>
+
+                    {/* Arrows & Calendar Side-by-Side */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button type="button" onClick={() => { if (adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&larr;</button>
+
+                      <input
+                        type="date"
+                        value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
+                        onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')}
+                        style={{ padding: '7px 12px', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff', outline: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+                      />
+
+                      <button type="button" onClick={() => { if (adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&rarr;</button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Shift Metrics */}
+                <div style={{ display: 'flex', gap: '20px', fontSize: '1rem', paddingTop: '15px' }}>
+                  <div>Reservations: <strong style={{ color: '#ffcc00' }}>{displayedBookings.length}</strong></div>
+                  <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Bottom Row: Shift Metrics */}
-          <div style={{ display: 'flex', gap: '20px', fontSize: '1rem', paddingTop: '15px' }}>
-            <div>Reservations: <strong style={{ color: '#ffcc00' }}>{displayedBookings.length}</strong></div>
-            <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
-          </div>
-        </div>
 
               {/* RESERVATIONS DISPLAYED IN DATE BLOCKS */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
@@ -904,46 +917,46 @@ function App() {
                               )}
                             </div>
 
-                           {/* Card Footer: Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
-              <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                
-                {/* STATUS BUTTONS: ONLY SHOW IF THE BOOKING IS FOR TODAY */}
-                {booking.bookingDate === new Date().toISOString().split('T')[0] && (
-                  <>
-                    {booking.status !== 'ARRIVED' && (
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')}
-                        style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                      >
-                        Mark Arrived
-                      </button>
-                    )}
-                    
-                    {booking.status !== 'NO_SHOW' && booking.status !== 'ARRIVED' && (
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')}
-                        style={{ background: '#444', color: '#ccc', border: '1px solid #666', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                      >
-                        Did Not Appear
-                      </button>
-                    )}
-                  </>
-                )}
+                            {/* Card Footer: Action Buttons */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
 
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(booking)}
-                  style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                >
-                  ⚙️ Edit
-                </button>
-              </div>
-            </div>
-                          
+                                {/* STATUS BUTTONS: ONLY SHOW IF THE BOOKING IS FOR TODAY */}
+                                {booking.bookingDate === new Date().toISOString().split('T')[0] && (
+                                  <>
+                                    {booking.status !== 'ARRIVED' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')}
+                                        style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                                      >
+                                        Mark Arrived
+                                      </button>
+                                    )}
+
+                                    {booking.status !== 'NO_SHOW' && booking.status !== 'ARRIVED' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')}
+                                        style={{ background: '#444', color: '#ccc', border: '1px solid #666', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                                      >
+                                        Did Not Appear
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(booking)}
+                                  style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                                >
+                                  ⚙️ Edit
+                                </button>
+                              </div>
+                            </div>
+
 
                           </div>
                         ))}
@@ -1113,27 +1126,27 @@ function App() {
                 </div>
               )}
 
-             {/* 3. WALK-IN MODAL (POPUP) */}
-             {showWalkInModal && (
+              {/* 3. WALK-IN MODAL (POPUP) */}
+              {showWalkInModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
                   <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '350px', maxWidth: '90%' }}>
                     <h3 style={{ marginTop: 0, color: '#28a745', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Seat Walk-In Guest</h3>
-                    
+
                     <div style={{ marginBottom: '15px' }}>
                       <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Party Size:</label>
-                      <input 
-                        type="number" min="1" max="20" 
-                        value={walkInDetails.partySize} 
-                        onChange={(e) => setWalkInDetails({...walkInDetails, partySize: e.target.value})} 
-                        style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }} 
+                      <input
+                        type="number" min="1" max="20"
+                        value={walkInDetails.partySize}
+                        onChange={(e) => setWalkInDetails({ ...walkInDetails, partySize: e.target.value })}
+                        style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }}
                       />
                     </div>
 
                     <div style={{ marginBottom: walkInDetails.tableId === 'OTHER' ? '15px' : '25px' }}>
                       <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Select Available Table:</label>
-                      <select 
-                        value={walkInDetails.tableId} 
-                        onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} 
+                      <select
+                        value={walkInDetails.tableId}
+                        onChange={(e) => setWalkInDetails({ ...walkInDetails, tableId: e.target.value })}
                         style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }}
                       >
                         <option value="">-- Choose a Table --</option>
@@ -1148,12 +1161,12 @@ function App() {
                     {walkInDetails.tableId === 'OTHER' && (
                       <div style={{ marginBottom: '25px' }}>
                         <label style={{ display: 'block', marginBottom: '5px', color: '#ffcc00', fontSize: '0.85rem', fontWeight: 'bold' }}>Specify Location (e.g. Bar, Patio, Extra Chair):</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="Where are they seated?"
-                          value={walkInDetails.customLocation} 
-                          onChange={(e) => setWalkInDetails({...walkInDetails, customLocation: e.target.value})} 
-                          style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ffcc00', background: '#222', color: '#fff', boxSizing: 'border-box' }} 
+                          value={walkInDetails.customLocation}
+                          onChange={(e) => setWalkInDetails({ ...walkInDetails, customLocation: e.target.value })}
+                          style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ffcc00', background: '#222', color: '#fff', boxSizing: 'border-box' }}
                         />
                       </div>
                     )}
