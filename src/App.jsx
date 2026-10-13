@@ -30,7 +30,7 @@ function App() {
   const [newStaffPassword, setNewStaffPassword] = useState("")
   const [newStaffRole, setNewStaffRole] = useState("STAFF")
   const [staffRegMessage, setStaffRegMessage] = useState("")
-  const [adminDateFilter, setAdminDateFilter] = useState("ALL")
+  const [adminDateFilter, setAdminDateFilter] = useState(new Date().toISOString().split('T')[0]);
   // --- CANCELLATION MODAL & NOTES STATES ---
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -593,18 +593,18 @@ function App() {
             </div>
 
             {availableTables.length > 0 && (
-              <button
-                type="submit"
-                className="submit-btn"
-                disabled={isProcessing}
-                style={{
-                  cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  opacity: isProcessing ? 0.7 : 1,
-                  letterSpacing: '1px'
-                }}>
-                {isProcessing ? "PROCESSING RESERVATION..." : "BOOK TABLE"}
-              </button>
-            )}
+ <button 
+ type="submit" 
+ className="submit-btn" 
+ disabled={message === "Processing reservation..." || message === "Verifying availability..."}
+ style={{ 
+ cursor: (message === "Processing reservation..." || message === "Verifying availability...") ? 'wait' : 'pointer',
+ opacity: (message === "Processing reservation..." || message === "Verifying availability...") ? 0.7 : 1,
+ letterSpacing: '1px'
+ }}>
+ Reserve a Table
+ </button>
+ )}
           </form>
 
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
