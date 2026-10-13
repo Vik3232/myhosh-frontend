@@ -41,6 +41,7 @@ function App() {
  const [activeNotes, setActiveNotes] = useState({});
  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [editingBookingId, setEditingBookingId] = useState(null); // stores which card is in edit mode
+  const [viewMode, setViewMode] = useState('today');
 
   // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
@@ -50,27 +51,41 @@ function App() {
   const maxDate = futureDate.toISOString().split('T')[0]; 
 
   // --- DATA FETCHING ---
-  useEffect(() => {
-    fetch('https://myhosh-backend.onrender.com/api/tables')
-      .then(response => response.json())
-      .then(data => setTables(data))
-      .catch(err => console.error("Error fetching tables:", err))
-  }, [])
-
-  useEffect(() => {
-    fetch('https://myhosh-backend.onrender.com/api/bookings')
-      .then(response => response.json())
-      .then(data => {
+  const fetchBookings = async () => {
+    try {
+      const endpoint = viewMode === 'today' ? '/api/bookings/today' : '/api/bookings/history';
+      const response = await fetch(`https://myhosh-backend.onrender.com${endpoint}`);
+      if (response.ok) {
+        const data = await response.json();
         if (Array.isArray(data)) {
           setAllBookings(data);
         } else {
-          console.error("Backend error:", data);
-          setAllBookings([]); // Safety net!
+          setAllBookings([]);
         }
-      })
-      .catch(err => console.error("Error fetching bookings:", err))
-  }, [view, isSuccess]) 
-
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+    }
+  };
+ 
+  useEffect(() => {
+    fetchBookings();
+  }, [view, isSuccess, viewMode]);
+ 
+  const handleMarkArrived = async (id) => {
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ARRIVED' })
+      });
+      if (response.ok) {
+        fetchBookings();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
   // --- BOOKING SUBMISSION LOGIC ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -144,8 +159,9 @@ function App() {
     }
 
     // 3. Process the Actual Booking
+    // 3. Process the Actual Booking
     setMessage("Processing reservation...");
-
+    setIsProcessing(true);
     const newBooking = {
       customer: { fullName, email, phone },
       restaurantTable: { id: parseInt(selectedTable) },
@@ -153,15 +169,15 @@ function App() {
       bookingTime: time + ":00",
       partySize: parseInt(partySize),
       specialRequests: requests
-    }
-
+    };
+    
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking)
       });
-
+      
       if (response.ok) {
         setIsSuccess(true);
         setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
@@ -174,8 +190,10 @@ function App() {
     } catch (err) {
       setIsSuccess(false);
       setMessage("System error: Unable to connect to the reservation network.");
+    } finally {
+      setIsProcessing(false);
     }
-  }
+  };
 
   // --- REFINED SMART TABLE FILTERING LOGIC ---
   const availableTables = tables.filter(table => {
@@ -567,18 +585,18 @@ function App() {
             </div>
 
             {availableTables.length > 0 && (
-              <button 
-              type="submit" 
-              className="submit-btn" 
-              disabled={isLoggingIn}
-              style={{ 
-                cursor: isLoggingIn ? 'not-allowed' : 'pointer',
-                opacity: isLoggingIn ? 0.7 : 1,
+            <button
+              type="submit"
+              className="submit-btn"
+              disabled={isProcessing}
+              style={{
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.7 : 1,
                 letterSpacing: '1px'
               }}>
-              {isLoggingIn ? "VERIFYING CREDENTIALS..." : "ACCESS SYSTEM"}
+              {isProcessing ? "PROCESSING RESERVATION..." : "BOOK TABLE"}
             </button>
-            )}
+          )}
           </form>
 
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
@@ -709,6 +727,22 @@ function App() {
                 </div>
               )}
 
+              {/* VIEW TOGGLE BUTTONS */}
+ <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+   <button
+     onClick={() => setViewMode('today')}
+     style={{ padding: '10px 20px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+   >
+     Today's Bookings
+   </button>
+   <button
+     onClick={() => setViewMode('history')}
+     style={{ padding: '10px 20px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+   >
+     Booking History
+   </button>
+ </div>
+
               {/* FILTER TOOLBAR & SHIFT METRICS */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', backgroundColor: '#181818', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -765,7 +799,7 @@ function App() {
                      {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
                         {dateBookings.map(booking => (
-                          <div key={booking.id} style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
+                          <div key={booking.id} style={{ background: booking.status === 'ARRIVED' ? '#143d20' : '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
                             
                             {/* Card Top: Time & Table Tag */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a2a2a', paddingBottom: '8px' }}>
@@ -969,11 +1003,21 @@ function App() {
                         Keep Booking
                       </button>
                       <button
-                        type="button"
-                        onClick={handleConfirmCancellation}
-                        style={{ padding: '8px 16px', background: '#8a1c1c', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        Confirm & Notify Guest
-                      </button>
+                type="button"
+                onClick={handleConfirmCancellation}
+                disabled={isProcessing}
+                style={{ 
+                  padding: '8px 16px', 
+                  background: '#8a1c1c', 
+                  color: '#fff', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: isProcessing ? 'not-allowed' : 'pointer', 
+                  fontWeight: 'bold',
+                  opacity: isProcessing ? 0.7 : 1 
+                }}>
+                {isProcessing ? "Processing..." : "Confirm & Notify Guest"}
+              </button>
                     </div>
                   </div>
                 </div>
