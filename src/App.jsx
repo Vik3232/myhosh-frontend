@@ -433,38 +433,74 @@ function App() {
   // --- UI RENDER ---
   return (
     <>
-      {view === "customer" ? (
-        <div className="customer-view">
-          
-          {/* HEADER */}
-          <header className="site-header">
-            <div className="brand-logo">
-              MYHOSH
-              <small>Salisbury</small>
-            </div>
-            <nav className="nav-links">
+      {/* GLOBAL HEADER (VISIBLE IN BOTH VIEWS) */}
+      <header className="site-header">
+        <div className="brand-logo" onClick={() => setView('customer')} style={{cursor: 'pointer'}}>
+          MYHOSH
+          <small>Salisbury</small>
+        </div>
+        
+        {/* DESKTOP NAV */}
+        <nav className="nav-links">
+          {view === 'customer' && (
+            <>
               <a href="#menu" className="nav-link">Menu</a>
               <a href="#space" className="nav-link">Our Space</a>
               <a href="#visit" className="nav-link">Visit Us</a>
-              <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
-            </nav>
-            <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M4 6h16M4 12h16M4 18h16"></path>
-              </svg>
+            </>
+          )}
+          {view === 'customer' ? (
+            <button onClick={() => setView('admin')} className="nav-link" style={{background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0}}>
+              Staff Login
             </button>
-          </header>
+          ) : (
+            <button onClick={() => setView('customer')} className="nav-link" style={{background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0}}>
+              Return to Site
+            </button>
+          )}
+          {view === 'customer' && (
+            <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
+          )}
+        </nav>
+        
+        {/* MOBILE HAMBURGER BUTTON */}
+        <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </header>
 
-          {/* MOBILE DROPDOWN MENU */}
-          {isMobileMenuOpen && (
-            <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
+      {/* MOBILE DROPDOWN MENU */}
+      {isMobileMenuOpen && (
+        <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
+          {view === 'customer' && (
+            <>
               <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Menu</a>
               <a href="#space" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Our Space</a>
               <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Visit Us</a>
-              <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
-            </div>
+            </>
           )}
+          
+          {view === 'customer' ? (
+            <button onClick={() => { setIsMobileMenuOpen(false); setView('admin'); }} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}>
+              Staff Login
+            </button>
+          ) : (
+            <button onClick={() => { setIsMobileMenuOpen(false); setView('customer'); }} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}>
+              Return to Site
+            </button>
+          )}
+          
+          {view === 'customer' && (
+            <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
+          )}
+        </div>
+      )}
 
+      {view === "customer" ? (
+        <div className="customer-view">
+          
           {/* HERO */}
           <section className="hero-section">
             <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
@@ -482,26 +518,17 @@ function App() {
           {/* FEATURE STRIP */}
           <section className="feature-strip">
             <div className="feature-item">
-              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path>
-                <path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path>
-              </svg>
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path><path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path></svg>
               <h3>Charcoal Grill</h3>
               <p>Authentic fire-roasted meats and skewers.</p>
             </div>
             <div className="feature-item">
-              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path>
-                <path d="M12 7V3M8 5v2M16 5v2"></path>
-                <path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path>
-              </svg>
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path><path d="M12 7V3M8 5v2M16 5v2"></path><path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path></svg>
               <h3>Fresh Meze</h3>
               <p>Traditional cold and hot starters prepared daily.</p>
             </div>
             <div className="feature-item">
-              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-              </svg>
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
               <h3>Warm Welcome</h3>
               <p>A beautifully designed space to relax and dine.</p>
             </div>
@@ -717,7 +744,6 @@ function App() {
             </div>
             <div className="footer-bottom">
               <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
-              <button className="discreet-login" onClick={() => setView('admin')}>Staff Login</button>
             </div>
           </footer>
 
@@ -736,9 +762,9 @@ function App() {
       ) : (
         <div className="admin-view">
           {!isAuthenticated ? (
-            <div style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 20px', background: 'var(--clr-admin-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--clr-admin-border)', textAlign: 'center' }}>
-              <h2 style={{ color: 'var(--clr-gold)', margin: '0 0 10px 0' }}>Staff Gateway</h2>
-              <p style={{ color: 'var(--clr-admin-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
+            <div className="fade-in" style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 30px', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.1)', textAlign: 'center', boxShadow: 'var(--shadow-soft)' }}>
+              <h2 style={{ color: 'var(--clr-emerald)', margin: '0 0 10px 0' }}>Staff Gateway</h2>
+              <p style={{ color: 'var(--clr-grey)', marginBottom: '30px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
                 <div style={{ marginBottom: '15px' }}>
                   <input type="text" placeholder="Staff Username" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} required autoComplete="off" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
@@ -753,7 +779,7 @@ function App() {
               </form>
             </div>
           ) : (
-            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
               
               {/* ADMIN HEADER */}
               <header className="admin-header">
@@ -763,26 +789,26 @@ function App() {
                     Logged in as: <strong>{currentUser?.username}</strong> ({currentUser?.role})
                   </div>
                 </div>
-                <button onClick={handleLogout} className="btn btn-secondary" style={{ borderColor: 'var(--clr-admin-border)', color: 'var(--clr-admin-muted)' }}>
+                <button onClick={handleLogout} className="btn btn-secondary">
                   Secure Logout
                 </button>
               </header>
 
               {/* ADMIN ONLY: CREATE STAFF */}
               {currentUser?.role === "ADMIN" && (
-                <div style={{ backgroundColor: 'var(--clr-admin-surface)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid var(--clr-admin-border)' }}>
-                  <h3 style={{ marginTop: 0, color: 'var(--clr-gold)', fontSize: '1.2rem' }}>Admin Control: Register New Staff</h3>
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
+                  <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register New Staff</h3>
                   <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-admin-muted)' }}>Username</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Username</label>
                       <input type="text" required value={newStaffUsername} onChange={(e) => setNewStaffUsername(e.target.value)} className="admin-input" style={{ width: '100%' }} />
                     </div>
                     <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-admin-muted)' }}>Password</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Password</label>
                       <input type="password" required value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} className="admin-input" style={{ width: '100%' }} />
                     </div>
                     <div style={{ flex: '0 0 150px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-admin-muted)' }}>Role</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Role</label>
                       <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         <option value="STAFF">STAFF</option>
                         <option value="ADMIN">ADMIN</option>
@@ -800,39 +826,39 @@ function App() {
 
               {/* MASTER TOOLBAR */}
               <div className="admin-toolbar">
-                <div className="toolbar-row">
-                  <div className="toolbar-group">
+                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
                     <button onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Today's Bookings</button>
                     <button onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
                   </div>
-                  <div className="toolbar-group">
-                    <button onClick={handleExportCSV} className="btn btn-secondary" style={{ borderColor: 'var(--clr-admin-border)', color: '#fff', background: '#333' }}>📥 Export CSV</button>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                    <button onClick={handleExportCSV} className="btn btn-secondary">📥 Export CSV</button>
                     {adminDateFilter === new Date().toISOString().split('T')[0] && (
-                      <button onClick={() => setShowWalkInModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 0 15px rgba(15, 77, 58, 0.4)' }}>+ Seat Walk-In</button>
+                      <button onClick={() => setShowWalkInModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Seat Walk-In</button>
                     )}
                   </div>
                 </div>
 
-                <div className="toolbar-row" style={{ borderTop: '1px solid var(--clr-admin-border)', paddingTop: '15px' }}>
-                  <div className="toolbar-group">
-                    <button onClick={() => setAdminDateFilter('ALL')} className="btn-admin-tab" style={{ background: adminDateFilter === 'ALL' ? 'var(--clr-gold)' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff' }}>All Dates</button>
-                    <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} className="btn-admin-tab" style={{ background: adminDateFilter === new Date().toISOString().split('T')[0] ? 'var(--clr-gold)' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff' }}>Today</button>
-                    <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} className="btn-admin-tab" style={{ background: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? 'var(--clr-gold)' : '#333', color: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#000' : '#fff' }}>Tomorrow</button>
+                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+                    <button onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
+                    <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} className={`btn-admin-tab ${adminDateFilter === new Date().toISOString().split('T')[0] ? 'active' : ''}`}>Today</button>
+                    <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} className={`btn-admin-tab ${adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? 'active' : ''}`}>Tomorrow</button>
                   </div>
                   
-                  <div className="date-picker-group">
-                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', color: 'var(--clr-gold)', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&larr;</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 100%', justifyContent: 'center' }}>
+                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&larr;</button>
                     <input type="date" value={adminDateFilter === 'ALL' ? '' : adminDateFilter} onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')} className="admin-input" style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }} />
-                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', color: 'var(--clr-gold)', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&rarr;</button>
+                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&rarr;</button>
                   </div>
                 </div>
 
-                <div className="metric-grid">
-                  <div className="metric-tile">
+                <div className="metric-grid" style={{ display: 'flex', gap: '15px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px', marginTop: '15px' }}>
+                  <div className="metric-tile" style={{ flex: 1 }}>
                     <span className="metric-label">Reservations</span>
                     <span className="metric-value">{displayedBookings.length}</span>
                   </div>
-                  <div className="metric-tile">
+                  <div className="metric-tile" style={{ flex: 1 }}>
                     <span className="metric-label">Covers</span>
                     <span className="metric-value">{totalGuests}</span>
                   </div>
@@ -846,14 +872,14 @@ function App() {
                   return (
                     <div key={bookingDate}>
                       <div className="date-group-header">
-                        <span>📅 {new Date(bookingDate + "T00:00:00").toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                        <span style={{ color: 'var(--clr-admin-muted)', fontWeight: 'normal' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
+                        <span style={{ color: 'var(--clr-cream)' }}>📅 {new Date(bookingDate + "T00:00:00").toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        <span style={{ color: 'var(--clr-gold-pale)', fontWeight: 'normal' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
                       </div>
                       
                       {dateBookings.map(booking => (
                         <div key={booking.id} className={`admin-card ${booking.status === 'ARRIVED' ? 'arrived' : booking.status === 'NO_SHOW' ? 'no-show' : ''}`}>
                           
-                          <div className="card-primary-info">
+                          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                             <div className="card-time">{booking.bookingTime}</div>
                             <div className="card-table-pill">
                               Table {booking.restaurantTable?.tableNumber || "N/A"} ({booking.partySize} Guests)
@@ -875,7 +901,7 @@ function App() {
                             )}
                           </div>
 
-                          <div className="card-actions">
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             {booking.bookingDate === new Date().toISOString().split('T')[0] && (
                               <>
                                 {booking.status !== 'ARRIVED' && (
@@ -884,13 +910,13 @@ function App() {
                                   </button>
                                 )}
                                 {booking.status !== 'NO_SHOW' && booking.status !== 'ARRIVED' && (
-                                  <button onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 16px', fontSize: '0.85rem', borderColor: '#555', color: '#aaa' }}>
+                                  <button onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 16px', fontSize: '0.85rem' }}>
                                     No Show
                                   </button>
                                 )}
                               </>
                             )}
-                            <button onClick={() => handleOpenEdit(booking)} className="btn btn-primary" style={{ padding: '10px 16px', fontSize: '0.85rem', background: 'transparent', border: '1px solid var(--clr-gold)', color: 'var(--clr-gold)' }}>
+                            <button onClick={() => handleOpenEdit(booking)} className="btn btn-secondary" style={{ padding: '10px 16px', fontSize: '0.85rem', borderColor: 'var(--clr-gold)', color: 'var(--clr-charcoal)' }}>
                               ⚙️ Edit
                             </button>
                           </div>
@@ -901,7 +927,7 @@ function App() {
                   );
                 })}
                 {displayedBookings.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--clr-admin-muted)', background: 'var(--clr-admin-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--clr-admin-border)', marginTop: '20px' }}>
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(27,26,23,0.2)', marginTop: '20px' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }}>🍽️</div>
                     <p style={{ fontSize: '1.2rem' }}>No reservations found for this selection.</p>
                   </div>
@@ -915,10 +941,10 @@ function App() {
                 <div className="modal-overlay">
                   <div className="modal-content">
                     <h3>Edit Reservation</h3>
-                    <p style={{ marginBottom: '20px' }}>Guest: <strong style={{color: '#fff'}}>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})</p>
+                    <p style={{ marginBottom: '20px', color: 'var(--clr-grey)' }}>Guest: <strong style={{color: 'var(--clr-charcoal)'}}>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})</p>
                     
                     <div style={{ marginBottom: '15px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-admin-muted)', marginBottom: '8px' }}>Change Sitting Time:</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-emerald-dark)', marginBottom: '8px', fontWeight: 'bold' }}>Change Sitting Time:</label>
                       <select value={editModalBooking.bookingTime} onChange={(e) => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map(slot => (
                           <option key={slot} value={slot}>{slot}</option>
@@ -927,7 +953,7 @@ function App() {
                     </div>
 
                     <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-admin-muted)', marginBottom: '8px' }}>Reassign Table:</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-emerald-dark)', marginBottom: '8px', fontWeight: 'bold' }}>Reassign Table:</label>
                       <select value={editModalBooking.restaurantTable?.id || ""} onChange={(e) => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         {tables.map(t => (
                           <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
@@ -935,14 +961,14 @@ function App() {
                       </select>
                     </div>
 
-                    <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--clr-admin-border)' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-gold)', fontWeight: 'bold', marginBottom: '8px' }}>📝 STAFF INTERNAL NOTES:</label>
+                    <div style={{ background: 'var(--clr-marble)', padding: '15px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(27,26,23,0.1)' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-emerald-dark)', fontWeight: 'bold', marginBottom: '8px' }}>📝 STAFF INTERNAL NOTES:</label>
                       <textarea rows="3" value={modalNoteText} onChange={(e) => setModalNoteText(e.target.value)} className="admin-input" style={{ width: '100%', resize: 'vertical', marginBottom: '10px' }} placeholder="Add notes for staff..." />
-                      <button type="button" onClick={handleSaveModalNote} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', borderColor: 'var(--clr-admin-border)', color: 'var(--clr-gold)', float: 'right' }}>Save Note</button>
+                      <button type="button" onClick={handleSaveModalNote} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', float: 'right' }}>Save Note</button>
                       <div style={{ clear: 'both' }}></div>
                     </div>
 
-                    <div className="modal-actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--clr-admin-border)', paddingTop: '20px', marginTop: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '20px', marginTop: '20px' }}>
                       <button type="button" onClick={() => { const target = editModalBooking; setEditModalBooking(null); setCancelModalBooking(target); }} className="btn" style={{ background: 'rgba(179, 64, 47, 0.1)', color: 'var(--clr-error)', border: '1px solid var(--clr-error)' }}>Cancel Booking</button>
                       <button type="button" onClick={() => setEditModalBooking(null)} className="btn btn-primary">Done</button>
                     </div>
@@ -954,12 +980,12 @@ function App() {
               {cancelModalBooking && (
                 <div className="modal-overlay">
                   <div className="modal-content">
-                    <h3 style={{ color: 'var(--clr-error)' }}>Cancel Reservation</h3>
-                    <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>
-                      Are you sure you want to cancel the booking for <strong style={{color: '#fff'}}>{cancelModalBooking.customer?.fullName}</strong> on <strong style={{color: '#fff'}}>{cancelModalBooking.bookingDate}</strong> at <strong style={{color: '#fff'}}>{cancelModalBooking.bookingTime}</strong>?
+                    <h3 style={{ color: 'var(--clr-error)', borderBottomColor: 'rgba(179, 64, 47, 0.2)' }}>Cancel Reservation</h3>
+                    <p style={{ marginBottom: '20px', lineHeight: '1.5', color: 'var(--clr-grey)' }}>
+                      Are you sure you want to cancel the booking for <strong style={{color: 'var(--clr-charcoal)'}}>{cancelModalBooking.customer?.fullName}</strong> on <strong style={{color: 'var(--clr-charcoal)'}}>{cancelModalBooking.bookingDate}</strong> at <strong style={{color: 'var(--clr-charcoal)'}}>{cancelModalBooking.bookingTime}</strong>?
                     </p>
                     
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', color: 'var(--clr-gold)' }}>Cancellation Reason (sent to guest):</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontWeight: 'bold' }}>Cancellation Reason (sent to guest):</label>
                     <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '15px' }}>
                       <option value="Guest requested cancellation">Guest requested cancellation</option>
                       <option value="Customer was a no-show">Customer was a no-show</option>
@@ -972,8 +998,8 @@ function App() {
                       <textarea rows="3" placeholder="Type cancellation details..." value={customReasonText} onChange={(e) => setCustomReasonText(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '15px' }} />
                     )}
                     
-                    <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
-                      <button type="button" onClick={() => setCancelModalBooking(null)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-admin-border)' }}>Keep Booking</button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                      <button type="button" onClick={() => setCancelModalBooking(null)} className="btn btn-secondary">Keep Booking</button>
                       <button type="button" onClick={handleConfirmCancellation} disabled={isProcessing} className="btn" style={{ background: 'var(--clr-error)', color: '#fff' }}>
                         {isProcessing ? "Processing..." : "Confirm & Notify"}
                       </button>
@@ -989,15 +1015,15 @@ function App() {
                     <h3 style={{ color: 'var(--clr-emerald)' }}>Seat Walk-In Guest</h3>
                     
                     <div style={{ marginBottom: '15px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-admin-muted)', fontSize: '0.85rem' }}>Party Size:</label>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: 'bold' }}>Party Size:</label>
                       <input type="number" min="1" max="20" value={walkInDetails.partySize} onChange={(e) => setWalkInDetails({...walkInDetails, partySize: e.target.value})} className="admin-input" style={{ width: '100%' }} />
                     </div>
                     
                     <div style={{ marginBottom: walkInDetails.tableId === 'OTHER' ? '15px' : '25px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-admin-muted)', fontSize: '0.85rem' }}>Select Table:</label>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: 'bold' }}>Select Table:</label>
                       <select value={walkInDetails.tableId} onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} className="admin-input" style={{ width: '100%' }}>
                         <option value="">-- Choose a Table --</option>
-                        <option value="OTHER" style={{ fontWeight: 'bold', color: 'var(--clr-gold)' }}>Other / Custom Location</option>
+                        <option value="OTHER" style={{ fontWeight: 'bold' }}>Other / Custom Location</option>
                         {tables.map(t => (
                           <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                         ))}
@@ -1006,14 +1032,14 @@ function App() {
 
                     {walkInDetails.tableId === 'OTHER' && (
                       <div style={{ marginBottom: '25px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-gold)', fontSize: '0.85rem' }}>Specify Location (e.g. Bar):</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: 'bold' }}>Specify Location (e.g. Bar):</label>
                         <input type="text" placeholder="Where are they seated?" value={walkInDetails.customLocation} onChange={(e) => setWalkInDetails({...walkInDetails, customLocation: e.target.value})} className="admin-input" style={{ width: '100%', borderColor: 'var(--clr-gold)' }} />
                       </div>
                     )}
 
-                    <div className="modal-actions">
+                    <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1 }}>Seat Now</button>
-                      <button onClick={() => { setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); }} className="btn btn-secondary" style={{ flex: 1, borderColor: 'var(--clr-admin-border)' }}>Cancel</button>
+                      <button onClick={() => { setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); }} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
                     </div>
                   </div>
                 </div>
