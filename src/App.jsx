@@ -168,6 +168,38 @@ function App() {
   }
 };
 
+// --- NEW: CSV EXPORT FUNCTION ---
+const handleExportCSV = () => {
+  if (displayedBookings.length === 0) {
+    alert("No bookings to export for this view.");
+    return;
+  }
+
+  const headers = ["ID", "Guest Name", "Email", "Phone", "Date", "Time", "Party Size", "Table", "Status"];
+  
+  // Exports exactly what is currently filtered on the dashboard
+  const rows = displayedBookings.map(b => [
+    b.id,
+    `"${b.customer?.fullName || 'Walk-In Guest'}"`,
+    `"${b.customer?.email || 'N/A'}"`,
+    `"${b.customer?.phone || 'N/A'}"`,
+    b.bookingDate,
+    b.bookingTime,
+    b.partySize,
+    b.restaurantTable?.tableNumber || "Other",
+    b.status
+  ]);
+
+  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `MyHosh_Reservations_${adminDateFilter}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
   // --- BOOKING SUBMISSION LOGIC ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -834,32 +866,45 @@ function App() {
 {/* MASTER NAVIGATION TOOLBAR */}
 <div style={{ backgroundColor: '#181818', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
           
-{/* Top Row: Dashboard Toggles & Walk-Ins */}
-<div style={{ display: 'flex', gap: '10px', marginBottom: '15px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
+
+              {/* Top Row: Dashboard Toggles, Export, & Walk-Ins (Mobile Optimized) */}
+          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* Left Side: View Modes */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
-                style={{ padding: '8px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ padding: '10px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', minWidth: '140px' }}
               >
                 Today's Bookings
               </button>
               <button
                 onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
-                style={{ padding: '8px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ padding: '10px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', minWidth: '140px' }}
               >
                 Booking History
               </button>
             </div>
             
-            {/* ONLY SHOW WALK-IN BUTTON IF THE DASHBOARD IS SET TO 'TODAY' */}
-            {adminDateFilter === new Date().toISOString().split('T')[0] && (
+            {/* Right Side: Action Buttons */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
-                onClick={() => setShowWalkInModal(true)}
-                style={{ padding: '8px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)' }}
+                onClick={handleExportCSV}
+                style={{ padding: '10px 18px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', minWidth: '130px' }}
               >
-                + Seat Walk-In
+                📥 Export CSV
               </button>
-            )}
+
+              {/* ONLY SHOW WALK-IN BUTTON IF THE DASHBOARD IS SET TO 'TODAY' */}
+              {adminDateFilter === new Date().toISOString().split('T')[0] && (
+                <button
+                  onClick={() => setShowWalkInModal(true)}
+                  style={{ padding: '10px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)', minWidth: '130px' }}
+                >
+                  + Seat Walk-In
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Middle Row: Filters and Arrows Side-by-Side */}
