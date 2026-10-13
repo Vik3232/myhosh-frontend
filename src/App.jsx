@@ -863,83 +863,74 @@ const handleExportCSV = () => {
                   )}
                 </div>
               )}
-{/* MASTER NAVIGATION TOOLBAR */}
-<div style={{ backgroundColor: '#181818', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
+{/* MASTER NAVIGATION TOOLBAR (MOBILE RESPONSIVE) */}
+<div style={{ backgroundColor: '#181818', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
           
-
-              {/* Top Row: Dashboard Toggles, Export, & Walk-Ins (Mobile Optimized) */}
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Top Row: Dashboard Toggles, Export, & Walk-Ins */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
+              style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Today's Bookings
+            </button>
+            <button
+              onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
+              style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Booking History
+            </button>
+            <button
+              onClick={handleExportCSV}
+              style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              📥 Export CSV
+            </button>
             
-            {/* Left Side: View Modes */}
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {/* ONLY SHOW WALK-IN BUTTON IF THE DASHBOARD IS SET TO 'TODAY' */}
+            {adminDateFilter === new Date().toISOString().split('T')[0] && (
               <button
-                onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
-                style={{ padding: '10px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', minWidth: '140px' }}
+                onClick={() => setShowWalkInModal(true)}
+                style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)' }}
               >
-                Today's Bookings
+                + Seat Walk-In
               </button>
-              <button
-                onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
-                style={{ padding: '10px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', minWidth: '140px' }}
-              >
-                Booking History
-              </button>
+            )}
+          </div>
+
+          {/* Middle Row: Filters and Arrows */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid #333' }}>
+            
+            {/* Quick Filters (Stretch on mobile) */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: '1 1 100%' }}>
+              <button onClick={() => setAdminDateFilter('ALL')} style={{ flex: '1 1 auto', background: adminDateFilter === 'ALL' ? '#ffcc00' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>All Dates</button>
+              <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} style={{ flex: '1 1 auto', background: adminDateFilter === new Date().toISOString().split('T')[0] ? '#ffcc00' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Today</button>
+              <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} style={{ flex: '1 1 auto', background: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#ffcc00' : '#333', color: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#000' : '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Tomorrow</button>
             </div>
-            
-            {/* Right Side: Action Buttons */}
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                onClick={handleExportCSV}
-                style={{ padding: '10px 18px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', minWidth: '130px' }}
-              >
-                📥 Export CSV
-              </button>
 
-              {/* ONLY SHOW WALK-IN BUTTON IF THE DASHBOARD IS SET TO 'TODAY' */}
-              {adminDateFilter === new Date().toISOString().split('T')[0] && (
-                <button
-                  onClick={() => setShowWalkInModal(true)}
-                  style={{ padding: '10px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)', minWidth: '130px' }}
-                >
-                  + Seat Walk-In
-                </button>
-              )}
+            {/* Calendar & Arrows (Stretch on mobile) */}
+            <div style={{ display: 'flex', gap: '8px', flex: '1 1 100%', justifyContent: 'center' }}>
+              <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ flex: '0 0 50px', background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '10px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&larr;</button>
+              <input
+                type="date"
+                value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
+                onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')}
+                style={{ flex: '1 1 auto', padding: '10px', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff', outline: 'none', fontWeight: 'bold', cursor: 'pointer', minWidth: '120px', textAlign: 'center' }}
+              />
+              <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ flex: '0 0 50px', background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '10px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&rarr;</button>
             </div>
           </div>
 
-          {/* Middle Row: Filters and Arrows Side-by-Side */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid #333' }}>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <span style={{ color: '#888', fontSize: '0.85rem', fontWeight: 'bold', letterSpacing: '1px' }}>FILTER:</span>
-              
-              {/* Quick Buttons */}
-              <button onClick={() => setAdminDateFilter('ALL')} style={{ background: adminDateFilter === 'ALL' ? '#ffcc00' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>All Dates</button>
-              <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} style={{ background: adminDateFilter === new Date().toISOString().split('T')[0] ? '#ffcc00' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Today</button>
-              <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} style={{ background: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#ffcc00' : '#333', color: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#000' : '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Tomorrow</button>
-
-              <span style={{ color: '#444' }}>|</span>
-
-              {/* Arrows & Calendar Side-by-Side */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&larr;</button>
-                
-                <input
-                  type="date"
-                  value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
-                  onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')}
-                  style={{ padding: '7px 12px', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff', outline: 'none', fontWeight: 'bold', cursor: 'pointer' }}
-                />
-                
-                <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&rarr;</button>
-              </div>
+          {/* Bottom Row: App-Style Shift Metrics */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px', paddingTop: '15px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 auto', textAlign: 'center', background: '#222', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
+              <span style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>Reservations</span>
+              <strong style={{ display: 'block', color: '#ffcc00', fontSize: '2rem', marginTop: '5px' }}>{displayedBookings.length}</strong>
             </div>
-          </div>
-
-          {/* Bottom Row: Shift Metrics */}
-          <div style={{ display: 'flex', gap: '20px', fontSize: '1rem', paddingTop: '15px' }}>
-            <div>Reservations: <strong style={{ color: '#ffcc00' }}>{displayedBookings.length}</strong></div>
-            <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
+            <div style={{ flex: '1 1 auto', textAlign: 'center', background: '#222', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
+              <span style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>Covers</span>
+              <strong style={{ display: 'block', color: '#ffcc00', fontSize: '2rem', marginTop: '5px' }}>{totalGuests}</strong>
+            </div>
           </div>
         </div>
 
