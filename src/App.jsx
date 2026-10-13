@@ -735,56 +735,60 @@ function App() {
                 </div>
               )}
 
-              {/* VIEW TOGGLE BUTTONS */}
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <button
-                  onClick={() => setViewMode('today')}
-                  style={{ padding: '10px 20px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  Today's Bookings
-                </button>
-                <button
-                  onClick={() => setViewMode('history')}
-                  style={{ padding: '10px 20px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  Booking History
-                </button>
-              </div>
+        {/* ARROW NAVIGATION TOOLBAR */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', backgroundColor: '#181818', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
+          
+          {/* Left Side: Arrow Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date(adminDateFilter);
+                d.setDate(d.getDate() - 1);
+                setAdminDateFilter(d.toISOString().split('T')[0]);
+              }}
+              style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '8px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}
+            >
+              &larr;
+            </button>
+            
+            <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff', minWidth: '150px', textAlign: 'center', letterSpacing: '0.5px' }}>
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                if (adminDateFilter === today) return "Today";
+                if (adminDateFilter === tomorrowStr) return "Tomorrow";
+                if (adminDateFilter === yesterdayStr) return "Yesterday";
+                
+                return new Date(adminDateFilter).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+              })()}
+            </span>
 
-              {/* FILTER TOOLBAR & SHIFT METRICS */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', backgroundColor: '#181818', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#aaa', fontWeight: 'bold' }}>FILTER SERVICE:</span>
-                  <button
-                    type="button"
-                    onClick={() => setAdminDateFilter("ALL")}
-                    style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === "ALL" ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === "ALL" ? '#000' : '#fff', fontWeight: 'bold' }}>
-                    All Dates
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdminDateFilter(todayStr)}
-                    style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === todayStr ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === todayStr ? '#000' : '#fff', fontWeight: 'bold' }}>
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdminDateFilter(tomorrowStr)}
-                    style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === tomorrowStr ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === tomorrowStr ? '#000' : '#fff', fontWeight: 'bold' }}>
-                    Tomorrow
-                  </button>
-                  <input
-                    type="date"
-                    value={adminDateFilter === "ALL" ? "" : adminDateFilter}
-                    onChange={(e) => setAdminDateFilter(e.target.value || "ALL")}
-                    style={{ padding: '5px 10px', background: '#222', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '20px', fontSize: '0.9rem' }}>
-                  <div>Reservations: <strong style={{ color: '#ffcc00' }}>{displayedBookings.length}</strong></div>
-                  <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
-                </div>
-              </div>
+            <button
+              type="button"
+              onClick={() => {
+                const d = new Date(adminDateFilter);
+                d.setDate(d.getDate() + 1);
+                setAdminDateFilter(d.toISOString().split('T')[0]);
+              }}
+              style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '8px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold' }}
+            >
+              &rarr;
+            </button>
+          </div>
+          
+          {/* Right Side: Shift Metrics */}
+          <div style={{ display: 'flex', gap: '20px', fontSize: '0.9rem' }}>
+            <div>Reservations: <strong style={{ color: '#ffcc00' }}>{allBookings.filter(b => b.bookingDate === adminDateFilter).length}</strong></div>
+            <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>
+              {allBookings.filter(b => b.bookingDate === adminDateFilter).reduce((sum, b) => sum + b.partySize, 0)}
+            </strong></div>
+          </div>
+        </div>
 
               {/* RESERVATIONS DISPLAYED IN DATE BLOCKS */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
