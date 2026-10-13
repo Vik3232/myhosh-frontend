@@ -28,7 +28,7 @@ function App() {
   // --- UI STATES ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const clientPhoneNumber = "+44 20 7946 0958"; // Confirm with client
+  const clientPhoneNumber = "+44 7853404534"; // Confirm with client
 
   // --- SECURE PASSWORD & IDENTITY LOCK ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -719,7 +719,8 @@ function App() {
               <div className="gold-divider" style={{justifyContent: 'flex-start', margin: '15px 0'}}><span></span></div>
               <p>
                 <strong>Address:</strong><br />
-                [ADDRESS PLACEHOLDER]<br />
+                99 Fisherton Street<br />
+                Sp2 7sp
                 Salisbury, UK
               </p>
               <p>
