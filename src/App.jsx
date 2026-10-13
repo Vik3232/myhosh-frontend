@@ -101,15 +101,29 @@ function App() {
   // --- NEW: INSTANT WALK-IN FUNCTION ---
   const handleSeatWalkIn = async () => {
     const now = new Date();
-    const currentHour = now.getHours();
+    const dayOfWeek = now.getDay();
+    const currentHour = now.getHours().toString().padStart(2, '0');
+    const currentMinute = now.getMinutes().toString().padStart(2, '0');
+    const currentTimeStr = `${currentHour}:${currentMinute}`;
 
-    // --- BUSINESS HOURS RESTRICTION ---
-    // Currently set to 17 (5:00 PM) to 23 (11:00 PM). Change these numbers if your hours are different!
-    const openHour = 17;
-    const closeHour = 23;
+    // --- BUSINESS HOURS RESTRICTION (EXACT MYHOSH TIMINGS) ---
+    if (dayOfWeek === 2) {
+      alert("We are closed on Tuesdays. Walk-ins cannot be seated today.");
+      return;
+    }
 
-    if (currentHour < openHour || currentHour >= closeHour) {
-      alert(`Walk-ins can only be seated during active business hours (${openHour}:00 - ${closeHour}:00).`);
+    let minTime = "16:00"; 
+    let maxTime = "21:00"; 
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) { 
+      minTime = "12:00"; 
+    }
+    if (dayOfWeek === 0) { 
+      maxTime = "20:45"; 
+    }
+
+    if (currentTimeStr < minTime || currentTimeStr > maxTime) {
+      alert(`Walk-ins can only be seated during today's active business hours (${minTime} - ${maxTime}).`);
       return;
     }
 
@@ -117,21 +131,21 @@ function App() {
       alert("Please select a table or 'Other' to seat the walk-in.");
       return;
     }
-
+    
     let finalTableId = walkInDetails.tableId;
     let guestName = "Walk-In Guest";
 
     if (finalTableId === 'OTHER') {
       if (tables.length === 0) return;
-      finalTableId = tables[0].id;
+      finalTableId = tables[0].id; 
       guestName = `Walk-In Guest (Location: ${walkInDetails.customLocation || 'Other'})`;
     }
-
+    
     const newBooking = {
       customer: { fullName: guestName, email: "walkin@myhosh.local", phone: "N/A" },
       restaurantTable: { id: parseInt(finalTableId) },
       bookingDate: now.toISOString().split('T')[0], // Strictly forces today's date
-      bookingTime: now.toTimeString().split(' ')[0].substring(0, 5),
+      bookingTime: currentTimeStr + ":00", // Exact time formatted correctly
       partySize: parseInt(walkInDetails.partySize),
       status: "ARRIVED"
     };
@@ -144,7 +158,7 @@ function App() {
       });
       if (response.ok) {
         setShowWalkInModal(false);
-        setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' });
+        setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); 
         fetchBookings();
       } else {
         alert("That table is currently occupied! Please select another.");
@@ -153,48 +167,6 @@ function App() {
       console.error("Walk-in error", error);
     }
   };
-  // --- BOOKING SUBMISSION LOGIC ---
-  const handleBookingSubmit = async (e) => {
-    e.preventDefault();
-
-    const selectedDateObj = new Date(date);
-    const dayOfWeek = selectedDateObj.getDay();
-    const selectedTime = time;
-
-    // 1. Basic Business Hours Checks
-    if (dayOfWeek === 2) {
-      setIsSuccess(false);
-      setMessage("We are closed on Tuesdays. Please select another day.");
-      return;
-    }
-
-    let minTime = "16:00";
-    let maxTime = "21:00";
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      minTime = "12:00";
-    }
-    if (dayOfWeek === 0) {
-      maxTime = "20:45";
-    }
-
-    if (selectedTime < minTime || selectedTime > maxTime) {
-      setIsSuccess(false);
-      setMessage(`For the selected day, please choose a time between ${minTime} and ${maxTime}.`);
-      return;
-    }
-
-    if (date === minDate) {
-      const currentHour = today.getHours().toString().padStart(2, '0');
-      const currentMinute = today.getMinutes().toString().padStart(2, '0');
-      const currentTimeStr = `${currentHour}:${currentMinute}`;
-
-      if (currentTimeStr >= minTime) {
-        setIsSuccess(false);
-        setMessage(`Online reservations for today closed at ${minTime}. Please call the restaurant directly for walk-in availability.`);
-        return;
-      }
-    }
 
     // 2. COMMERCIAL FEATURE: STRICT LIVE ANTI-SPAM PHONE BLOCK
     setMessage("Verifying availability...");
