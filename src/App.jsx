@@ -3,19 +3,17 @@ import './App.css'
 
 function App() {
   // --- STATE VARIABLES ---
-  // --- NEW: SECURE SESSION LOCK ---
-  // This checks if they were already logged in before the refresh
+  
+  // --- SECURE SESSION LOCK ---
   const [view, setView] = useState(() => {
     return sessionStorage.getItem('myhosh_session') || 'customer';
   });
-
-  // This instantly saves their status anytime they log in or click Secure Logout
   useEffect(() => {
     sessionStorage.setItem('myhosh_session', view);
   }, [view]);
+
   const [tables, setTables] = useState([])
   const [allBookings, setAllBookings] = useState([])
-
   const [message, setMessage] = useState("")
   const [isSuccess, setIsSuccess] = useState(false)
   const [fullName, setFullName] = useState("")
@@ -26,49 +24,51 @@ function App() {
   const [time, setTime] = useState("")
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
-
   
-  // --- NEW: SECURE PASSWORD LOCK ---
+  // --- UI STATES ---
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const clientPhoneNumber = "+44 20 7946 0958"; // Confirm with client
+
+  // --- SECURE PASSWORD & IDENTITY LOCK ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return sessionStorage.getItem('myhosh_auth') === 'true';
   });
-
   useEffect(() => {
     sessionStorage.setItem('myhosh_auth', isAuthenticated);
   }, [isAuthenticated]);
-  // --- SECURE STAFF IDENTITY LOCK ---
+  
   const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = sessionStorage.getItem('myhosh_currentUser');
     return savedUser ? JSON.parse(savedUser) : null;
   });
-
   useEffect(() => {
     if (currentUser) {
       sessionStorage.setItem('myhosh_currentUser', JSON.stringify(currentUser));
     } else {
       sessionStorage.removeItem('myhosh_currentUser');
     }
-  }, [currentUser]); // stores { id, username, role }
+  }, [currentUser]); 
+  
   const [loginUsername, setLoginUsername] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
-
-  // --- NEW STAFF REGISTRATION STATES (ADMIN ONLY) ---
+  
+  // --- STAFF REGISTRATION & DASHBOARD STATES ---
   const [newStaffUsername, setNewStaffUsername] = useState("")
   const [newStaffPassword, setNewStaffPassword] = useState("")
   const [newStaffRole, setNewStaffRole] = useState("STAFF")
   const [staffRegMessage, setStaffRegMessage] = useState("")
   const [adminDateFilter, setAdminDateFilter] = useState(new Date().toISOString().split('T')[0]);
-  // --- CANCELLATION MODAL & NOTES STATES ---
+  
+  // --- MODAL & NOTES STATES ---
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
   const [modalNoteText, setModalNoteText] = useState("");
   const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
   const [customReasonText, setCustomReasonText] = useState("");
-  const [activeNotes, setActiveNotes] = useState({});
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [editingBookingId, setEditingBookingId] = useState(null); // stores which card is in edit mode
   const [viewMode, setViewMode] = useState('today');
 
   // --- BUSINESS RULES VARIABLES ---
@@ -79,10 +79,7 @@ function App() {
   const maxDate = futureDate.toISOString().split('T')[0];
 
   // --- DATA FETCHING ---
- 
-    // DATA FETCHING
   useEffect(() => {
-    // 1. RESTORED: Fetch Tables so the dropdown works perfectly again!
     fetch('https://myhosh-backend.onrender.com/api/tables')
       .then(response => response.json())
       .then(data => setTables(data))
@@ -91,8 +88,6 @@ function App() {
 
   const fetchBookings = async () => {
     try {
-      // 2. FIXED: Fetch all active bookings normally so the customer overlap logic works. 
-      // Only fetch 'history' if the owner clicks the History tab.
       const endpoint = viewMode === 'history' ? '/api/bookings/history' : '/api/bookings';
       const response = await fetch(`https://myhosh-backend.onrender.com${endpoint}`);
       if (response.ok) {
@@ -108,11 +103,10 @@ function App() {
     fetchBookings();
   }, [view, isSuccess, viewMode]);
 
-  // --- NEW: WALK-IN STATE ---
+  // --- WALK-IN STATE & LOGIC ---
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '', customLocation: '' });
 
-  // --- UPDATED: SMART STATUS HANDLER ---
   const handleUpdateStatus = async (id, newStatus) => {
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${id}/status`, {
@@ -126,191 +120,48 @@ function App() {
     }
   };
 
- // --- NEW: INSTANT WALK-IN FUNCTION ---
- const handleSeatWalkIn = async () => {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const currentHour = now.getHours().toString().padStart(2, '0');
-  const currentMinute = now.getMinutes().toString().padStart(2, '0');
-  const currentTimeStr = `${currentHour}:${currentMinute}`;
+  const handleSeatWalkIn = async () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const currentHour = now.getHours().toString().padStart(2, '0');
+    const currentMinute = now.getMinutes().toString().padStart(2, '0');
+    const currentTimeStr = `${currentHour}:${currentMinute}`;
 
-  // --- BUSINESS HOURS RESTRICTION (EXACT MYHOSH TIMINGS) ---
-  if (dayOfWeek === 2) {
-    alert("We are closed on Tuesdays. Walk-ins cannot be seated today.");
-    return;
-  }
-
-  let minTime = "16:00"; 
-  let maxTime = "21:00"; 
-
-  if (dayOfWeek === 0 || dayOfWeek === 6) { 
-    minTime = "12:00"; 
-  }
-  if (dayOfWeek === 0) { 
-    maxTime = "20:45"; 
-  }
-
-  if (currentTimeStr < minTime || currentTimeStr > maxTime) {
-    alert(`Walk-ins can only be seated during today's active business hours (${minTime} - ${maxTime}).`);
-    return;
-  }
-
-  if (!walkInDetails.tableId) {
-    alert("Please select a table or 'Other' to seat the walk-in.");
-    return;
-  }
-  
-  let finalTableId = walkInDetails.tableId;
-  let guestName = "Walk-In Guest";
-
-  if (finalTableId === 'OTHER') {
-    if (tables.length === 0) return;
-    finalTableId = tables[0].id; 
-    guestName = `Walk-In Guest (Location: ${walkInDetails.customLocation || 'Other'})`;
-  }
-  
-  const newBooking = {
-    customer: { fullName: guestName, email: "walkin@myhosh.local", phone: "N/A" },
-    restaurantTable: { id: parseInt(finalTableId) },
-    bookingDate: now.toISOString().split('T')[0], // Strictly forces today's date
-    bookingTime: currentTimeStr + ":00", // Exact time formatted correctly
-    partySize: parseInt(walkInDetails.partySize),
-    status: "ARRIVED"
-  };
-
-  try {
-    const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newBooking)
-    });
-    if (response.ok) {
-      setShowWalkInModal(false);
-      setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); 
-      fetchBookings();
-    } else {
-      alert("That table is currently occupied! Please select another.");
-    }
-  } catch (error) {
-    console.error("Walk-in error", error);
-  }
-};
-
-// --- NEW: CSV EXPORT FUNCTION ---
-const handleExportCSV = () => {
-  if (displayedBookings.length === 0) {
-    alert("No bookings to export for this view.");
-    return;
-  }
-
-  const headers = ["ID", "Guest Name", "Email", "Phone", "Date", "Time", "Party Size", "Table", "Status"];
-  
-  // Exports exactly what is currently filtered on the dashboard
-  const rows = displayedBookings.map(b => [
-    b.id,
-    `"${b.customer?.fullName || 'Walk-In Guest'}"`,
-    `"${b.customer?.email || 'N/A'}"`,
-    `"${b.customer?.phone || 'N/A'}"`,
-    b.bookingDate,
-    b.bookingTime,
-    b.partySize,
-    b.restaurantTable?.tableNumber || "Other",
-    b.status
-  ]);
-
-  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `MyHosh_Reservations_${adminDateFilter}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-  // --- BOOKING SUBMISSION LOGIC ---
-  const handleBookingSubmit = async (e) => {
-    e.preventDefault();
-
-    const selectedDateObj = new Date(date);
-    const dayOfWeek = selectedDateObj.getDay();
-    const selectedTime = time;
-
-    // 1. Basic Business Hours Checks
     if (dayOfWeek === 2) {
-      setIsSuccess(false);
-      setMessage("We are closed on Tuesdays. Please select another day.");
+      alert("We are closed on Tuesdays. Walk-ins cannot be seated today.");
       return;
     }
 
-    let minTime = "16:00";
-    let maxTime = "21:00";
+    let minTime = "16:00"; 
+    let maxTime = "21:00"; 
+    if (dayOfWeek === 0 || dayOfWeek === 6) { minTime = "12:00"; }
+    if (dayOfWeek === 0) { maxTime = "20:45"; }
 
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      minTime = "12:00";
-    }
-    if (dayOfWeek === 0) {
-      maxTime = "20:45";
-    }
-
-    if (selectedTime < minTime || selectedTime > maxTime) {
-      setIsSuccess(false);
-      setMessage(`For the selected day, please choose a time between ${minTime} and ${maxTime}.`);
+    if (currentTimeStr < minTime || currentTimeStr > maxTime) {
+      alert(`Walk-ins can only be seated during today's active business hours (${minTime} - ${maxTime}).`);
       return;
     }
 
-    if (date === minDate) {
-      const currentHour = today.getHours().toString().padStart(2, '0');
-      const currentMinute = today.getMinutes().toString().padStart(2, '0');
-      const currentTimeStr = `${currentHour}:${currentMinute}`;
-
-      if (currentTimeStr >= minTime) {
-        setIsSuccess(false);
-        setMessage(`Online reservations for today closed at ${minTime}. Please call the restaurant directly for walk-in availability.`);
-        return;
-      }
-    }
-
-    // 2. COMMERCIAL FEATURE: STRICT LIVE ANTI-SPAM PHONE BLOCK
-    setMessage("Verifying availability...");
-
-    try {
-      const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
-      if (!liveResponse.ok) throw new Error("Network response was not OK");
-      const liveBookings = await liveResponse.json();
-
-      const cleanInputPhone = String(phone).replace(/\D/g, '');
-      const inputDate = String(date);
-
-      const phoneAlreadyBooked = liveBookings.some((booking) => {
-        const existingPhone = String(booking.customer?.phone || "").replace(/\D/g, '');
-        const existingDate = String(booking.bookingDate);
-        return existingDate === inputDate && existingPhone === cleanInputPhone;
-      });
-
-      if (phoneAlreadyBooked) {
-        setIsSuccess(false);
-        setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
-        return;
-      }
-    } catch (err) {
-      console.error("Anti-spam security check failed to complete:", err);
-      setIsSuccess(false);
-      setMessage("System verification timeout. Please click submit again.");
+    if (!walkInDetails.tableId) {
+      alert("Please select a table or 'Other' to seat the walk-in.");
       return;
     }
-
-    // 3. Process the Actual Booking
-    // 3. Process the Actual Booking
-    setMessage("Processing reservation...");
-    setIsProcessing(true);
+    
+    let finalTableId = walkInDetails.tableId;
+    let guestName = "Walk-In Guest";
+    if (finalTableId === 'OTHER') {
+      if (tables.length === 0) return;
+      finalTableId = tables[0].id; 
+      guestName = `Walk-In Guest (Location: ${walkInDetails.customLocation || 'Other'})`;
+    }
+    
     const newBooking = {
-      customer: { fullName, email, phone },
-      restaurantTable: { id: parseInt(selectedTable) },
-      bookingDate: date,
-      bookingTime: time + ":00",
-      partySize: parseInt(partySize),
-      specialRequests: requests
+      customer: { fullName: guestName, email: "walkin@myhosh.local", phone: "N/A" },
+      restaurantTable: { id: parseInt(finalTableId) },
+      bookingDate: now.toISOString().split('T')[0],
+      bookingTime: currentTimeStr + ":00", 
+      partySize: parseInt(walkInDetails.partySize),
+      status: "ARRIVED"
     };
 
     try {
@@ -319,28 +170,112 @@ const handleExportCSV = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking)
       });
+      if (response.ok) {
+        setShowWalkInModal(false);
+        setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); 
+        fetchBookings();
+      } else {
+        alert("That table is currently occupied! Please select another.");
+      }
+    } catch (error) {
+      console.error("Walk-in error", error);
+    }
+  };
 
+  const handleExportCSV = () => {
+    if (displayedBookings.length === 0) {
+      alert("No bookings to export for this view.");
+      return;
+    }
+    const headers = ["ID", "Guest Name", "Email", "Phone", "Date", "Time", "Party Size", "Table", "Status"];
+    const rows = displayedBookings.map(b => [
+      b.id, `"${b.customer?.fullName || 'Walk-In Guest'}"`, `"${b.customer?.email || 'N/A'}"`, `"${b.customer?.phone || 'N/A'}"`,
+      b.bookingDate, b.bookingTime, b.partySize, b.restaurantTable?.tableNumber || "Other", b.status
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `MyHosh_Reservations_${adminDateFilter}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // --- BOOKING SUBMISSION LOGIC ---
+  const handleBookingSubmit = async (e) => {
+    e.preventDefault();
+    const selectedDateObj = new Date(date);
+    const dayOfWeek = selectedDateObj.getDay();
+    const selectedTime = time;
+    
+    if (dayOfWeek === 2) {
+      setIsSuccess(false); setMessage("We are closed on Tuesdays. Please select another day."); return;
+    }
+    let minTime = "16:00"; let maxTime = "21:00";
+    if (dayOfWeek === 0 || dayOfWeek === 6) { minTime = "12:00"; }
+    if (dayOfWeek === 0) { maxTime = "20:45"; }
+    
+    if (selectedTime < minTime || selectedTime > maxTime) {
+      setIsSuccess(false); setMessage(`For the selected day, please choose a time between ${minTime} and ${maxTime}.`); return;
+    }
+    if (date === minDate) {
+      const currentHour = today.getHours().toString().padStart(2, '0');
+      const currentMinute = today.getMinutes().toString().padStart(2, '0');
+      const currentTimeStr = `${currentHour}:${currentMinute}`;
+      if (currentTimeStr >= minTime) {
+        setIsSuccess(false); setMessage(`Online reservations for today closed at ${minTime}. Please call the restaurant directly for walk-in availability.`); return;
+      }
+    }
+    
+    setMessage("Verifying availability...");
+    try {
+      const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
+      if (!liveResponse.ok) throw new Error("Network response was not OK");
+      const liveBookings = await liveResponse.json();
+      const cleanInputPhone = String(phone).replace(/\D/g, '');
+      const inputDate = String(date);
+      const phoneAlreadyBooked = liveBookings.some((booking) => {
+        const existingPhone = String(booking.customer?.phone || "").replace(/\D/g, '');
+        const existingDate = String(booking.bookingDate);
+        return existingDate === inputDate && existingPhone === cleanInputPhone;
+      });
+      if (phoneAlreadyBooked) {
+        setIsSuccess(false); setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date."); return;
+      }
+    } catch (err) {
+      console.error("Anti-spam security check failed to complete:", err);
+      setIsSuccess(false); setMessage("System verification timeout. Please click submit again."); return;
+    }
+
+    setMessage("Processing reservation...");
+    setIsProcessing(true);
+    const newBooking = {
+      customer: { fullName, email, phone },
+      restaurantTable: { id: parseInt(selectedTable) },
+      bookingDate: date, bookingTime: time + ":00", partySize: parseInt(partySize), specialRequests: requests
+    };
+    try {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBooking)
+      });
       if (response.ok) {
         setIsSuccess(true);
         setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
         setFullName(""); setEmail(""); setPhone(""); setRequests("");
       } else {
         const errorText = await response.text();
-        setIsSuccess(false);
-        setMessage(errorText || "Failed to secure reservation. Please try another time.");
+        setIsSuccess(false); setMessage(errorText || "Failed to secure reservation. Please try another time.");
       }
     } catch (err) {
-      setIsSuccess(false);
-      setMessage("System error: Unable to connect to the reservation network.");
+      setIsSuccess(false); setMessage("System error: Unable to connect to the reservation network.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // --- REFINED SMART TABLE FILTERING LOGIC ---
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
-
     if (numGuests > 20) return false;
     if (numGuests >= 11) return table.tableNumber === 5;
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
@@ -348,28 +283,21 @@ const handleExportCSV = () => {
     if (numGuests <= 2 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
     if (table.tableNumber === 4) return false;
     if (table.capacity < numGuests) return false;
-
     if (date && time) {
       const selectedStart = new Date(`${date}T${time}`);
       const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000);
-
       for (let booking of allBookings) {
         if (booking.bookingDate === date && booking.restaurantTable?.id === table.id) {
           const bookingTimeParts = booking.bookingTime.split(':');
           const existingStart = new Date(`${date}T${bookingTimeParts[0]}:${bookingTimeParts[1]}`);
           const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
-
-          if (selectedStart < existingEnd && selectedEnd > existingStart) {
-            return false;
-          }
+          if (selectedStart < existingEnd && selectedEnd > existingStart) return false;
         }
       }
     }
-
     return true;
   });
 
-  // --- PREVENT GHOST STATE GLITCH ---
   useEffect(() => {
     if (availableTables.length > 0) {
       const currentTableIsValid = availableTables.some(t => t.id.toString() === selectedTable.toString());
@@ -377,27 +305,20 @@ const handleExportCSV = () => {
         setSelectedTable(availableTables[0].id.toString());
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tables, partySize, date, time]);
 
-
-  // --- STAFF SECURITY GATEWAY LOGIC (BACKEND INTEGRATED) ---
+  // --- STAFF SECURITY GATEWAY ---
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setIsLoggingIn(true);
-
     try {
       const response = await fetch("https://myhosh-backend.onrender.com/api/staff/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: loginUsername, password: loginPassword })
       });
-
       if (response.ok) {
         const staffData = await response.json();
-        setCurrentUser(staffData);
-        setIsAuthenticated(true);
-        fetchBookings();
+        setCurrentUser(staffData); setIsAuthenticated(true); fetchBookings();
       } else {
         alert("Invalid staff username or password.");
       }
@@ -409,881 +330,700 @@ const handleExportCSV = () => {
     }
   };
 
-
-
   const handleCreateStaff = async (e) => {
     e.preventDefault();
     setStaffRegMessage("Creating account...");
-
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/staff/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: newStaffUsername.trim(),
-          password: newStaffPassword,
-          role: newStaffRole
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newStaffUsername.trim(), password: newStaffPassword, role: newStaffRole })
       });
-
       if (response.ok) {
         setStaffRegMessage(`Account created successfully for ${newStaffUsername} (${newStaffRole}).`);
-        setNewStaffUsername("");
-        setNewStaffPassword("");
-        setNewStaffRole("STAFF");
+        setNewStaffUsername(""); setNewStaffPassword(""); setNewStaffRole("STAFF");
       } else {
         const errText = await response.text();
         setStaffRegMessage(`Error: ${errText || "Could not create user."}`);
       }
     } catch (err) {
-      console.error("Staff creation error:", err);
       setStaffRegMessage("Error: Failed to connect to server.");
     }
   };
 
-  // --- CANCEL BOOKING (STAFF & ADMIN) ---
-  // --- SAVE STAFF NOTE ---
-  const handleSaveNote = async (bookingId) => {
-    const noteText = activeNotes[bookingId] ?? "";
-    try {
-      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${bookingId}/notes`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: noteText })
-      });
-      if (response.ok) {
-        const updated = await response.json();
-        setAllBookings(prev => prev.map(b => b.id === bookingId ? updated : b));
-        alert("Staff note saved successfully.");
-      } else {
-        alert("Failed to save note.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Network error saving note.");
-    }
-  };
-
-  // --- CONFIRM CANCEL WITH REASON ---
   const handleConfirmCancellation = async () => {
     if (!cancelModalBooking) return;
     const finalReason = cancelReason === "Other" ? customReasonText : cancelReason;
-
-    setIsProcessing(true); // Locks the UI and shows "Processing..."
-
+    setIsProcessing(true);
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${cancelModalBooking.id}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: finalReason })
       });
-
       if (response.ok) {
         setAllBookings(prev => prev.filter(b => b.id !== cancelModalBooking.id));
         alert(`Reservation cancelled. Customer notified with reason: "${finalReason}"`);
-        setCancelModalBooking(null);
-        setCustomReasonText("");
+        setCancelModalBooking(null); setCustomReasonText("");
       } else {
         alert("Failed to process cancellation.");
       }
     } catch (err) {
-      console.error("Cancel error:", err);
       alert("Network error processing cancellation.");
     } finally {
-      setIsProcessing(false); // Unlocks the UI when finished
+      setIsProcessing(false);
     }
   };
 
-  // --- REASSIGN TABLE (STAFF & ADMIN) ---
-  const handleReassignTable = async (bookingId, newTableId) => {
-    if (!newTableId) return;
-
-    try {
-      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${bookingId}/table/${newTableId}`, {
-        method: 'PUT'
-      });
-
-      if (response.ok) {
-        const updatedBooking = await response.json();
-        // Update booking in local state
-        setAllBookings(prev => prev.map(b => b.id === bookingId ? updatedBooking : b));
-      } else {
-        const errorMsg = await response.text();
-        alert(`Cannot reassign table: ${errorMsg}`);
-      }
-    } catch (err) {
-      console.error("Reassign error:", err);
-      alert("Network error: Could not reassign table.");
-    }
-  };
-
-  // --- UPDATE BOOKING TIME (STAFF & ADMIN) ---
-  const handleUpdateTime = async (bookingId, newTime) => {
-    if (!newTime) return;
-
-    try {
-      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${bookingId}/time`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingTime: newTime })
-      });
-
-      if (response.ok) {
-        const updated = await response.json();
-        setAllBookings(prev => prev.map(b => b.id === bookingId ? updated : b));
-        alert("Booking time updated successfully.");
-      } else {
-        alert("Failed to update booking time.");
-      }
-    } catch (err) {
-      console.error("Time update error:", err);
-      alert("Network error updating time.");
-    }
-  };
-
-  // --- OPEN EDIT POPUP MODAL ---
   const handleOpenEdit = (booking) => {
     setEditModalBooking(booking);
     setModalNoteText(booking.staffNotes || "");
   };
 
-  // --- SAVE STAFF NOTE FROM MODAL ---
   const handleSaveModalNote = async () => {
     if (!editModalBooking) return;
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/notes`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: modalNoteText })
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: modalNoteText })
       });
       if (response.ok) {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
-        setEditModalBooking(updated);
-        alert("Staff note saved successfully.");
-      } else {
-        alert("Failed to save note.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Network error saving note.");
-    }
+        setEditModalBooking(updated); alert("Staff note saved successfully.");
+      } else { alert("Failed to save note."); }
+    } catch (err) { alert("Network error saving note."); }
   };
 
-  // --- UPDATE TIME FROM MODAL ---
   const handleModalTimeChange = async (newTime) => {
     if (!newTime || !editModalBooking) return;
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/time`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingTime: newTime })
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingTime: newTime })
       });
       if (response.ok) {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
-        setEditModalBooking(updated);
-        alert(`Time updated to ${newTime}.`);
-      } else {
-        alert("Failed to update time.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Network error updating time.");
-    }
+        setEditModalBooking(updated); alert(`Time updated to ${newTime}.`);
+      } else { alert("Failed to update time."); }
+    } catch (err) { alert("Network error updating time."); }
   };
 
-  // --- REASSIGN TABLE FROM MODAL ---
   const handleModalTableChange = async (newTableId) => {
     if (!newTableId || !editModalBooking) return;
     try {
-      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/table/${newTableId}`, {
-        method: 'PUT'
-      });
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/table/${newTableId}`, { method: 'PUT' });
       if (response.ok) {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
-        setEditModalBooking(updated);
-        alert("Table reassigned successfully.");
+        setEditModalBooking(updated); alert("Table reassigned successfully.");
       } else {
-        const errMsg = await response.text();
-        alert(`Could not reassign table: ${errMsg}`);
+        const errMsg = await response.text(); alert(`Could not reassign table: ${errMsg}`);
       }
-    } catch (err) {
-      console.error(err);
-      alert("Network error reassigning table.");
-    }
+    } catch (err) { alert("Network error reassigning table."); }
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    setView('customer');
-    sessionStorage.clear(); // <-- Wipes the browser memory completely clean!
+    setCurrentUser(null); setIsAuthenticated(false); setView('customer'); sessionStorage.clear();
   };
-
-  // --- ADMIN DASHBOARD DATE FILTER LOGIC ---
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowObj = new Date();
-  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
-  const tomorrowStr = tomorrowObj.toISOString().split('T')[0];
 
   const displayedBookings = allBookings.filter(b => {
     if (adminDateFilter === "ALL") return true;
     return b.bookingDate === adminDateFilter;
   });
-
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
 
   // --- UI RENDER ---
   return (
-    <div className="restaurant-container">
-      <div className="nav-container">
-        <button className={`nav-btn ${view === 'customer' ? 'active' : ''}`} onClick={() => setView('customer')}>
-          Customer View
-        </button>
-        <button className={`nav-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>
-          Staff Login
-        </button>
-      </div>
-
-      <h1 className="restaurant-title">MYHOSH</h1>
-      <div className="restaurant-subtitle">London</div>
-
+    <>
       {view === "customer" ? (
-        <div className="booking-panel">
-          <h2>Reserve a Table</h2>
-          {isSuccess ? (
-            <div style={{ textAlign: 'center', padding: '50px 20px', background: '#181818', borderRadius: '12px', border: '1px solid #28a745', marginTop: '30px', boxShadow: '0 4px 15px rgba(40, 167, 69, 0.1)' }}>
-              <div style={{ fontSize: '4rem', marginBottom: '15px' }}>✅</div>
-              <h2 style={{ color: '#28a745', marginBottom: '15px', letterSpacing: '1px' }}>Reservation Confirmed</h2>
-              <p style={{ color: '#ccc', fontSize: '1.1rem', marginBottom: '10px', lineHeight: '1.6' }}>
-                Thank you for booking with <strong>MyHosh</strong>.
-              </p>
-              <p style={{ color: '#aaa', fontSize: '0.95rem', marginBottom: '30px' }}>
-                We have successfully secured your table and sent a confirmation email to your inbox. We look forward to hosting you!
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSuccess(false);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                style={{ padding: '12px 28px', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}
-              >
-                Book Another Table
-              </button>
+        <div className="customer-view">
+          
+          {/* HEADER */}
+          <header className="site-header">
+            <div className="brand-logo">
+              MYHOSH
+              <small>Salisbury</small>
             </div>
-          ) : (
-          <form onSubmit={handleBookingSubmit}>
-            <div className="flex-row">
-              <div className="form-group">
-                <label>Full Name</label>
-                <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>Email</label>
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
+            <nav className="nav-links">
+              <a href="#menu" className="nav-link">Menu</a>
+              <a href="#space" className="nav-link">Our Space</a>
+              <a href="#visit" className="nav-link">Visit Us</a>
+              <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
+            </nav>
+            <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+            </button>
+          </header>
+
+          {/* MOBILE DROPDOWN MENU */}
+          {isMobileMenuOpen && (
+            <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
+              <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Menu</a>
+              <a href="#space" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Our Space</a>
+              <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Visit Us</a>
+              <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
             </div>
-
-            <div className="flex-row">
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </div>
-
-              <div className="form-group">
-                <label>Select Table</label>
-
-                {availableTables.length === 0 ? (
-                  <div style={{ padding: '10px', backgroundColor: '#333', color: '#ffcc00', borderRadius: '5px', fontSize: '0.9rem' }}>
-                    No tables available for this time/party size online. Please try another time or call us directly!
-                  </div>
-                ) : (
-                  <select value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
-                    {availableTables.map(table => {
-                      let locationText = " - Main Restaurant";
-                      if (table.tableNumber === 1 || table.tableNumber === 5) {
-                        locationText = " - Window Seat";
-                      } else if (table.tableNumber === 13) {
-                        locationText = " - Chef's Grill";
-                      }
-                      return (
-                        <option key={table.id} value={table.id}>
-                          Table {table.tableNumber} (Up to {table.capacity}){locationText}
-                        </option>
-                      )
-                    })}
-                  </select>
-                )}
-
-                {tables.find(t => t.id === parseInt(selectedTable))?.tableNumber === 13 && availableTables.length > 0 && (
-                  <small style={{ color: '#ffcc00', marginTop: '5px', display: 'block', fontWeight: 'bold' }}>
-                    *Note: This table is located directly next to the Chef's Grill.
-                  </small>
-                )}
-              </div>
-            </div>
-
-            <div className="flex-row">
-              <div className="form-group">
-                <label>Date</label>
-                <input type="date" required min={minDate} max={maxDate} value={date} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              <div className="form-group">
-                <label>Time</label>
-                <input type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
-              </div>
-              <div className="form-group" style={{ flex: '0.5' }}>
-                <label>Guests</label>
-                <input type="number" min="1" max="25" required value={partySize} onChange={(e) => setPartySize(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Special Requests</label>
-              <textarea rows="2" value={requests} onChange={(e) => setRequests(e.target.value)} />
-            </div>
-
-            {availableTables.length > 0 && (
- <button 
- type="submit" 
- className="submit-btn" 
- disabled={message === "Processing reservation..." || message === "Verifying availability..."}
- style={{ 
- cursor: (message === "Processing reservation..." || message === "Verifying availability...") ? 'wait' : 'pointer',
- opacity: (message === "Processing reservation..." || message === "Verifying availability...") ? 0.7 : 1,
- letterSpacing: '1px'
- }}>
- Reserve a Table
- </button>
- )}
-          </form>
           )}
 
-          {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
+          {/* HERO */}
+          <section className="hero-section">
+            <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
+            <div className="hero-overlay"></div>
+            <div className="hero-content fade-in">
+              <h1>Authentic Turkish Hospitality</h1>
+              <p>Charcoal grill, fresh meze, and a warm dining experience in the heart of Salisbury.</p>
+              <div className="hero-actions">
+                <a href="#reserve" className="btn btn-primary">Reserve a Table</a>
+                <button onClick={() => setIsLightboxOpen(true)} className="btn btn-secondary" style={{color: '#FBF6EA', borderColor: '#FBF6EA'}}>View Menu</button>
+              </div>
+            </div>
+          </section>
 
-          <div style={{ marginTop: '25px', paddingTop: '15px', borderTop: '1px solid #444', textAlign: 'center' }}>
-            <p style={{ margin: '5px 0', fontSize: '0.95rem' }}>
-              No availability or booking a large event? Call us directly!
-            </p>
-            <p style={{ margin: '0', fontSize: '1.2rem', color: '#ffcc00', fontWeight: 'bold' }}>
-              +44 20 7946 0958
-            </p>
-          </div>
+          {/* FEATURE STRIP */}
+          <section className="feature-strip">
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path>
+                <path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path>
+              </svg>
+              <h3>Charcoal Grill</h3>
+              <p>Authentic fire-roasted meats and skewers.</p>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path>
+                <path d="M12 7V3M8 5v2M16 5v2"></path>
+                <path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path>
+              </svg>
+              <h3>Fresh Meze</h3>
+              <p>Traditional cold and hot starters prepared daily.</p>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+              </svg>
+              <h3>Warm Welcome</h3>
+              <p>A beautifully designed space to relax and dine.</p>
+            </div>
+          </section>
 
+          {/* MENU HIGHLIGHTS */}
+          <section id="menu" className="menu-section">
+            <div className="menu-section-header">
+              <h2>Signature Dishes</h2>
+              <div className="gold-divider"><span></span></div>
+              <p className="text-muted">A selection of our favourites. Please verify prices against our full menu.</p>
+            </div>
+            <div className="menu-grid">
+              <div className="menu-card">
+                <div className="menu-item-info">
+                  <h4>Cold Meze Platter</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Humus, Cacik, Kisir, Stuffed Vine Leaves, Beetroot Yoghurt, Aubergine Napolitana</p>
+                </div>
+                <div className="menu-item-price">£14.95</div>
+              </div>
+              <div className="menu-card">
+                <div className="menu-item-info">
+                  <h4>Hot Meze Platter</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Borek, Calamari, Whitebait, Halloumi Cheese, Falafel, Sucuk</p>
+                </div>
+                <div className="menu-item-price">£15.95</div>
+              </div>
+              <div className="menu-card">
+                <div className="menu-item-info">
+                  <h4>Adana Kebab</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Lean minced lamb skewered and grilled over charcoal</p>
+                </div>
+                <div className="menu-item-price">£18.95</div>
+              </div>
+              <div className="menu-card">
+                <div className="menu-item-info">
+                  <h4>Lamb Shish</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Marinated tender cubes of lamb skewered and grilled over charcoal</p>
+                </div>
+                <div className="menu-item-price">£21.95</div>
+              </div>
+              <div className="menu-card">
+                <div className="menu-item-info">
+                  <h4>Mixed Grill</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>A combination of Lamb Shish, Chicken Shish and Adana Kebab</p>
+                </div>
+                <div className="menu-item-price">£23.95</div>
+              </div>
+              <div className="menu-card">
+                <div className="menu-item-info">
+                  <h4>Grill Sharing Platter</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>For 3-4 People. Huge selection of grilled meats and starters.</p>
+                </div>
+                <div className="menu-item-price">£72.95</div>
+              </div>
+            </div>
+            <div className="text-center">
+              <button onClick={() => setIsLightboxOpen(true)} className="btn btn-emerald">View Full Menu</button>
+            </div>
+          </section>
+
+          {/* OUR SPACE */}
+          <section id="space" className="space-section">
+            <div className="arch-image-container">
+              <img src="/images/interior.webp" alt="MyHosh Interior" className="arch-mask" loading="lazy" />
+            </div>
+            <div className="space-content">
+              <h2>An Elegant Atmosphere</h2>
+              <div className="gold-divider" style={{justifyContent: 'flex-start', margin: '20px 0'}}><span></span></div>
+              <p>Settle into our emerald velvet chairs, dine on white marble tables, and let our warm, candle-lit ambience transport you to the heart of Turkey.</p>
+            </div>
+          </section>
+
+          {/* GRILL BAND */}
+          <section className="image-band">
+            <img src="/images/charcoal-grill.webp" alt="Charcoal Grill" loading="lazy" />
+            <div className="overlay"></div>
+            <h2>From the Charcoal Grill</h2>
+          </section>
+
+          {/* BOOKING SECTION */}
+          <section id="reserve" className="booking-section">
+            <div className="text-center" style={{ marginBottom: '40px' }}>
+              <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
+              <div className="gold-divider"><span></span></div>
+              <div style={{ color: 'var(--clr-gold-pale)', fontSize: '0.95rem', background: 'rgba(0,0,0,0.3)', display: 'inline-block', padding: '15px 25px', borderRadius: '8px' }}>
+                <strong>Opening Hours</strong><br/>
+                Tuesday: Closed<br/>
+                Mon, Wed, Thu, Fri: 16:00 - 21:00<br/>
+                Sat: 12:00 - 21:00 | Sun: 12:00 - 20:45
+              </div>
+            </div>
+
+            <div className="booking-container">
+              <img src="/images/interior.webp" className="booking-image-side" alt="Interior Setting" loading="lazy" />
+              
+              <div className="booking-form-content">
+                {isSuccess ? (
+                  <div className="success-screen fade-in">
+                    <div className="success-icon" style={{ fontSize: '4rem' }}>✅</div>
+                    <h2>Reservation Confirmed</h2>
+                    <p style={{ color: 'var(--clr-grey)', fontSize: '1.1rem', marginBottom: '15px' }}>
+                      Thank you for booking with <strong>MyHosh</strong>.
+                    </p>
+                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.95rem', marginBottom: '30px' }}>
+                      We have successfully secured your table and sent a confirmation email to your inbox. We look forward to hosting you!
+                    </p>
+                    <button type="button" onClick={() => setIsSuccess(false)} className="btn btn-primary">
+                      Book Another Table
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleBookingSubmit} className="fade-in">
+                    <div className="form-grid">
+                      <div className="form-group full-width">
+                        <label>Full Name</label>
+                        <input type="text" className="form-input" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label>Email</label>
+                        <input type="email" className="form-input" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" className="form-input" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+                      </div>
+                      <div className="form-group full-width">
+                        <label>Select Table</label>
+                        {availableTables.length === 0 ? (
+                          <div style={{ padding: '14px', backgroundColor: 'rgba(179, 64, 47, 0.1)', color: 'var(--clr-error)', border: '1px solid var(--clr-error)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem' }}>
+                            No tables available for this time/party size online. Please try another time or call us directly!
+                          </div>
+                        ) : (
+                          <select className="form-input" value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
+                            {availableTables.map(table => {
+                              let locationText = " - Main Restaurant";
+                              if (table.tableNumber === 1 || table.tableNumber === 5) locationText = " - Window Seat";
+                              else if (table.tableNumber === 13) locationText = " - Chef's Grill";
+                              return (
+                                <option key={table.id} value={table.id}>
+                                  Table {table.tableNumber} (Up to {table.capacity}){locationText}
+                                </option>
+                              )
+                            })}
+                          </select>
+                        )}
+                        {tables.find(t => t.id === parseInt(selectedTable))?.tableNumber === 13 && availableTables.length > 0 && (
+                          <small style={{ color: 'var(--clr-gold)', marginTop: '8px', fontWeight: 'bold' }}>
+                            *Note: This table is located directly next to the Chef's Grill.
+                          </small>
+                        )}
+                      </div>
+                      <div className="form-group">
+                        <label>Date</label>
+                        <input type="date" className="form-input" required min={minDate} max={maxDate} value={date} onChange={(e) => setDate(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label>Time</label>
+                        <input type="time" className="form-input" required value={time} onChange={(e) => setTime(e.target.value)} />
+                      </div>
+                      <div className="form-group full-width">
+                        <label>Guests</label>
+                        <input type="number" className="form-input" min="1" max="25" required value={partySize} onChange={(e) => setPartySize(e.target.value)} />
+                      </div>
+                      <div className="form-group full-width">
+                        <label>Special Requests</label>
+                        <textarea className="form-input" rows="2" value={requests} onChange={(e) => setRequests(e.target.value)} placeholder="Anniversary, allergies, high chair..."/>
+                      </div>
+                    </div>
+
+                    {availableTables.length > 0 && (
+                      <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '20px' }} disabled={message === "Processing reservation..." || message === "Verifying availability..."}>
+                        {(message === "Processing reservation..." || message === "Verifying availability...") ? "Processing..." : "Reserve a Table"}
+                      </button>
+                    )}
+                  </form>
+                )}
+                {message && <div className={`message-box ${isSuccess ? 'success' : message.includes('Processing') || message.includes('Verifying') ? 'loading' : 'error'}`}>{message}</div>}
+              </div>
+            </div>
+          </section>
+
+          {/* VISIT US */}
+          <section id="visit" className="visit-section">
+            <img src="/images/storefront.webp" alt="MyHosh Storefront" className="visit-image" loading="lazy" />
+            <div className="visit-details">
+              <h2>Visit Us</h2>
+              <div className="gold-divider" style={{justifyContent: 'flex-start', margin: '15px 0'}}><span></span></div>
+              <p>
+                <strong>Address:</strong><br />
+                [ADDRESS PLACEHOLDER]<br />
+                Salisbury, UK
+              </p>
+              <p>
+                <strong>Phone:</strong><br />
+                <a href={`tel:${clientPhoneNumber.replace(/\s+/g, '')}`} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a>
+              </p>
+              <p style={{ marginTop: '30px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
+                No online availability or booking a large event?<br />
+                Please call the restaurant directly and we will do our best to accommodate you.
+              </p>
+            </div>
+          </section>
+
+          {/* FOOTER */}
+          <footer className="site-footer">
+            <div className="footer-logo">MYHOSH</div>
+            <div className="footer-links">
+              <a href="#hero">Home</a>
+              <a href="#menu">Menu</a>
+              <a href="#reserve">Reserve</a>
+              <a href="#visit">Contact</a>
+            </div>
+            <div className="footer-bottom">
+              <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
+              <button className="discreet-login" onClick={() => setView('admin')}>Staff Login</button>
+            </div>
+          </footer>
+
+          {/* LIGHTBOX FOR MENU */}
+          {isLightboxOpen && (
+            <div className="lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
+              <div className="lightbox-header">
+                <button className="lightbox-close" onClick={() => setIsLightboxOpen(false)}>✕</button>
+              </div>
+              <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                <img src="/images/menu.webp" alt="Full MyHosh Menu" loading="lazy" />
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="booking-panel" style={{ maxWidth: '1000px' }}>
+        <div className="admin-view">
           {!isAuthenticated ? (
-            <div className="login-container" style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center', padding: '40px 20px' }}>
-              <h2>Staff Gateway</h2>
-              <p style={{ color: '#888', marginBottom: '20px' }}>Authorized personnel only.</p>
+            <div style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 20px', background: 'var(--clr-admin-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--clr-admin-border)', textAlign: 'center' }}>
+              <h2 style={{ color: 'var(--clr-gold)', margin: '0 0 10px 0' }}>Staff Gateway</h2>
+              <p style={{ color: 'var(--clr-admin-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
-                <div className="form-group" style={{ marginBottom: '15px' }}>
-                  <input
-                    type="text"
-                    placeholder="Staff Username"
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    required
-                    autoComplete="off"
-                    style={{ textAlign: 'center' }}
-                  />
+                <div style={{ marginBottom: '15px' }}>
+                  <input type="text" placeholder="Staff Username" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} required autoComplete="off" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
                 </div>
-                <div className="form-group" style={{ marginBottom: '15px' }}>
-                  <input
-                    type="password"
-                    placeholder="Staff Password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                    style={{ textAlign: 'center' }}
-                  />
+                <div style={{ marginBottom: '25px' }}>
+                  <input type="password" placeholder="Staff Password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required autoComplete="new-password" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
                 </div>
-                {loginError && <div style={{ color: '#ff4444', margin: '10px 0', fontSize: '0.9rem' }}>{loginError}</div>}
-                <button
-                  type="submit"
-                  disabled={isLoggingIn}
-                  style={{
-                    cursor: isLoggingIn ? 'wait' : 'pointer',
-                    opacity: isLoggingIn ? 0.75 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    width: '100%',
-                    padding: '12px',
-                    background: '#ffcc00',
-                    color: '#000',
-                    fontWeight: 'bold',
-                    border: 'none',
-                    borderRadius: '4px',
-                    letterSpacing: '1px'
-                  }}>
-                  {isLoggingIn ? "AUTHENTICATING & CONNECTING..." : "ACCESS SYSTEM"}
+                {loginError && <div style={{ color: 'var(--clr-error)', marginBottom: '15px', fontSize: '0.9rem' }}>{loginError}</div>}
+                <button type="submit" disabled={isLoggingIn} className="btn btn-primary" style={{ width: '100%' }}>
+                  {isLoggingIn ? "Authenticating..." : "Access System"}
                 </button>
-                {isLoggingIn && (
-                  <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ffcc00', marginTop: '10px' }}>
-                    Connecting to database, please wait...
-                  </p>
-                )}
               </form>
             </div>
           ) : (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+              
+              {/* ADMIN HEADER */}
+              <header className="admin-header">
                 <div>
-                  <h2 style={{ margin: 0 }}>Live Reservations Dashboard</h2>
-                  <small style={{ color: '#ffcc00' }}>
+                  <h1>Live Reservations Dashboard</h1>
+                  <div className="admin-user-badge">
                     Logged in as: <strong>{currentUser?.username}</strong> ({currentUser?.role})
-                  </small>
+                  </div>
                 </div>
-                <button onClick={handleLogout} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>
+                <button onClick={handleLogout} className="btn btn-secondary" style={{ borderColor: 'var(--clr-admin-border)', color: 'var(--clr-admin-muted)' }}>
                   Secure Logout
                 </button>
-              </div>
+              </header>
 
-              {/* ADMIN-ONLY PANEL: CREATE NEW STAFF */}
+              {/* ADMIN ONLY: CREATE STAFF */}
               {currentUser?.role === "ADMIN" && (
-                <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '8px', marginBottom: '25px', border: '1px solid #333' }}>
-                  <h3 style={{ marginTop: 0, color: '#ffcc00' }}>Admin Control: Register New Staff Member</h3>
-                  <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    <div style={{ flex: '1', minWidth: '160px' }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Username</label>
-                      <input
-                        type="text"
-                        required
-                        value={newStaffUsername}
-                        onChange={(e) => setNewStaffUsername(e.target.value)}
-                        placeholder="e.g. manager1"
-                      />
+                <div style={{ backgroundColor: 'var(--clr-admin-surface)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid var(--clr-admin-border)' }}>
+                  <h3 style={{ marginTop: 0, color: 'var(--clr-gold)', fontSize: '1.2rem' }}>Admin Control: Register New Staff</h3>
+                  <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-admin-muted)' }}>Username</label>
+                      <input type="text" required value={newStaffUsername} onChange={(e) => setNewStaffUsername(e.target.value)} className="admin-input" style={{ width: '100%' }} />
                     </div>
-                    <div style={{ flex: '1', minWidth: '160px' }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={newStaffPassword}
-                        onChange={(e) => setNewStaffPassword(e.target.value)}
-                        placeholder="Temporary password"
-                      />
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-admin-muted)' }}>Password</label>
+                      <input type="password" required value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} className="admin-input" style={{ width: '100%' }} />
                     </div>
-                    <div style={{ width: '130px' }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Role</label>
-                      <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value)}>
+                    <div style={{ flex: '0 0 150px' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-admin-muted)' }}>Role</label>
+                      <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         <option value="STAFF">STAFF</option>
                         <option value="ADMIN">ADMIN</option>
                       </select>
                     </div>
-                    <button type="submit" className="submit-btn" style={{ padding: '10px 20px', width: 'auto' }}>
-                      CREATE ACCOUNT
-                    </button>
+                    <button type="submit" className="btn btn-primary" style={{ padding: '12px 20px' }}>Create</button>
                   </form>
                   {staffRegMessage && (
-                    <div style={{ marginTop: '10px', fontSize: '0.85rem', color: staffRegMessage.startsWith('Error') ? '#ff4444' : '#00ff88' }}>
+                    <div style={{ marginTop: '15px', fontSize: '0.9rem', color: staffRegMessage.startsWith('Error') ? 'var(--clr-error)' : 'var(--clr-emerald)' }}>
                       {staffRegMessage}
                     </div>
                   )}
                 </div>
               )}
-{/* MASTER NAVIGATION TOOLBAR (MOBILE RESPONSIVE) */}
-<div style={{ backgroundColor: '#181818', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
-          
-          {/* Top Row: Dashboard Toggles, Export, & Walk-Ins */}
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
-              style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Today's Bookings
-            </button>
-            <button
-              onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
-              style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Booking History
-            </button>
-            <button
-              onClick={handleExportCSV}
-              style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              📥 Export CSV
-            </button>
-            
-            {/* ONLY SHOW WALK-IN BUTTON IF THE DASHBOARD IS SET TO 'TODAY' */}
-            {adminDateFilter === new Date().toISOString().split('T')[0] && (
-              <button
-                onClick={() => setShowWalkInModal(true)}
-                style={{ flex: '1 1 calc(50% - 10px)', padding: '12px 10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)' }}
-              >
-                + Seat Walk-In
-              </button>
-            )}
-          </div>
 
-          {/* Middle Row: Filters and Arrows */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '15px', borderBottom: '1px solid #333' }}>
-            
-            {/* Quick Filters (Stretch on mobile) */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: '1 1 100%' }}>
-              <button onClick={() => setAdminDateFilter('ALL')} style={{ flex: '1 1 auto', background: adminDateFilter === 'ALL' ? '#ffcc00' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>All Dates</button>
-              <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} style={{ flex: '1 1 auto', background: adminDateFilter === new Date().toISOString().split('T')[0] ? '#ffcc00' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Today</button>
-              <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} style={{ flex: '1 1 auto', background: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#ffcc00' : '#333', color: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#000' : '#fff', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}>Tomorrow</button>
-            </div>
+              {/* MASTER TOOLBAR */}
+              <div className="admin-toolbar">
+                <div className="toolbar-row">
+                  <div className="toolbar-group">
+                    <button onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Today's Bookings</button>
+                    <button onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
+                  </div>
+                  <div className="toolbar-group">
+                    <button onClick={handleExportCSV} className="btn btn-secondary" style={{ borderColor: 'var(--clr-admin-border)', color: '#fff', background: '#333' }}>📥 Export CSV</button>
+                    {adminDateFilter === new Date().toISOString().split('T')[0] && (
+                      <button onClick={() => setShowWalkInModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 0 15px rgba(15, 77, 58, 0.4)' }}>+ Seat Walk-In</button>
+                    )}
+                  </div>
+                </div>
 
-            {/* Calendar & Arrows (Stretch on mobile) */}
-            <div style={{ display: 'flex', gap: '8px', flex: '1 1 100%', justifyContent: 'center' }}>
-              <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ flex: '0 0 50px', background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '10px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&larr;</button>
-              <input
-                type="date"
-                value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
-                onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')}
-                style={{ flex: '1 1 auto', padding: '10px', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff', outline: 'none', fontWeight: 'bold', cursor: 'pointer', minWidth: '120px', textAlign: 'center' }}
-              />
-              <button type="button" onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} style={{ flex: '0 0 50px', background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '10px', borderRadius: '4px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1, fontSize: '1rem', fontWeight: 'bold' }}>&rarr;</button>
-            </div>
-          </div>
+                <div className="toolbar-row" style={{ borderTop: '1px solid var(--clr-admin-border)', paddingTop: '15px' }}>
+                  <div className="toolbar-group">
+                    <button onClick={() => setAdminDateFilter('ALL')} className="btn-admin-tab" style={{ background: adminDateFilter === 'ALL' ? 'var(--clr-gold)' : '#333', color: adminDateFilter === 'ALL' ? '#000' : '#fff' }}>All Dates</button>
+                    <button onClick={() => setAdminDateFilter(new Date().toISOString().split('T')[0])} className="btn-admin-tab" style={{ background: adminDateFilter === new Date().toISOString().split('T')[0] ? 'var(--clr-gold)' : '#333', color: adminDateFilter === new Date().toISOString().split('T')[0] ? '#000' : '#fff' }}>Today</button>
+                    <button onClick={() => { const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1); setAdminDateFilter(tmrw.toISOString().split('T')[0]); }} className="btn-admin-tab" style={{ background: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? 'var(--clr-gold)' : '#333', color: adminDateFilter === (()=>{const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0]})() ? '#000' : '#fff' }}>Tomorrow</button>
+                  </div>
+                  
+                  <div className="date-picker-group">
+                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', color: 'var(--clr-gold)', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&larr;</button>
+                    <input type="date" value={adminDateFilter === 'ALL' ? '' : adminDateFilter} onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')} className="admin-input" style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }} />
+                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', color: 'var(--clr-gold)', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&rarr;</button>
+                  </div>
+                </div>
 
-          {/* Bottom Row: App-Style Shift Metrics */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px', paddingTop: '15px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 auto', textAlign: 'center', background: '#222', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
-              <span style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>Reservations</span>
-              <strong style={{ display: 'block', color: '#ffcc00', fontSize: '2rem', marginTop: '5px' }}>{displayedBookings.length}</strong>
-            </div>
-            <div style={{ flex: '1 1 auto', textAlign: 'center', background: '#222', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
-              <span style={{ fontSize: '0.9rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>Covers</span>
-              <strong style={{ display: 'block', color: '#ffcc00', fontSize: '2rem', marginTop: '5px' }}>{totalGuests}</strong>
-            </div>
-          </div>
-        </div>
+                <div className="metric-grid">
+                  <div className="metric-tile">
+                    <span className="metric-label">Reservations</span>
+                    <span className="metric-value">{displayedBookings.length}</span>
+                  </div>
+                  <div className="metric-tile">
+                    <span className="metric-label">Covers</span>
+                    <span className="metric-value">{totalGuests}</span>
+                  </div>
+                </div>
+              </div>
 
-              {/* RESERVATIONS DISPLAYED IN DATE BLOCKS */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+              {/* BOOKING CARDS */}
+              <div>
                 {Array.from(new Set(displayedBookings.map(b => b.bookingDate))).sort().map(bookingDate => {
                   const dateBookings = displayedBookings.filter(b => b.bookingDate === bookingDate);
-
                   return (
-                    <div key={bookingDate} style={{ background: '#121212', borderRadius: '10px', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
-                      {/* DATE HEADER BANNER ON TOP */}
-                      <div style={{ background: 'linear-gradient(90deg, #222, #181818)', padding: '12px 20px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#ffcc00' }}>
-                          📅 {new Date(bookingDate + "T00:00:00").toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}
-                        </span>
-                        <span style={{ fontSize: '0.85rem', color: '#888' }}>
-                          {dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}
-                        </span>
+                    <div key={bookingDate}>
+                      <div className="date-group-header">
+                        <span>📅 {new Date(bookingDate + "T00:00:00").toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        <span style={{ color: 'var(--clr-admin-muted)', fontWeight: 'normal' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
                       </div>
-
-
-                      {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
-                        {dateBookings.map(booking => (
-                          <div key={booking.id} style={{ background: booking.status === 'ARRIVED' ? '#143d20' : '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
-
-                            {/* Card Top: Time & Table Tag */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a2a2a', paddingBottom: '8px' }}>
-                              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ffcc00' }}>
-                                ⏰ {booking.bookingTime}
-                              </span>
-                              <span style={{ background: '#2b2304', color: '#ffcc00', border: '1px solid #665200', padding: '3px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                Table {booking.restaurantTable?.tableNumber || "N/A"} ({booking.partySize} Guests)
-                              </span>
-                            </div>
-
-                            {/* Guest Details */}
-                            <div>
-                              <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: '#fff' }}>
-                                {booking.customer?.fullName || "No Name"}
-                              </h4>
-                              <div style={{ fontSize: '0.85rem', color: '#aaa', lineHeight: '1.4' }}>
-                                📞 {booking.customer?.phone || "N/A"} <br />
-                                ✉️ {booking.customer?.email || "N/A"}
-                              </div>
-
-                              {booking.specialRequests && (
-                                <div style={{ marginTop: '8px', padding: '6px 10px', background: '#242424', borderRadius: '4px', fontSize: '0.8rem', color: '#ddd' }}>
-                                  <strong>Guest Note:</strong> {booking.specialRequests}
-                                </div>
-                              )}
-
-                              {/* Compact preview of staff note if one exists */}
-                              {booking.staffNotes && (
-                                <div style={{ marginTop: '6px', padding: '6px 10px', background: '#1c1b12', borderLeft: '3px solid #ffcc00', borderRadius: '2px', fontSize: '0.78rem', color: '#ffea88' }}>
-                                  <strong>Staff Note:</strong> {booking.staffNotes}
-                                </div>
-                              )}
-                            </div>
-
-                           {/* Card Footer: Action Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
-              <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                
-                {/* STATUS BUTTONS: ONLY SHOW IF THE BOOKING IS FOR TODAY */}
-                {booking.bookingDate === new Date().toISOString().split('T')[0] && (
-                  <>
-                    {booking.status !== 'ARRIVED' && (
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')}
-                        style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                      >
-                        Mark Arrived
-                      </button>
-                    )}
-                    
-                    {booking.status !== 'NO_SHOW' && booking.status !== 'ARRIVED' && (
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')}
-                        style={{ background: '#444', color: '#ccc', border: '1px solid #666', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                      >
-                        Did Not Appear
-                      </button>
-                    )}
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(booking)}
-                  style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
-                >
-                  ⚙️ Edit
-                </button>
-              </div>
-            </div>
+                      
+                      {dateBookings.map(booking => (
+                        <div key={booking.id} className={`admin-card ${booking.status === 'ARRIVED' ? 'arrived' : booking.status === 'NO_SHOW' ? 'no-show' : ''}`}>
                           
-
+                          <div className="card-primary-info">
+                            <div className="card-time">{booking.bookingTime}</div>
+                            <div className="card-table-pill">
+                              Table {booking.restaurantTable?.tableNumber || "N/A"} ({booking.partySize} Guests)
+                            </div>
                           </div>
-                        ))}
-                      </div>
+
+                          <div className="card-guest-info" style={{ flex: '1 1 auto' }}>
+                            <h3>{booking.customer?.fullName || "No Name"}</h3>
+                            <p>
+                              <span>📞 {booking.customer?.phone || "N/A"}</span>
+                              <span>✉️ {booking.customer?.email || "N/A"}</span>
+                            </p>
+                            
+                            {(booking.specialRequests || booking.staffNotes) && (
+                              <div className="card-notes">
+                                {booking.specialRequests && <div className="guest-note"><strong>Guest:</strong> {booking.specialRequests}</div>}
+                                {booking.staffNotes && <div className="staff-note"><strong>Staff:</strong> {booking.staffNotes}</div>}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="card-actions">
+                            {booking.bookingDate === new Date().toISOString().split('T')[0] && (
+                              <>
+                                {booking.status !== 'ARRIVED' && (
+                                  <button onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')} className="btn btn-emerald" style={{ padding: '10px 16px', fontSize: '0.85rem' }}>
+                                    Mark Arrived
+                                  </button>
+                                )}
+                                {booking.status !== 'NO_SHOW' && booking.status !== 'ARRIVED' && (
+                                  <button onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 16px', fontSize: '0.85rem', borderColor: '#555', color: '#aaa' }}>
+                                    No Show
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            <button onClick={() => handleOpenEdit(booking)} className="btn btn-primary" style={{ padding: '10px 16px', fontSize: '0.85rem', background: 'transparent', border: '1px solid var(--clr-gold)', color: 'var(--clr-gold)' }}>
+                              ⚙️ Edit
+                            </button>
+                          </div>
+
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
-
                 {displayedBookings.length === 0 && (
-                  <p style={{ textAlign: 'center', marginTop: '30px', color: '#888' }}>No reservations found for this selection.</p>
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--clr-admin-muted)', background: 'var(--clr-admin-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--clr-admin-border)', marginTop: '20px' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '15px', opacity: 0.5 }}>🍽️</div>
+                    <p style={{ fontSize: '1.2rem' }}>No reservations found for this selection.</p>
+                  </div>
                 )}
               </div>
 
-              {/* 1. EDIT RESERVATION POPUP MODAL */}
+              {/* MODALS */}
+              
+              {/* 1. EDIT MODAL */}
               {editModalBooking && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9998 }}>
-                  <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '90%', maxWidth: '500px', color: '#fff', maxHeight: '90vh', overflowY: 'auto' }}>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '15px' }}>
-                      <h3 style={{ margin: 0, color: '#ffcc00' }}>Edit Reservation</h3>
-                      <button
-                        onClick={() => setEditModalBooking(null)}
-                        style={{ background: 'transparent', border: 'none', color: '#aaa', fontSize: '1.2rem', cursor: 'pointer' }}>
-                        ✕
-                      </button>
-                    </div>
-
-                    <p style={{ fontSize: '0.9rem', color: '#ccc', margin: '0 0 15px 0' }}>
-                      Guest: <strong>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})
-                    </p>
-
-                    {/* Change Sitting Time */}
+                <div className="modal-overlay">
+                  <div className="modal-content">
+                    <h3>Edit Reservation</h3>
+                    <p style={{ marginBottom: '20px' }}>Guest: <strong style={{color: '#fff'}}>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})</p>
+                    
                     <div style={{ marginBottom: '15px' }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '5px' }}>
-                        Change Sitting Time:
-                      </label>
-                      <select
-                        value={editModalBooking.bookingTime}
-                        onChange={(e) => handleModalTimeChange(e.target.value)}
-                        style={{ width: '100%', padding: '8px', background: '#252525', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-admin-muted)', marginBottom: '8px' }}>Change Sitting Time:</label>
+                      <select value={editModalBooking.bookingTime} onChange={(e) => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map(slot => (
                           <option key={slot} value={slot}>{slot}</option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Reassign Table */}
-                    <div style={{ marginBottom: '15px' }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '5px' }}>
-                        Reassign Table:
-                      </label>
-                      <select
-                        value={editModalBooking.restaurantTable?.id || ""}
-                        onChange={(e) => handleModalTableChange(e.target.value)}
-                        style={{ width: '100%', padding: '8px', background: '#252525', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
-                        {tables.map(t => (
-                          <option key={t.id} value={t.id}>
-                            Table {t.tableNumber} (Seats {t.capacity})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Staff Internal Notes (Inside Modal Only) */}
-                    <div style={{ marginBottom: '15px', background: '#141414', padding: '12px', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#ffcc00', fontWeight: 'bold', marginBottom: '6px' }}>
-                        📝 STAFF INTERNAL NOTES:
-                      </label>
-                      <textarea
-                        rows="3"
-                        placeholder="Add notes for staff (e.g. VIP guest, anniversary, high chair needed)..."
-                        value={modalNoteText}
-                        onChange={(e) => setModalNoteText(e.target.value)}
-                        style={{ width: '100%', background: '#202020', border: '1px solid #444', color: '#fff', borderRadius: '4px', padding: '8px', fontSize: '0.85rem', resize: 'vertical' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSaveModalNote}
-                        style={{ marginTop: '8px', padding: '6px 14px', background: '#333', color: '#ffcc00', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', float: 'right' }}>
-                        Save Note
-                      </button>
-                      <div style={{ clear: 'both' }}></div>
-                    </div>
-
-                    {/* Bottom Modal Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #333' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const target = editModalBooking;
-                          setEditModalBooking(null);
-                          setCancelModalBooking(target);
-                        }}
-                        style={{ padding: '8px 14px', background: '#3d1212', color: '#ff7777', border: '1px solid #6b2020', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                        Cancel Reservation
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditModalBooking(null)}
-                        style={{ padding: '8px 18px', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                        Done
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
-              )}
-
-              {/* 2. CANCELLATION REASON MODAL (POPUP) */}
-              {cancelModalBooking && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-                  <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '90%', maxWidth: '460px', color: '#fff' }}>
-                    <h3 style={{ marginTop: 0, color: '#ff6666' }}>Cancel Reservation</h3>
-                    <p style={{ fontSize: '0.9rem', color: '#ccc', marginBottom: '15px' }}>
-                      Are you sure you want to cancel the booking for <strong>{cancelModalBooking.customer?.fullName}</strong> on <strong>{cancelModalBooking.bookingDate}</strong> at <strong>{cancelModalBooking.bookingTime}</strong>?
-                    </p>
-
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: '#ffcc00' }}>
-                      Cancellation Reason (sent to guest):
-                    </label>
-                    <select
-                      value={cancelReason}
-                      onChange={(e) => setCancelReason(e.target.value)}
-                      style={{ width: '100%', padding: '8px', background: '#252525', border: '1px solid #444', color: '#fff', borderRadius: '4px', marginBottom: '12px' }}>
-                      <option value="Guest requested cancellation">Guest requested cancellation</option>
-                      <option value="Customer was a no-show">Customer was a no-show</option>
-                      <option value="Operational capacity / kitchen issue">Operational capacity / kitchen issue</option>
-                      <option value="Table double-booking resolved">Table double-booking resolved</option>
-                      <option value="Other">Other (Enter custom reason)</option>
-                    </select>
-
-                    {cancelReason === "Other" && (
-                      <textarea
-                        rows="3"
-                        placeholder="Type cancellation details for the customer..."
-                        value={customReasonText}
-                        onChange={(e) => setCustomReasonText(e.target.value)}
-                        style={{ width: '100%', padding: '8px', background: '#252525', border: '1px solid #444', color: '#fff', borderRadius: '4px', marginBottom: '15px' }}
-                      />
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setCancelModalBooking(null)}
-                        style={{ padding: '8px 16px', background: '#333', color: '#ccc', border: '1px solid #555', borderRadius: '4px', cursor: 'pointer' }}>
-                        Keep Booking
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleConfirmCancellation}
-                        disabled={isProcessing}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#8a1c1c',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: isProcessing ? 'not-allowed' : 'pointer',
-                          fontWeight: 'bold',
-                          opacity: isProcessing ? 0.7 : 1
-                        }}>
-                        {isProcessing ? "Processing..." : "Confirm & Notify Guest"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-             {/* 3. WALK-IN MODAL (POPUP) */}
-             {showWalkInModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-                  <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '350px', maxWidth: '90%' }}>
-                    <h3 style={{ marginTop: 0, color: '#28a745', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Seat Walk-In Guest</h3>
-                    
-                    <div style={{ marginBottom: '15px' }}>
-                      <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Party Size:</label>
-                      <input 
-                        type="number" min="1" max="20" 
-                        value={walkInDetails.partySize} 
-                        onChange={(e) => setWalkInDetails({...walkInDetails, partySize: e.target.value})} 
-                        style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }} 
-                      />
-                    </div>
-
-                    <div style={{ marginBottom: walkInDetails.tableId === 'OTHER' ? '15px' : '25px' }}>
-                      <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Select Available Table:</label>
-                      <select 
-                        value={walkInDetails.tableId} 
-                        onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} 
-                        style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }}
-                      >
-                        <option value="">-- Choose a Table --</option>
-                        <option value="OTHER" style={{ fontWeight: 'bold', color: '#ffcc00' }}>Other / Custom Location</option>
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-admin-muted)', marginBottom: '8px' }}>Reassign Table:</label>
+                      <select value={editModalBooking.restaurantTable?.id || ""} onChange={(e) => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         {tables.map(t => (
                           <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                         ))}
                       </select>
                     </div>
 
-                    {/* DYNAMIC TEXT BOX: ONLY SHOWS IF 'OTHER' IS SELECTED */}
-                    {walkInDetails.tableId === 'OTHER' && (
-                      <div style={{ marginBottom: '25px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', color: '#ffcc00', fontSize: '0.85rem', fontWeight: 'bold' }}>Specify Location (e.g. Bar, Patio, Extra Chair):</label>
-                        <input 
-                          type="text" 
-                          placeholder="Where are they seated?"
-                          value={walkInDetails.customLocation} 
-                          onChange={(e) => setWalkInDetails({...walkInDetails, customLocation: e.target.value})} 
-                          style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ffcc00', background: '#222', color: '#fff', boxSizing: 'border-box' }} 
-                        />
-                      </div>
-                    )}
+                    <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--clr-admin-border)' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-gold)', fontWeight: 'bold', marginBottom: '8px' }}>📝 STAFF INTERNAL NOTES:</label>
+                      <textarea rows="3" value={modalNoteText} onChange={(e) => setModalNoteText(e.target.value)} className="admin-input" style={{ width: '100%', resize: 'vertical', marginBottom: '10px' }} placeholder="Add notes for staff..." />
+                      <button type="button" onClick={handleSaveModalNote} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', borderColor: 'var(--clr-admin-border)', color: 'var(--clr-gold)', float: 'right' }}>Save Note</button>
+                      <div style={{ clear: 'both' }}></div>
+                    </div>
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={handleSeatWalkIn} style={{ flex: 1, padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Seat Now</button>
-                      <button onClick={() => { setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); }} style={{ flex: 1, padding: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+                    <div className="modal-actions" style={{ justifyContent: 'space-between', borderTop: '1px solid var(--clr-admin-border)', paddingTop: '20px', marginTop: '20px' }}>
+                      <button type="button" onClick={() => { const target = editModalBooking; setEditModalBooking(null); setCancelModalBooking(target); }} className="btn" style={{ background: 'rgba(179, 64, 47, 0.1)', color: 'var(--clr-error)', border: '1px solid var(--clr-error)' }}>Cancel Booking</button>
+                      <button type="button" onClick={() => setEditModalBooking(null)} className="btn btn-primary">Done</button>
                     </div>
                   </div>
                 </div>
               )}
 
-            </>
+              {/* 2. CANCEL REASON MODAL */}
+              {cancelModalBooking && (
+                <div className="modal-overlay">
+                  <div className="modal-content">
+                    <h3 style={{ color: 'var(--clr-error)' }}>Cancel Reservation</h3>
+                    <p style={{ marginBottom: '20px', lineHeight: '1.5' }}>
+                      Are you sure you want to cancel the booking for <strong style={{color: '#fff'}}>{cancelModalBooking.customer?.fullName}</strong> on <strong style={{color: '#fff'}}>{cancelModalBooking.bookingDate}</strong> at <strong style={{color: '#fff'}}>{cancelModalBooking.bookingTime}</strong>?
+                    </p>
+                    
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '8px', color: 'var(--clr-gold)' }}>Cancellation Reason (sent to guest):</label>
+                    <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '15px' }}>
+                      <option value="Guest requested cancellation">Guest requested cancellation</option>
+                      <option value="Customer was a no-show">Customer was a no-show</option>
+                      <option value="Operational capacity / kitchen issue">Operational capacity / kitchen issue</option>
+                      <option value="Table double-booking resolved">Table double-booking resolved</option>
+                      <option value="Other">Other (Enter custom reason)</option>
+                    </select>
+                    
+                    {cancelReason === "Other" && (
+                      <textarea rows="3" placeholder="Type cancellation details..." value={customReasonText} onChange={(e) => setCustomReasonText(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '15px' }} />
+                    )}
+                    
+                    <div className="modal-actions" style={{ justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={() => setCancelModalBooking(null)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-admin-border)' }}>Keep Booking</button>
+                      <button type="button" onClick={handleConfirmCancellation} disabled={isProcessing} className="btn" style={{ background: 'var(--clr-error)', color: '#fff' }}>
+                        {isProcessing ? "Processing..." : "Confirm & Notify"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. WALK-IN MODAL */}
+              {showWalkInModal && (
+                <div className="modal-overlay">
+                  <div className="modal-content" style={{ maxWidth: '400px' }}>
+                    <h3 style={{ color: 'var(--clr-emerald)' }}>Seat Walk-In Guest</h3>
+                    
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-admin-muted)', fontSize: '0.85rem' }}>Party Size:</label>
+                      <input type="number" min="1" max="20" value={walkInDetails.partySize} onChange={(e) => setWalkInDetails({...walkInDetails, partySize: e.target.value})} className="admin-input" style={{ width: '100%' }} />
+                    </div>
+                    
+                    <div style={{ marginBottom: walkInDetails.tableId === 'OTHER' ? '15px' : '25px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-admin-muted)', fontSize: '0.85rem' }}>Select Table:</label>
+                      <select value={walkInDetails.tableId} onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} className="admin-input" style={{ width: '100%' }}>
+                        <option value="">-- Choose a Table --</option>
+                        <option value="OTHER" style={{ fontWeight: 'bold', color: 'var(--clr-gold)' }}>Other / Custom Location</option>
+                        {tables.map(t => (
+                          <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {walkInDetails.tableId === 'OTHER' && (
+                      <div style={{ marginBottom: '25px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-gold)', fontSize: '0.85rem' }}>Specify Location (e.g. Bar):</label>
+                        <input type="text" placeholder="Where are they seated?" value={walkInDetails.customLocation} onChange={(e) => setWalkInDetails({...walkInDetails, customLocation: e.target.value})} className="admin-input" style={{ width: '100%', borderColor: 'var(--clr-gold)' }} />
+                      </div>
+                    )}
+
+                    <div className="modal-actions">
+                      <button onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1 }}>Seat Now</button>
+                      <button onClick={() => { setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); }} className="btn btn-secondary" style={{ flex: 1, borderColor: 'var(--clr-admin-border)' }}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
           )}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
