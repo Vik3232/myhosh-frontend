@@ -82,7 +82,7 @@ function App() {
 
   // --- NEW: WALK-IN STATE ---
   const [showWalkInModal, setShowWalkInModal] = useState(false);
-  const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '' });
+  const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '', customLocation: '' });
 
   // --- UPDATED: SMART STATUS HANDLER ---
   const handleUpdateStatus = async (id, newStatus) => {
@@ -101,16 +101,27 @@ function App() {
   // --- NEW: INSTANT WALK-IN FUNCTION ---
   const handleSeatWalkIn = async () => {
     if (!walkInDetails.tableId) {
-      alert("Please select a table to seat the walk-in.");
+      alert("Please select a table or 'Other' to seat the walk-in.");
       return;
     }
+    
+    let finalTableId = walkInDetails.tableId;
+    let guestName = "Walk-In Guest";
+
+    // If they chose 'OTHER', we bypass the strict table selection
+    if (finalTableId === 'OTHER') {
+      if (tables.length === 0) return;
+      finalTableId = tables[0].id; // Fallback to first table ID to satisfy backend requirements
+      guestName = `Walk-In Guest (Location: ${walkInDetails.customLocation || 'Other'})`;
+    }
+
     const now = new Date();
     
     const newBooking = {
-      customer: { fullName: "Walk-In Guest", email: "walkin@myhosh.local", phone: "N/A" },
-      restaurantTable: { id: parseInt(walkInDetails.tableId) },
+      customer: { fullName: guestName, email: "walkin@myhosh.local", phone: "N/A" },
+      restaurantTable: { id: parseInt(finalTableId) },
       bookingDate: now.toISOString().split('T')[0],
-      bookingTime: now.toTimeString().split(' ')[0].substring(0, 5),
+      bookingTime: now.toTimeString().split(' ')[0].substring(0, 5), // Uses exact minute to bypass overlap blocker
       partySize: parseInt(walkInDetails.partySize),
       status: "ARRIVED"
     };
@@ -123,6 +134,7 @@ function App() {
       });
       if (response.ok) {
         setShowWalkInModal(false);
+        setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); // Clear for next time
         fetchBookings();
       } else {
         alert("That table is currently occupied! Please select another.");
@@ -1101,8 +1113,8 @@ function App() {
                 </div>
               )}
 
-              {/* 3. WALK-IN MODAL (POPUP) */}
-              {showWalkInModal && (
+             {/* 3. WALK-IN MODAL (POPUP) */}
+             {showWalkInModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
                   <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '350px', maxWidth: '90%' }}>
                     <h3 style={{ marginTop: 0, color: '#28a745', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Seat Walk-In Guest</h3>
@@ -1117,7 +1129,7 @@ function App() {
                       />
                     </div>
 
-                    <div style={{ marginBottom: '25px' }}>
+                    <div style={{ marginBottom: walkInDetails.tableId === 'OTHER' ? '15px' : '25px' }}>
                       <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Select Available Table:</label>
                       <select 
                         value={walkInDetails.tableId} 
@@ -1125,15 +1137,30 @@ function App() {
                         style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }}
                       >
                         <option value="">-- Choose a Table --</option>
+                        <option value="OTHER" style={{ fontWeight: 'bold', color: '#ffcc00' }}>Other / Custom Location</option>
                         {tables.map(t => (
                           <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                         ))}
                       </select>
                     </div>
 
+                    {/* DYNAMIC TEXT BOX: ONLY SHOWS IF 'OTHER' IS SELECTED */}
+                    {walkInDetails.tableId === 'OTHER' && (
+                      <div style={{ marginBottom: '25px' }}>
+                        <label style={{ display: 'block', marginBottom: '5px', color: '#ffcc00', fontSize: '0.85rem', fontWeight: 'bold' }}>Specify Location (e.g. Bar, Patio, Extra Chair):</label>
+                        <input 
+                          type="text" 
+                          placeholder="Where are they seated?"
+                          value={walkInDetails.customLocation} 
+                          onChange={(e) => setWalkInDetails({...walkInDetails, customLocation: e.target.value})} 
+                          style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ffcc00', background: '#222', color: '#fff', boxSizing: 'border-box' }} 
+                        />
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={handleSeatWalkIn} style={{ flex: 1, padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Seat Now</button>
-                      <button onClick={() => setShowWalkInModal(false)} style={{ flex: 1, padding: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+                      <button onClick={() => { setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); }} style={{ flex: 1, padding: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
                     </div>
                   </div>
                 </div>
