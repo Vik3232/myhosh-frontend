@@ -27,8 +27,15 @@ function App() {
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
 
-  // --- STAFF AUTHENTICATION STATES ---
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  
+  // --- NEW: SECURE PASSWORD LOCK ---
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('myhosh_auth') === 'true';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('myhosh_auth', isAuthenticated);
+  }, [isAuthenticated]);
   const [currentUser, setCurrentUser] = useState(null) // stores { id, username, role }
   const [loginUsername, setLoginUsername] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
