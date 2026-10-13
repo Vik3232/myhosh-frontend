@@ -80,18 +80,55 @@ function App() {
     fetchBookings();
   }, [view, isSuccess, viewMode]);
 
-  const handleMarkArrived = async (id) => {
+  // --- NEW: WALK-IN STATE ---
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '' });
+
+  // --- UPDATED: SMART STATUS HANDLER ---
+  const handleUpdateStatus = async (id, newStatus) => {
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ARRIVED' })
+        body: JSON.stringify({ status: newStatus })
       });
-      if (response.ok) {
-        fetchBookings();
-      }
+      if (response.ok) fetchBookings();
     } catch (error) {
       console.error('Error updating status:', error);
+    }
+  };
+
+  // --- NEW: INSTANT WALK-IN FUNCTION ---
+  const handleSeatWalkIn = async () => {
+    if (!walkInDetails.tableId) {
+      alert("Please select a table to seat the walk-in.");
+      return;
+    }
+    const now = new Date();
+    
+    const newBooking = {
+      customer: { fullName: "Walk-In Guest", email: "walkin@myhosh.local", phone: "N/A" },
+      restaurantTable: { id: parseInt(walkInDetails.tableId) },
+      bookingDate: now.toISOString().split('T')[0],
+      bookingTime: now.toTimeString().split(' ')[0].substring(0, 5),
+      partySize: parseInt(walkInDetails.partySize),
+      status: "ARRIVED"
+    };
+
+    try {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking)
+      });
+      if (response.ok) {
+        setShowWalkInModal(false);
+        fetchBookings();
+      } else {
+        alert("That table is currently occupied! Please select another.");
+      }
+    } catch (error) {
+      console.error("Walk-in error", error);
     }
   };
   // --- BOOKING SUBMISSION LOGIC ---
@@ -737,19 +774,28 @@ function App() {
 {/* MASTER NAVIGATION TOOLBAR */}
 <div style={{ backgroundColor: '#181818', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
           
-          {/* Top Row: Dashboard Toggles */}
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+{/* Top Row: Dashboard Toggles & Walk-Ins */}
+<div style={{ display: 'flex', gap: '10px', marginBottom: '15px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
+                style={{ padding: '8px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                Today's Bookings
+              </button>
+              <button
+                onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
+                style={{ padding: '8px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                Booking History
+              </button>
+            </div>
+            
             <button
-              onClick={() => { setViewMode('today'); setAdminDateFilter(new Date().toISOString().split('T')[0]); }}
-              style={{ padding: '8px 18px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+              onClick={() => setShowWalkInModal(true)}
+              style={{ padding: '8px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 0 10px rgba(40, 167, 69, 0.3)' }}
             >
-              Today's Bookings
-            </button>
-            <button
-              onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }}
-              style={{ padding: '8px 18px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Booking History
+              + Seat Walk-In
             </button>
           </div>
 
@@ -846,28 +892,46 @@ function App() {
                               )}
                             </div>
 
-                            {/* Card Footer: Action Buttons */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
-                              <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
-                              <div style={{ display: 'flex', gap: '10px' }}>
-                                {booking.status !== 'ARRIVED' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkArrived(booking.id)}
-                                    style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
-                                  >
-                                    Mark Arrived
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(booking)}
-                                  style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
-                                >
-                                  ⚙️ Edit Reservation
-                                </button>
-                              </div>
-                            </div>
+                           {/* Card Footer: Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
+              <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                
+                {/* STATUS BUTTONS: ONLY SHOW IF THE BOOKING IS FOR TODAY */}
+                {booking.bookingDate === new Date().toISOString().split('T')[0] && (
+                  <>
+                    {booking.status !== 'ARRIVED' && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')}
+                        style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                      >
+                        Mark Arrived
+                      </button>
+                    )}
+                    
+                    {booking.status !== 'NO_SHOW' && booking.status !== 'ARRIVED' && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')}
+                        style={{ background: '#444', color: '#ccc', border: '1px solid #666', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                      >
+                        Did Not Appear
+                      </button>
+                    )}
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(booking)}
+                  style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}
+                >
+                  ⚙️ Edit
+                </button>
+              </div>
+            </div>
+                          
 
                           </div>
                         ))}
@@ -1037,6 +1101,43 @@ function App() {
                 </div>
               )}
 
+              {/* 3. WALK-IN MODAL (POPUP) */}
+              {showWalkInModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+                  <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '350px', maxWidth: '90%' }}>
+                    <h3 style={{ marginTop: 0, color: '#28a745', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Seat Walk-In Guest</h3>
+                    
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Party Size:</label>
+                      <input 
+                        type="number" min="1" max="20" 
+                        value={walkInDetails.partySize} 
+                        onChange={(e) => setWalkInDetails({...walkInDetails, partySize: e.target.value})} 
+                        style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }} 
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '25px' }}>
+                      <label style={{ display: 'block', marginBottom: '5px', color: '#ccc', fontSize: '0.85rem' }}>Select Available Table:</label>
+                      <select 
+                        value={walkInDetails.tableId} 
+                        onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} 
+                        style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #444', background: '#333', color: '#fff', boxSizing: 'border-box' }}
+                      >
+                        <option value="">-- Choose a Table --</option>
+                        {tables.map(t => (
+                          <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button onClick={handleSeatWalkIn} style={{ flex: 1, padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Seat Now</button>
+                      <button onClick={() => setShowWalkInModal(false)} style={{ flex: 1, padding: '10px', background: '#444', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </>
           )}
