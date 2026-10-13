@@ -3,7 +3,7 @@ import './App.css'
 
 function App() {
   // --- STATE VARIABLES ---
-  const [view, setView] = useState("customer") 
+  const [view, setView] = useState("customer")
   const [tables, setTables] = useState([])
   const [allBookings, setAllBookings] = useState([])
 
@@ -18,60 +18,68 @@ function App() {
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
 
- // --- STAFF AUTHENTICATION STATES ---
- const [isAuthenticated, setIsAuthenticated] = useState(false)
- const [currentUser, setCurrentUser] = useState(null) // stores { id, username, role }
- const [loginUsername, setLoginUsername] = useState("")
- const [loginPassword, setLoginPassword] = useState("")
- const [loginError, setLoginError] = useState("")
+  // --- STAFF AUTHENTICATION STATES ---
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null) // stores { id, username, role }
+  const [loginUsername, setLoginUsername] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState("")
 
- // --- NEW STAFF REGISTRATION STATES (ADMIN ONLY) ---
- const [newStaffUsername, setNewStaffUsername] = useState("")
- const [newStaffPassword, setNewStaffPassword] = useState("")
- const [newStaffRole, setNewStaffRole] = useState("STAFF")
- const [staffRegMessage, setStaffRegMessage] = useState("")
- const [adminDateFilter, setAdminDateFilter] = useState("ALL")
- // --- CANCELLATION MODAL & NOTES STATES ---
- const [cancelModalBooking, setCancelModalBooking] = useState(null);
- const [isProcessing, setIsProcessing] = useState(false);
+  // --- NEW STAFF REGISTRATION STATES (ADMIN ONLY) ---
+  const [newStaffUsername, setNewStaffUsername] = useState("")
+  const [newStaffPassword, setNewStaffPassword] = useState("")
+  const [newStaffRole, setNewStaffRole] = useState("STAFF")
+  const [staffRegMessage, setStaffRegMessage] = useState("")
+  const [adminDateFilter, setAdminDateFilter] = useState("ALL")
+  // --- CANCELLATION MODAL & NOTES STATES ---
+  const [cancelModalBooking, setCancelModalBooking] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
   const [modalNoteText, setModalNoteText] = useState("");
- const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
- const [customReasonText, setCustomReasonText] = useState("");
- const [activeNotes, setActiveNotes] = useState({});
- const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [cancelReason, setCancelReason] = useState("Guest requested cancellation");
+  const [customReasonText, setCustomReasonText] = useState("");
+  const [activeNotes, setActiveNotes] = useState({});
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [editingBookingId, setEditingBookingId] = useState(null); // stores which card is in edit mode
   const [viewMode, setViewMode] = useState('today');
 
   // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
-  const minDate = today.toISOString().split('T')[0]; 
+  const minDate = today.toISOString().split('T')[0];
   const futureDate = new Date(today);
   futureDate.setMonth(today.getMonth() + 3);
-  const maxDate = futureDate.toISOString().split('T')[0]; 
+  const maxDate = futureDate.toISOString().split('T')[0];
 
   // --- DATA FETCHING ---
+ 
+    // DATA FETCHING
+  useEffect(() => {
+    // 1. RESTORED: Fetch Tables so the dropdown works perfectly again!
+    fetch('https://myhosh-backend.onrender.com/api/tables')
+      .then(response => response.json())
+      .then(data => setTables(data))
+      .catch(err => console.error("Error fetching tables:", err));
+  }, []);
+
   const fetchBookings = async () => {
     try {
-      const endpoint = viewMode === 'today' ? '/api/bookings/today' : '/api/bookings/history';
+      // 2. FIXED: Fetch all active bookings normally so the customer overlap logic works. 
+      // Only fetch 'history' if the owner clicks the History tab.
+      const endpoint = viewMode === 'history' ? '/api/bookings/history' : '/api/bookings';
       const response = await fetch(`https://myhosh-backend.onrender.com${endpoint}`);
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data)) {
-          setAllBookings(data);
-        } else {
-          setAllBookings([]);
-        }
+        setAllBookings(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
     }
   };
- 
+
   useEffect(() => {
     fetchBookings();
   }, [view, isSuccess, viewMode]);
- 
+
   const handleMarkArrived = async (id) => {
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${id}/status`, {
@@ -91,37 +99,37 @@ function App() {
     e.preventDefault();
 
     const selectedDateObj = new Date(date);
-    const dayOfWeek = selectedDateObj.getDay(); 
-    const selectedTime = time; 
+    const dayOfWeek = selectedDateObj.getDay();
+    const selectedTime = time;
 
     // 1. Basic Business Hours Checks
     if (dayOfWeek === 2) {
       setIsSuccess(false);
       setMessage("We are closed on Tuesdays. Please select another day.");
-      return; 
+      return;
     }
 
-    let minTime = "16:00"; 
-    let maxTime = "21:00"; 
+    let minTime = "16:00";
+    let maxTime = "21:00";
 
-    if (dayOfWeek === 0 || dayOfWeek === 6) { 
-      minTime = "12:00"; 
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      minTime = "12:00";
     }
-    if (dayOfWeek === 0) { 
-      maxTime = "20:45"; 
+    if (dayOfWeek === 0) {
+      maxTime = "20:45";
     }
 
     if (selectedTime < minTime || selectedTime > maxTime) {
       setIsSuccess(false);
       setMessage(`For the selected day, please choose a time between ${minTime} and ${maxTime}.`);
-      return; 
+      return;
     }
 
     if (date === minDate) {
       const currentHour = today.getHours().toString().padStart(2, '0');
       const currentMinute = today.getMinutes().toString().padStart(2, '0');
       const currentTimeStr = `${currentHour}:${currentMinute}`;
-      
+
       if (currentTimeStr >= minTime) {
         setIsSuccess(false);
         setMessage(`Online reservations for today closed at ${minTime}. Please call the restaurant directly for walk-in availability.`);
@@ -131,7 +139,7 @@ function App() {
 
     // 2. COMMERCIAL FEATURE: STRICT LIVE ANTI-SPAM PHONE BLOCK
     setMessage("Verifying availability...");
-    
+
     try {
       const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
       if (!liveResponse.ok) throw new Error("Network response was not OK");
@@ -149,13 +157,13 @@ function App() {
       if (phoneAlreadyBooked) {
         setIsSuccess(false);
         setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date.");
-        return; 
+        return;
       }
     } catch (err) {
       console.error("Anti-spam security check failed to complete:", err);
       setIsSuccess(false);
       setMessage("System verification timeout. Please click submit again.");
-      return; 
+      return;
     }
 
     // 3. Process the Actual Booking
@@ -170,14 +178,14 @@ function App() {
       partySize: parseInt(partySize),
       specialRequests: requests
     };
-    
+
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBooking)
       });
-      
+
       if (response.ok) {
         setIsSuccess(true);
         setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
@@ -198,8 +206,8 @@ function App() {
   // --- REFINED SMART TABLE FILTERING LOGIC ---
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
-    
-    if (numGuests > 20) return false; 
+
+    if (numGuests > 20) return false;
     if (numGuests >= 11) return table.tableNumber === 5;
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
     if (numGuests >= 7) return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5 || table.tableNumber === 7;
@@ -209,22 +217,22 @@ function App() {
 
     if (date && time) {
       const selectedStart = new Date(`${date}T${time}`);
-      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000); 
+      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000);
 
       for (let booking of allBookings) {
         if (booking.bookingDate === date && booking.restaurantTable?.id === table.id) {
           const bookingTimeParts = booking.bookingTime.split(':');
           const existingStart = new Date(`${date}T${bookingTimeParts[0]}:${bookingTimeParts[1]}`);
           const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
-          
+
           if (selectedStart < existingEnd && selectedEnd > existingStart) {
-            return false; 
+            return false;
           }
         }
       }
     }
 
-    return true; 
+    return true;
   });
 
   // --- PREVENT GHOST STATE GLITCH ---
@@ -235,10 +243,10 @@ function App() {
         setSelectedTable(availableTables[0].id.toString());
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tables, partySize, date, time]); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables, partySize, date, time]);
 
- 
+
   // --- STAFF SECURITY GATEWAY LOGIC (BACKEND INTEGRATED) ---
   const handleAdminLogin = async (e) => {
     e.preventDefault();
@@ -266,7 +274,7 @@ function App() {
       setIsLoggingIn(false);
     }
   };
-   
+
 
 
   const handleCreateStaff = async (e) => {
@@ -322,35 +330,35 @@ function App() {
     }
   };
 
- // --- CONFIRM CANCEL WITH REASON ---
- const handleConfirmCancellation = async () => {
-  if (!cancelModalBooking) return;
-  const finalReason = cancelReason === "Other" ? customReasonText : cancelReason;
+  // --- CONFIRM CANCEL WITH REASON ---
+  const handleConfirmCancellation = async () => {
+    if (!cancelModalBooking) return;
+    const finalReason = cancelReason === "Other" ? customReasonText : cancelReason;
 
-  setIsProcessing(true); // Locks the UI and shows "Processing..."
+    setIsProcessing(true); // Locks the UI and shows "Processing..."
 
-  try {
-    const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${cancelModalBooking.id}/cancel`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: finalReason })
-    });
+    try {
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${cancelModalBooking.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: finalReason })
+      });
 
-    if (response.ok) {
-      setAllBookings(prev => prev.filter(b => b.id !== cancelModalBooking.id));
-      alert(`Reservation cancelled. Customer notified with reason: "${finalReason}"`);
-      setCancelModalBooking(null);
-      setCustomReasonText("");
-    } else {
-      alert("Failed to process cancellation.");
+      if (response.ok) {
+        setAllBookings(prev => prev.filter(b => b.id !== cancelModalBooking.id));
+        alert(`Reservation cancelled. Customer notified with reason: "${finalReason}"`);
+        setCancelModalBooking(null);
+        setCustomReasonText("");
+      } else {
+        alert("Failed to process cancellation.");
+      }
+    } catch (err) {
+      console.error("Cancel error:", err);
+      alert("Network error processing cancellation.");
+    } finally {
+      setIsProcessing(false); // Unlocks the UI when finished
     }
-  } catch (err) {
-    console.error("Cancel error:", err);
-    alert("Network error processing cancellation.");
-  } finally {
-    setIsProcessing(false); // Unlocks the UI when finished
-  }
-};
+  };
 
   // --- REASSIGN TABLE (STAFF & ADMIN) ---
   const handleReassignTable = async (bookingId, newTableId) => {
@@ -472,7 +480,7 @@ function App() {
       alert("Network error reassigning table.");
     }
   };
-  
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
@@ -530,10 +538,10 @@ function App() {
                 <label>Phone Number</label>
                 <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
-              
+
               <div className="form-group">
                 <label>Select Table</label>
-                
+
                 {availableTables.length === 0 ? (
                   <div style={{ padding: '10px', backgroundColor: '#333', color: '#ffcc00', borderRadius: '5px', fontSize: '0.9rem' }}>
                     No tables available for this time/party size online. Please try another time or call us directly!
@@ -541,7 +549,7 @@ function App() {
                 ) : (
                   <select value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
                     {availableTables.map(table => {
-                      let locationText = " - Main Restaurant"; 
+                      let locationText = " - Main Restaurant";
                       if (table.tableNumber === 1 || table.tableNumber === 5) {
                         locationText = " - Window Seat";
                       } else if (table.tableNumber === 13) {
@@ -555,9 +563,9 @@ function App() {
                     })}
                   </select>
                 )}
-                
+
                 {tables.find(t => t.id === parseInt(selectedTable))?.tableNumber === 13 && availableTables.length > 0 && (
-                  <small style={{color: '#ffcc00', marginTop: '5px', display: 'block', fontWeight: 'bold'}}>
+                  <small style={{ color: '#ffcc00', marginTop: '5px', display: 'block', fontWeight: 'bold' }}>
                     *Note: This table is located directly next to the Chef's Grill.
                   </small>
                 )}
@@ -585,18 +593,18 @@ function App() {
             </div>
 
             {availableTables.length > 0 && (
-            <button
-              type="submit"
-              className="submit-btn"
-              disabled={isProcessing}
-              style={{
-                cursor: isProcessing ? 'not-allowed' : 'pointer',
-                opacity: isProcessing ? 0.7 : 1,
-                letterSpacing: '1px'
-              }}>
-              {isProcessing ? "PROCESSING RESERVATION..." : "BOOK TABLE"}
-            </button>
-          )}
+              <button
+                type="submit"
+                className="submit-btn"
+                disabled={isProcessing}
+                style={{
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  opacity: isProcessing ? 0.7 : 1,
+                  letterSpacing: '1px'
+                }}>
+                {isProcessing ? "PROCESSING RESERVATION..." : "BOOK TABLE"}
+              </button>
+            )}
           </form>
 
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
@@ -618,11 +626,11 @@ function App() {
               <h2>Staff Gateway</h2>
               <p style={{ color: '#888', marginBottom: '20px' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
-              <div className="form-group" style={{ marginBottom: '15px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Staff Username" 
-                    value={loginUsername} 
+                <div className="form-group" style={{ marginBottom: '15px' }}>
+                  <input
+                    type="text"
+                    placeholder="Staff Username"
+                    value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
                     required
                     autoComplete="off"
@@ -630,10 +638,10 @@ function App() {
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: '15px' }}>
-                  <input 
-                    type="password" 
-                    placeholder="Staff Password" 
-                    value={loginPassword} 
+                  <input
+                    type="password"
+                    placeholder="Staff Password"
+                    value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                     autoComplete="new-password"
@@ -641,10 +649,10 @@ function App() {
                   />
                 </div>
                 {loginError && <div style={{ color: '#ff4444', margin: '10px 0', fontSize: '0.9rem' }}>{loginError}</div>}
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isLoggingIn}
-                  style={{ 
+                  style={{
                     cursor: isLoggingIn ? 'wait' : 'pointer',
                     opacity: isLoggingIn ? 0.75 : 1,
                     display: 'flex',
@@ -671,7 +679,7 @@ function App() {
             </div>
           ) : (
             <>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
                 <div>
                   <h2 style={{ margin: 0 }}>Live Reservations Dashboard</h2>
                   <small style={{ color: '#ffcc00' }}>
@@ -690,21 +698,21 @@ function App() {
                   <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={{ flex: '1', minWidth: '160px' }}>
                       <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Username</label>
-                      <input 
-                        type="text" 
-                        required 
-                        value={newStaffUsername} 
-                        onChange={(e) => setNewStaffUsername(e.target.value)} 
+                      <input
+                        type="text"
+                        required
+                        value={newStaffUsername}
+                        onChange={(e) => setNewStaffUsername(e.target.value)}
                         placeholder="e.g. manager1"
                       />
                     </div>
                     <div style={{ flex: '1', minWidth: '160px' }}>
                       <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '4px' }}>Password</label>
-                      <input 
-                        type="password" 
-                        required 
-                        value={newStaffPassword} 
-                        onChange={(e) => setNewStaffPassword(e.target.value)} 
+                      <input
+                        type="password"
+                        required
+                        value={newStaffPassword}
+                        onChange={(e) => setNewStaffPassword(e.target.value)}
                         placeholder="Temporary password"
                       />
                     </div>
@@ -728,44 +736,44 @@ function App() {
               )}
 
               {/* VIEW TOGGLE BUTTONS */}
- <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-   <button
-     onClick={() => setViewMode('today')}
-     style={{ padding: '10px 20px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-   >
-     Today's Bookings
-   </button>
-   <button
-     onClick={() => setViewMode('history')}
-     style={{ padding: '10px 20px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-   >
-     Booking History
-   </button>
- </div>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <button
+                  onClick={() => setViewMode('today')}
+                  style={{ padding: '10px 20px', background: viewMode === 'today' ? '#ffcc00' : '#333', color: viewMode === 'today' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  Today's Bookings
+                </button>
+                <button
+                  onClick={() => setViewMode('history')}
+                  style={{ padding: '10px 20px', background: viewMode === 'history' ? '#ffcc00' : '#333', color: viewMode === 'history' ? '#000' : '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  Booking History
+                </button>
+              </div>
 
               {/* FILTER TOOLBAR & SHIFT METRICS */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', backgroundColor: '#181818', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #2a2a2a' }}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.85rem', color: '#aaa', fontWeight: 'bold' }}>FILTER SERVICE:</span>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setAdminDateFilter("ALL")}
                     style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === "ALL" ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === "ALL" ? '#000' : '#fff', fontWeight: 'bold' }}>
                     All Dates
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setAdminDateFilter(todayStr)}
                     style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === todayStr ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === todayStr ? '#000' : '#fff', fontWeight: 'bold' }}>
                     Today
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setAdminDateFilter(tomorrowStr)}
                     style={{ padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: adminDateFilter === tomorrowStr ? '#ffcc00' : '#2b2b2b', color: adminDateFilter === tomorrowStr ? '#000' : '#fff', fontWeight: 'bold' }}>
                     Tomorrow
                   </button>
-                  <input 
+                  <input
                     type="date"
                     value={adminDateFilter === "ALL" ? "" : adminDateFilter}
                     onChange={(e) => setAdminDateFilter(e.target.value || "ALL")}
@@ -777,8 +785,8 @@ function App() {
                   <div>Expected Covers: <strong style={{ color: '#ffcc00' }}>{totalGuests}</strong></div>
                 </div>
               </div>
-             
-                  {/* RESERVATIONS DISPLAYED IN DATE BLOCKS */}
+
+              {/* RESERVATIONS DISPLAYED IN DATE BLOCKS */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                 {Array.from(new Set(displayedBookings.map(b => b.bookingDate))).sort().map(bookingDate => {
                   const dateBookings = displayedBookings.filter(b => b.bookingDate === bookingDate);
@@ -794,13 +802,13 @@ function App() {
                           {dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}
                         </span>
                       </div>
-                    
 
-                     {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
-                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
+
+                      {/* BOOKING CARDS GRID (CLEAN & FIXED SIZE) */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '15px', padding: '15px' }}>
                         {dateBookings.map(booking => (
                           <div key={booking.id} style={{ background: booking.status === 'ARRIVED' ? '#143d20' : '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' }}>
-                            
+
                             {/* Card Top: Time & Table Tag */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a2a2a', paddingBottom: '8px' }}>
                               <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ffcc00' }}>
@@ -835,24 +843,27 @@ function App() {
                               )}
                             </div>
 
-                            {/* Card Footer: Edit Button Only (No Screen Expansion) */}
+                            {/* Card Footer: Action Buttons */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #2a2a2a' }}>
                               <span style={{ fontSize: '0.75rem', color: '#666' }}>ID #{booking.id}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(booking)}
-                                style={{
-                                  background: '#2b2b2b',
-                                  color: '#ffcc00',
-                                  border: '1px solid #444',
-                                  padding: '6px 14px',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8rem',
-                                  fontWeight: 'bold'
-                                }}>
-                                ⚙️ Edit Reservation
-                              </button>
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                {booking.status !== 'ARRIVED' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkArrived(booking.id)}
+                                    style={{ background: '#28a745', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                  >
+                                    Mark Arrived
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(booking)}
+                                  style={{ background: '#2b2b2b', color: '#ffcc00', border: '1px solid #444', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                >
+                                  ⚙️ Edit Reservation
+                                </button>
+                              </div>
                             </div>
 
                           </div>
@@ -871,10 +882,10 @@ function App() {
               {editModalBooking && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9998 }}>
                   <div style={{ background: '#1c1c1c', border: '1px solid #444', borderRadius: '10px', padding: '25px', width: '90%', maxWidth: '500px', color: '#fff', maxHeight: '90vh', overflowY: 'auto' }}>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '10px', marginBottom: '15px' }}>
                       <h3 style={{ margin: 0, color: '#ffcc00' }}>Edit Reservation</h3>
-                      <button 
+                      <button
                         onClick={() => setEditModalBooking(null)}
                         style={{ background: 'transparent', border: 'none', color: '#aaa', fontSize: '1.2rem', cursor: 'pointer' }}>
                         ✕
@@ -1003,21 +1014,21 @@ function App() {
                         Keep Booking
                       </button>
                       <button
-                type="button"
-                onClick={handleConfirmCancellation}
-                disabled={isProcessing}
-                style={{ 
-                  padding: '8px 16px', 
-                  background: '#8a1c1c', 
-                  color: '#fff', 
-                  border: 'none', 
-                  borderRadius: '4px', 
-                  cursor: isProcessing ? 'not-allowed' : 'pointer', 
-                  fontWeight: 'bold',
-                  opacity: isProcessing ? 0.7 : 1 
-                }}>
-                {isProcessing ? "Processing..." : "Confirm & Notify Guest"}
-              </button>
+                        type="button"
+                        onClick={handleConfirmCancellation}
+                        disabled={isProcessing}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#8a1c1c',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: isProcessing ? 'not-allowed' : 'pointer',
+                          fontWeight: 'bold',
+                          opacity: isProcessing ? 0.7 : 1
+                        }}>
+                        {isProcessing ? "Processing..." : "Confirm & Notify Guest"}
+                      </button>
                     </div>
                   </div>
                 </div>
