@@ -106,6 +106,10 @@ function App() {
   // --- WALK-IN STATE & LOGIC ---
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '', customLocation: '' });
+  const [showStaffBookingModal, setShowStaffBookingModal] = useState(false);
+  const [staffBookingData, setStaffBookingData] = useState({
+    fullName: "", email: "", phone: "", date: minDate, time: "19:00", partySize: 2, tableId: "", customLocation: "", requests: ""
+  });
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
@@ -182,6 +186,59 @@ function App() {
     }
   };
 
+  // --- NEW: STAFF MANUAL BOOKING SUBMISSION ---
+  const handleStaffAddBooking = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+
+    let finalTableId = staffBookingData.tableId;
+    let guestName = staffBookingData.fullName;
+
+    if (finalTableId === 'OTHER') {
+      if (tables.length === 0) return;
+      finalTableId = tables[0].id;
+      guestName = `${staffBookingData.fullName} (Loc: ${staffBookingData.customLocation || 'Other'})`;
+    } else if (!finalTableId) {
+      alert("Please select a table to assign this booking.");
+      setIsProcessing(false);
+      return;
+    }
+
+    const newBooking = {
+      customer: {
+        fullName: guestName,
+        email: staffBookingData.email || "staff-booking@myhosh.local",
+        phone: staffBookingData.phone || "N/A"
+      },
+      restaurantTable: { id: parseInt(finalTableId) },
+      bookingDate: staffBookingData.date,
+      bookingTime: staffBookingData.time + ":00",
+      partySize: parseInt(staffBookingData.partySize),
+      specialRequests: staffBookingData.requests
+    };
+
+    try {
+      const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking)
+      });
+      if (response.ok) {
+        setShowStaffBookingModal(false);
+        setStaffBookingData({ fullName: "", email: "", phone: "", date: minDate, time: "19:00", partySize: 2, tableId: "", customLocation: "", requests: "" });
+        fetchBookings();
+        alert("Reservation manually added to the system.");
+      } else {
+        const errorText = await response.text();
+        alert(`Failed to add booking: ${errorText}`);
+      }
+    } catch (error) {
+      alert("Network error. Could not connect to server.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleExportCSV = () => {
     if (displayedBookings.length === 0) {
       alert("No bookings to export for this view.");
@@ -202,7 +259,6 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // --- BOOKING SUBMISSION LOGIC ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     const selectedDateObj = new Date(date);
@@ -227,6 +283,12 @@ function App() {
         setIsSuccess(false); setMessage(`Online reservations for today closed at ${minTime}. Please call the restaurant directly for walk-in availability.`); return;
       }
     }
+
+    if (availableTables.length === 0) {
+      setIsSuccess(false);
+      setMessage("We are currently fully booked for this time and party size. Please select another time or call us directly.");
+      return;
+    }
     
     setMessage("Verifying availability...");
     try {
@@ -244,17 +306,30 @@ function App() {
         setIsSuccess(false); setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date."); return;
       }
     } catch (err) {
-      console.error("Anti-spam security check failed to complete:", err);
       setIsSuccess(false); setMessage("System verification timeout. Please click submit again."); return;
     }
 
     setMessage("Processing reservation...");
     setIsProcessing(true);
+
+    // DYNAMIC TABLE ASSIGNMENT: Auto-assign on Fri (5) and Sat (6), otherwise use user selection
+    let finalTableId;
+    if (dayOfWeek === 5 || dayOfWeek === 6) {
+      const optimalTable = availableTables.sort((a, b) => a.capacity - b.capacity)[0];
+      finalTableId = optimalTable.id;
+    } else {
+      finalTableId = parseInt(selectedTable);
+    }
+
     const newBooking = {
       customer: { fullName, email, phone },
-      restaurantTable: { id: parseInt(selectedTable) },
-      bookingDate: date, bookingTime: time + ":00", partySize: parseInt(partySize), specialRequests: requests
+      restaurantTable: { id: finalTableId },
+      bookingDate: date, 
+      bookingTime: time + ":00", 
+      partySize: parseInt(partySize), 
+      specialRequests: requests
     };
+
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBooking)
@@ -272,7 +347,8 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  };
+   
+  
 
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
@@ -655,6 +731,48 @@ function App() {
                         <label>Phone Number</label>
                         <input type="tel" className="form-input" required value={phone} onChange={(e) => setPhone(e.target.value)} />
                       </div>
+                      
+                      {/* DYNAMIC TABLE SELECTION: Hides on Friday (5) and Saturday (6) */}
+                      {date && (new Date(date).getDay() === 5 || new Date(date).getDay() === 6) ? (
+                        <div className="form-group full-width">
+                          <div style={{ padding: '14px', backgroundColor: 'var(--clr-marble)', color: 'var(--clr-emerald-dark)', border: '1px solid rgba(27,26,23,0.1)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem' }}>
+                            <strong>Weekend Auto-Seating:</strong> For Fridays and Saturdays, our system automatically assigns the best available table for your party to minimize wait times.
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="form-group full-width">
+                          <label>Select Table</label>
+                          {availableTables.length === 0 ? (
+                            <div style={{ padding: '14px', backgroundColor: 'rgba(179, 64, 47, 0.1)', color: 'var(--clr-error)', border: '1px solid var(--clr-error)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem' }}>
+                              No tables available for this time/party size online. Please try another time or call us directly!
+                            </div>
+                          ) : (
+                            <select className="form-input" value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
+                              {availableTables.map(table => {
+                                let locationText = " - Main Restaurant";
+                                if (table.tableNumber === 1 || table.tableNumber === 5) locationText = " - Window Seat";
+                                else if (table.tableNumber === 13) locationText = " - Chef's Grill";
+                                return (
+                                  <option key={table.id} value={table.id}>
+                                    Table {table.tableNumber} (Up to {table.capacity}){locationText}
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          )}
+                          {tables.find(t => t.id === parseInt(selectedTable))?.tableNumber === 13 && availableTables.length > 0 && !(new Date(date).getDay() === 5 || new Date(date).getDay() === 6) && (
+                            <small style={{ color: 'var(--clr-gold)', marginTop: '8px', fontWeight: 'bold' }}>
+                              *Note: This table is located directly next to the Chef's Grill.
+                            </small>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="form-group">
+                        <label>Date</label>
+                        <input type="date" className="form-input" required min={minDate} max={maxDate} value={date} onChange={(e) => setDate(e.target.value)} />
+                      </div>
+
                       <div className="form-group full-width">
                         <label>Select Table</label>
                         {availableTables.length === 0 ? (
@@ -1052,6 +1170,7 @@ function App() {
       )}
     </>
   )
+}
 }
 
 export default App
