@@ -595,6 +595,28 @@ function App() {
       {view === "customer" ? (
         <div className="booking-panel">
           <h2>Reserve a Table</h2>
+          {isSuccess ? (
+            <div style={{ textAlign: 'center', padding: '50px 20px', background: '#181818', borderRadius: '12px', border: '1px solid #28a745', marginTop: '30px', boxShadow: '0 4px 15px rgba(40, 167, 69, 0.1)' }}>
+              <div style={{ fontSize: '4rem', marginBottom: '15px' }}>✅</div>
+              <h2 style={{ color: '#28a745', marginBottom: '15px', letterSpacing: '1px' }}>Reservation Confirmed</h2>
+              <p style={{ color: '#ccc', fontSize: '1.1rem', marginBottom: '10px', lineHeight: '1.6' }}>
+                Thank you for booking with <strong>MyHosh</strong>.
+              </p>
+              <p style={{ color: '#aaa', fontSize: '0.95rem', marginBottom: '30px' }}>
+                We have successfully secured your table and sent a confirmation email to your inbox. We look forward to hosting you!
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSuccess(false);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                style={{ padding: '12px 28px', background: '#ffcc00', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}
+              >
+                Book Another Table
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleBookingSubmit}>
             <div className="flex-row">
               <div className="form-group">
@@ -680,6 +702,7 @@ function App() {
  </button>
  )}
           </form>
+          )}
 
           {message && <div className={`message-box ${isSuccess ? 'success' : 'error'}`}>{message}</div>}
 
