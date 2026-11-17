@@ -19,12 +19,12 @@ function App() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  // Customer no longer needs to see selectedTable, but we still use it internally for edge cases
   const [selectedTable, setSelectedTable] = useState("1")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
   const [partySize, setPartySize] = useState(2)
   const [requests, setRequests] = useState("")
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   
   // --- UI STATES ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -78,6 +78,44 @@ function App() {
   const futureDate = new Date(today);
   futureDate.setMonth(today.getMonth() + 3);
   const maxDate = futureDate.toISOString().split('T')[0];
+
+  // --- 15-MINUTE TIME SLOT GENERATOR ---
+  const generate15MinSlots = (startStr, endStr) => {
+    const slots = [];
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+    let currentMins = startH * 60 + startM;
+    const endMins = endH * 60 + endM;
+
+    while (currentMins <= endMins) {
+      const h = String(Math.floor(currentMins / 60)).padStart(2, '0');
+      const m = String(currentMins % 60).padStart(2, '0');
+      slots.push(`${h}:${m}`);
+      currentMins += 15;
+    }
+    return slots;
+  };
+
+  const customerDayOfWeek = date ? new Date(date + "T00:00:00").getDay() : -1;
+  // Friday (5) and Saturday (6) use auto-seating; Sun, Mon, Wed, Thu allow manual table choice
+  const isWeekendAutoSeating = customerDayOfWeek === 5 || customerDayOfWeek === 6;
+
+  const getCustomerTimeSlots = () => {
+    if (!date) return generate15MinSlots("12:00", "21:00");
+    if (customerDayOfWeek === 2) return []; // Closed Tuesdays
+    if (customerDayOfWeek === 6) return generate15MinSlots("12:00", "21:00"); // Saturday
+    if (customerDayOfWeek === 0) return generate15MinSlots("12:00", "20:45"); // Sunday
+    return generate15MinSlots("16:00", "21:00"); // Mon, Wed, Thu, Fri
+  };
+
+  const customerTimeSlots = getCustomerTimeSlots();
+
+  // Reset selected time if user switches date to a day where that time is invalid
+  useEffect(() => {
+    if (date && time && !customerTimeSlots.includes(time)) {
+      setTime("");
+    }
+  }, [date]);
 
   // --- DATA FETCHING ---
   useEffect(() => {
@@ -283,14 +321,20 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // --- SMART TABLE FILTERING LOGIC (STAYS THE SAME FOR AUTO-ASSIGN) ---
+  // --- SMART TABLE FILTERING LOGIC ---
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
     if (numGuests > 20) return false;
     if (numGuests >= 11) return table.tableNumber === 5;
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
     if (numGuests >= 7) return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5 || table.tableNumber === 7;
-    if (numGuests <= 2 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
+    
+    // Window Tables 1 & 5 require 4 or more guests
+    if (numGuests < 4 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
+    
+    // 1-person bookings can ONLY book Tables 8, 9, or 10
+    if (numGuests === 1 && ![8, 9, 10].includes(table.tableNumber)) return false;
+
     if (table.tableNumber === 4) return false;
     if (table.capacity < numGuests) return false;
     if (date && time) {
@@ -308,9 +352,25 @@ function App() {
     return true;
   });
 
-  // --- CUSTOMER ONLINE SUBMISSION (NOW AUTO-ASSIGNS TABLES) ---
+  // Keep selectedTable synced with availableTables for weekday manual selection
+  useEffect(() => {
+    if (availableTables.length > 0) {
+      const exists = availableTables.some(t => String(t.id) === String(selectedTable));
+      if (!exists) {
+        setSelectedTable(String(availableTables[0].id));
+      }
+    }
+  }, [date, time, partySize, allBookings, tables]);
+
+  // --- CUSTOMER ONLINE SUBMISSION ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      setIsSuccess(false);
+      setMessage("Please accept the 2-hour table policy in the Terms & Conditions.");
+      return;
+    }
+
     const selectedDateObj = new Date(date + "T00:00:00");
     const dayOfWeek = selectedDateObj.getDay();
     const selectedTime = time;
@@ -363,8 +423,13 @@ function App() {
     setMessage("Processing reservation...");
     setIsProcessing(true);
 
-    // AUTO-ASSIGN: Pick the most efficient table available for the customer's party size
-    const optimalTable = availableTables.sort((a, b) => a.capacity - b.capacity)[0];
+    // Fri & Sat auto-assigns best-fit table; Sun, Mon, Wed, Thu uses customer's manual selection
+    const sortedTables = [...availableTables].sort((a, b) => a.capacity - b.capacity);
+    let optimalTable = sortedTables[0];
+    if (!isWeekendAutoSeating && selectedTable) {
+      const manualChoice = availableTables.find(t => String(t.id) === String(selectedTable));
+      if (manualChoice) optimalTable = manualChoice;
+    }
 
     const newBooking = {
       customer: { fullName, email, phone },
@@ -379,7 +444,7 @@ function App() {
       if (response.ok) {
         setIsSuccess(true);
         setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
-        setFullName(""); setEmail(""); setPhone(""); setRequests("");
+        setFullName(""); setEmail(""); setPhone(""); setRequests(""); setAcceptedTerms(false);
       } else {
         const errorText = await response.text();
         setIsSuccess(false); setMessage(errorText || "Failed to secure reservation. Please try another time.");
@@ -691,7 +756,7 @@ function App() {
             <h2>From the Charcoal Grill</h2>
           </section>
 
-          {/* BOOKING SECTION (AUTO-TABLE ASSIGNMENT) */}
+          {/* BOOKING SECTION */}
           <section id="reserve" className="booking-section">
             <div className="text-center" style={{ marginBottom: '40px' }}>
               <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
@@ -737,7 +802,6 @@ function App() {
                         <label>Phone Number</label>
                         <input type="tel" className="form-input" required value={phone} onChange={(e) => setPhone(e.target.value)} />
                       </div>
-                      {/* TABLE SELECTION HIDDEN FOR CUSTOMERS - IT NOW AUTO-ASSIGNS */}
                       
                       <div className="form-group">
                         <label>Date</label>
@@ -745,15 +809,74 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label>Time</label>
-                        <input type="time" className="form-input" required value={time} onChange={(e) => setTime(e.target.value)} />
+                        <select
+                          className="form-input"
+                          required
+                          value={time}
+                          onChange={(e) => setTime(e.target.value)}
+                          disabled={customerDayOfWeek === 2}
+                        >
+                          <option value="">
+                            {customerDayOfWeek === 2 ? "Closed on Tuesdays" : "Select Time"}
+                          </option>
+                          {customerTimeSlots.map((slot) => (
+                            <option key={slot} value={slot}>
+                              {slot}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div className="form-group full-width">
                         <label>Guests</label>
                         <input type="number" className="form-input" min="1" max="25" required value={partySize} onChange={(e) => setPartySize(e.target.value)} />
                       </div>
+
+                      {/* WEEKDAY MANUAL TABLE SELECTION (SUN, MON, WED, THU) VS WEEKEND AUTO-ASSIGN (FRI, SAT) */}
+                      {date && customerDayOfWeek !== 2 && (
+                        <div className="form-group full-width">
+                          <label>Select Table</label>
+                          {isWeekendAutoSeating ? (
+                            <div style={{ padding: '10px 14px', backgroundColor: 'rgba(15, 77, 58, 0.08)', border: '1px solid var(--clr-emerald)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', color: 'var(--clr-charcoal)' }}>
+                              Friday & Saturday Peak Service: Your best available table will be assigned automatically.
+                            </div>
+                          ) : availableTables.length > 0 ? (
+                            <select
+                              className="form-input"
+                              value={selectedTable}
+                              onChange={(e) => setSelectedTable(e.target.value)}
+                              required
+                            >
+                              {availableTables.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  Table {t.tableNumber} (Seats up to {t.capacity})
+                                  {t.tableNumber === 1 || t.tableNumber === 5 ? " — Window Table (4+ Guests)" : ""}
+                                  {t.tableNumber === 13 ? " — Next to Chef's Grill" : ""}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
+                        </div>
+                      )}
+
                       <div className="form-group full-width">
                         <label>Special Requests</label>
                         <textarea className="form-input" rows="2" value={requests} onChange={(e) => setRequests(e.target.value)} placeholder="Anniversary, allergies, high chair..."/>
+                      </div>
+
+                      {/* 2-HOUR TABLE RULE TERMS & CONDITIONS */}
+                      <div className="form-group full-width" style={{ marginTop: '5px' }}>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--clr-charcoal)', cursor: 'pointer', fontWeight: 'normal' }}>
+                          <input
+                            type="checkbox"
+                            required
+                            checked={acceptedTerms}
+                            onChange={(e) => setAcceptedTerms(e.target.checked)}
+                            style={{ marginTop: '3px' }}
+                          />
+                          <span>
+                            <strong>Terms & Conditions:</strong> I understand all reservations are allocated for a strict <strong>2-hour table sitting</strong> and tables are held for 15 minutes past the booking time.
+                          </span>
+                        </label>
                       </div>
                     </div>
 
@@ -1083,8 +1206,8 @@ function App() {
                     
                     <div style={{ marginBottom: '15px' }}>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-emerald-dark)', marginBottom: '8px', fontWeight: 'bold' }}>Change Sitting Time:</label>
-                      <select value={editModalBooking.bookingTime} onChange={(e) => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                        {["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "20:45", "21:00", "21:30", "22:00"].map(slot => (
+                      <select value={(editModalBooking.bookingTime || "").slice(0, 5)} onChange={(e) => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+                        {generate15MinSlots("12:00", "22:00").map(slot => (
                           <option key={slot} value={slot}>{slot}</option>
                         ))}
                       </select>
