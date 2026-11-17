@@ -182,6 +182,20 @@ function App() {
   // --- NEW: STAFF MANUAL BOOKING SUBMISSION ---
   const handleStaffAddBooking = async (e) => {
     e.preventDefault();
+
+    const staffDayOfWeek = new Date(staffBookingData.date + "T00:00:00").getDay();
+    if (staffDayOfWeek === 2) {
+      alert("We are closed on Tuesdays. Please select another day.");
+      return;
+    }
+    let minTime = "16:00"; let maxTime = "21:00";
+    if (staffDayOfWeek === 0 || staffDayOfWeek === 6) { minTime = "12:00"; }
+    if (staffDayOfWeek === 0) { maxTime = "20:45"; }
+    if (staffBookingData.time < minTime || staffBookingData.time > maxTime) {
+      alert(`Reservations for this day must be between ${minTime} and ${maxTime}.`);
+      return;
+    }
+
     setIsProcessing(true);
 
     let finalTableId = staffBookingData.tableId;
@@ -232,6 +246,16 @@ function App() {
     }
   };
 
+  // --- SEC-03: CSV FORMULA INJECTION SANITIZATION ---
+  const sanitizeCSVCell = (value) => {
+    if (value === null || value === undefined) return '""';
+    let str = String(value);
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = "'" + str;
+    }
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
   const handleExportCSV = () => {
     if (displayedBookings.length === 0) {
       alert("No bookings to export for this view.");
@@ -239,8 +263,15 @@ function App() {
     }
     const headers = ["ID", "Guest Name", "Email", "Phone", "Date", "Time", "Party Size", "Table", "Status"];
     const rows = displayedBookings.map(b => [
-      b.id, `"${b.customer?.fullName || 'Walk-In Guest'}"`, `"${b.customer?.email || 'N/A'}"`, `"${b.customer?.phone || 'N/A'}"`,
-      b.bookingDate, b.bookingTime, b.partySize, b.restaurantTable?.tableNumber || "Other", b.status
+      sanitizeCSVCell(b.id),
+      sanitizeCSVCell(b.customer?.fullName || 'Walk-In Guest'),
+      sanitizeCSVCell(b.customer?.email || 'N/A'),
+      sanitizeCSVCell(b.customer?.phone || 'N/A'),
+      sanitizeCSVCell(b.bookingDate),
+      sanitizeCSVCell(b.bookingTime),
+      sanitizeCSVCell(b.partySize),
+      sanitizeCSVCell(b.restaurantTable?.tableNumber || "Other"),
+      sanitizeCSVCell(b.status)
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -280,7 +311,7 @@ function App() {
   // --- CUSTOMER ONLINE SUBMISSION (NOW AUTO-ASSIGNS TABLES) ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
-    const selectedDateObj = new Date(date);
+    const selectedDateObj = new Date(date + "T00:00:00");
     const dayOfWeek = selectedDateObj.getDay();
     const selectedTime = time;
     
@@ -884,9 +915,9 @@ function App() {
                   </div>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 100%', justifyContent: 'center' }}>
-                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&larr;</button>
+                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter + "T00:00:00"); d.setDate(d.getDate() - 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&larr;</button>
                     <input type="date" value={adminDateFilter === 'ALL' ? '' : adminDateFilter} onChange={(e) => setAdminDateFilter(e.target.value || 'ALL')} className="admin-input" style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }} />
-                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&rarr;</button>
+                    <button onClick={() => { if(adminDateFilter !== 'ALL') { const d = new Date(adminDateFilter + "T00:00:00"); d.setDate(d.getDate() + 1); setAdminDateFilter(d.toISOString().split('T')[0]); } }} className="admin-input" style={{ padding: '12px 15px', cursor: adminDateFilter === 'ALL' ? 'not-allowed' : 'pointer', opacity: adminDateFilter === 'ALL' ? 0.5 : 1 }}>&rarr;</button>
                   </div>
                 </div>
 
@@ -1053,7 +1084,7 @@ function App() {
                     <div style={{ marginBottom: '15px' }}>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-emerald-dark)', marginBottom: '8px', fontWeight: 'bold' }}>Change Sitting Time:</label>
                       <select value={editModalBooking.bookingTime} onChange={(e) => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                        {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map(slot => (
+                        {["12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "20:45", "21:00", "21:30", "22:00"].map(slot => (
                           <option key={slot} value={slot}>{slot}</option>
                         ))}
                       </select>
