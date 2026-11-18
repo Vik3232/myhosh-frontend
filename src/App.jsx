@@ -3,8 +3,6 @@ import './App.css'
 
 function App() {
   // --- STATE VARIABLES ---
-  
-  // --- SECURE SESSION LOCK ---
   const [view, setView] = useState(() => {
     return sessionStorage.getItem('myhosh_session') || 'customer';
   });
@@ -16,6 +14,10 @@ function App() {
   const [allBookings, setAllBookings] = useState([])
   const [message, setMessage] = useState("")
   const [isSuccess, setIsSuccess] = useState(false)
+  
+  // Booking Reference State
+  const [bookingRef, setBookingRef] = useState("")
+
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
@@ -26,12 +28,10 @@ function App() {
   const [requests, setRequests] = useState("")
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   
-  // --- UI STATES ---
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const clientPhoneNumber = "+44 7853404534"; // Confirm with client
+  const clientPhoneNumber = "+44 7853404534"; 
 
-  // --- SECURE PASSWORD & IDENTITY LOCK ---
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return sessionStorage.getItem('myhosh_auth') === 'true';
   });
@@ -55,14 +55,12 @@ function App() {
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
   
-  // --- STAFF REGISTRATION & DASHBOARD STATES ---
   const [newStaffUsername, setNewStaffUsername] = useState("")
   const [newStaffPassword, setNewStaffPassword] = useState("")
   const [newStaffRole, setNewStaffRole] = useState("STAFF")
   const [staffRegMessage, setStaffRegMessage] = useState("")
   const [adminDateFilter, setAdminDateFilter] = useState(new Date().toISOString().split('T')[0]);
   
-  // --- MODAL & NOTES STATES ---
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
@@ -72,14 +70,12 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewMode, setViewMode] = useState('today');
 
-  // --- BUSINESS RULES VARIABLES ---
   const today = new Date();
   const minDate = today.toISOString().split('T')[0];
   const futureDate = new Date(today);
   futureDate.setMonth(today.getMonth() + 3);
   const maxDate = futureDate.toISOString().split('T')[0];
 
-  // --- 15-MINUTE TIME SLOT GENERATOR ---
   const generate15MinSlots = (startStr, endStr) => {
     const slots = [];
     const [startH, startM] = startStr.split(':').map(Number);
@@ -97,27 +93,24 @@ function App() {
   };
 
   const customerDayOfWeek = date ? new Date(date + "T00:00:00").getDay() : -1;
-  // Friday (5) and Saturday (6) use auto-seating; Sun, Mon, Wed, Thu allow manual table choice
   const isWeekendAutoSeating = customerDayOfWeek === 5 || customerDayOfWeek === 6;
 
   const getCustomerTimeSlots = () => {
     if (!date) return generate15MinSlots("12:00", "21:00");
-    if (customerDayOfWeek === 2) return []; // Closed Tuesdays
-    if (customerDayOfWeek === 6) return generate15MinSlots("12:00", "21:00"); // Saturday
-    if (customerDayOfWeek === 0) return generate15MinSlots("12:00", "20:45"); // Sunday
-    return generate15MinSlots("16:00", "21:00"); // Mon, Wed, Thu, Fri
+    if (customerDayOfWeek === 2) return []; 
+    if (customerDayOfWeek === 6) return generate15MinSlots("12:00", "21:00"); 
+    if (customerDayOfWeek === 0) return generate15MinSlots("12:00", "20:45"); 
+    return generate15MinSlots("16:00", "21:00"); 
   };
 
   const customerTimeSlots = getCustomerTimeSlots();
 
-  // Reset selected time if user switches date to a day where that time is invalid
   useEffect(() => {
     if (date && time && !customerTimeSlots.includes(time)) {
       setTime("");
     }
   }, [date]);
 
-  // --- M3 ZERO-TRUST STAFF TOKEN HEADER HELPER ---
   const getStaffHeaders = (includeJson = true) => {
     const headers = {};
     if (includeJson) headers['Content-Type'] = 'application/json';
@@ -125,7 +118,6 @@ function App() {
     return headers;
   };
 
-  // --- DATA FETCHING ---
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/tables')
       .then(response => response.json())
@@ -154,7 +146,6 @@ function App() {
     fetchBookings();
   }, [view, isSuccess, viewMode, currentUser]);
 
-  // --- STAFF MODAL STATES ---
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '', customLocation: '' });
   
@@ -229,7 +220,6 @@ function App() {
     } catch (error) { console.error("Walk-in error", error); }
   };
 
-  // --- NEW: STAFF MANUAL BOOKING SUBMISSION ---
   const handleStaffAddBooking = async (e) => {
     e.preventDefault();
 
@@ -296,7 +286,6 @@ function App() {
     }
   };
 
-  // --- SEC-03: CSV FORMULA INJECTION SANITIZATION ---
   const sanitizeCSVCell = (value) => {
     if (value === null || value === undefined) return '""';
     let str = String(value);
@@ -333,7 +322,6 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // --- SMART TABLE FILTERING LOGIC ---
   const availableTables = tables.filter(table => {
     const numGuests = parseInt(partySize) || 2;
     if (numGuests > 20) return false;
@@ -341,14 +329,11 @@ function App() {
     if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
     if (numGuests >= 7) return table.tableNumber === 1 || table.tableNumber === 2 || table.tableNumber === 5 || table.tableNumber === 7;
     
-    // Window Tables 1 & 5 require 4 or more guests
     if (numGuests < 4 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
-    
-    // 1-person bookings can ONLY book Tables 8, 9, or 10
     if (numGuests === 1 && ![8, 9, 10].includes(table.tableNumber)) return false;
-
     if (table.tableNumber === 4) return false;
     if (table.capacity < numGuests) return false;
+    
     if (date && time) {
       const selectedStart = new Date(`${date}T${time}`);
       const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000);
@@ -364,7 +349,6 @@ function App() {
     return true;
   });
 
-  // Keep selectedTable synced with availableTables for weekday manual selection
   useEffect(() => {
     if (availableTables.length > 0) {
       const exists = availableTables.some(t => String(t.id) === String(selectedTable));
@@ -374,12 +358,23 @@ function App() {
     }
   }, [date, time, partySize, allBookings, tables]);
 
-  // --- CUSTOMER ONLINE SUBMISSION ---
+  // Check if currently selected customer table is Table 13
+  const selectedTableObj = availableTables.find(t => String(t.id) === String(selectedTable));
+
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     if (!acceptedTerms) {
       setIsSuccess(false);
-      setMessage("Please accept the 2-hour table policy in the Terms & Conditions.");
+      setMessage("Please accept the Terms & Conditions to proceed.");
+      return;
+    }
+
+    // STRICT UK PHONE VALIDATION
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const ukPhoneRegex = /^(?:\+44|0)7\d{9}$/;
+    if (!ukPhoneRegex.test(cleanPhone)) {
+      setIsSuccess(false);
+      setMessage("Please enter a valid UK mobile number (e.g. 07123456789).");
       return;
     }
 
@@ -415,7 +410,6 @@ function App() {
     setMessage("Processing reservation...");
     setIsProcessing(true);
 
-    // Fri & Sat auto-assigns best-fit table; Sun, Mon, Wed, Thu uses customer's manual selection
     const sortedTables = [...availableTables].sort((a, b) => a.capacity - b.capacity);
     let optimalTable = sortedTables[0];
     if (!isWeekendAutoSeating && selectedTable) {
@@ -424,7 +418,7 @@ function App() {
     }
 
     const newBooking = {
-      customer: { fullName, email, phone },
+      customer: { fullName, email: email || null, phone: cleanPhone },
       restaurantTable: { id: optimalTable.id },
       bookingDate: date, bookingTime: time + ":00", partySize: parseInt(partySize), specialRequests: requests
     };
@@ -434,6 +428,8 @@ function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBooking)
       });
       if (response.ok) {
+        const savedBooking = await response.json();
+        setBookingRef("MH-" + String(savedBooking.id).padStart(4, '0'));
         setIsSuccess(true);
         setMessage(`Reservation Confirmed for ${fullName}. We look forward to hosting you.`);
         setFullName(""); setEmail(""); setPhone(""); setRequests(""); setAcceptedTerms(false);
@@ -448,7 +444,6 @@ function App() {
     }
   };
 
-  // --- STAFF SECURITY GATEWAY ---
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setIsLoggingIn(true);
@@ -580,7 +575,10 @@ function App() {
   });
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
 
-  // --- UI RENDER ---
+  // Active tables excluding offline Table 4 for Staff Modals
+  const activeStaffTables = tables.filter(t => t.tableNumber !== 4);
+  const floorPlanDate = adminDateFilter === "ALL" ? minDate : adminDateFilter;
+
   return (
     <>
       {/* GLOBAL HEADER */}
@@ -619,7 +617,6 @@ function App() {
         </button>
       </header>
 
-      {/* MOBILE DROPDOWN MENU */}
       {isMobileMenuOpen && (
         <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
           {view === 'customer' && (
@@ -649,7 +646,6 @@ function App() {
       {view === "customer" ? (
         <div className="customer-view">
           
-          {/* HERO */}
           <section className="hero-section">
             <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
             <div className="hero-overlay"></div>
@@ -663,7 +659,6 @@ function App() {
             </div>
           </section>
 
-          {/* FEATURE STRIP */}
           <section className="feature-strip">
             <div className="feature-item">
               <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path><path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path></svg>
@@ -682,7 +677,6 @@ function App() {
             </div>
           </section>
 
-          {/* MENU HIGHLIGHTS */}
           <section id="menu" className="menu-section">
             <div className="menu-section-header">
               <h2>Signature Dishes</h2>
@@ -738,7 +732,6 @@ function App() {
             </div>
           </section>
 
-          {/* OUR SPACE */}
           <section id="space" className="space-section">
             <div className="arch-image-container">
               <img src="/images/interior.webp" alt="MyHosh Interior" className="arch-mask" loading="lazy" />
@@ -750,14 +743,12 @@ function App() {
             </div>
           </section>
 
-          {/* GRILL BAND */}
           <section className="image-band">
             <img src="/images/charcoal-grill.webp" alt="Charcoal Grill" loading="lazy" />
             <div className="overlay"></div>
             <h2>From the Charcoal Grill</h2>
           </section>
 
-          {/* BOOKING SECTION */}
           <section id="reserve" className="booking-section">
             <div className="text-center" style={{ marginBottom: '40px' }}>
               <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
@@ -778,13 +769,27 @@ function App() {
                   <div className="success-screen fade-in">
                     <div className="success-icon" style={{ fontSize: '4rem' }}>✅</div>
                     <h2>Reservation Confirmed</h2>
+                    
+                    <div style={{ background: 'rgba(15, 77, 58, 0.08)', border: '2px dashed var(--clr-emerald)', padding: '20px', margin: '20px 0', borderRadius: '8px' }}>
+                      <p style={{ margin: '0 0 5px 0', color: 'var(--clr-grey)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Your Booking Reference</p>
+                      <h3 style={{ color: 'var(--clr-emerald)', margin: 0, fontSize: '2.2rem', letterSpacing: '2px' }}>{bookingRef}</h3>
+                    </div>
+
                     <p style={{ color: 'var(--clr-grey)', fontSize: '1.1rem', marginBottom: '15px' }}>
                       Thank you for booking with <strong>MyHosh</strong>.
                     </p>
-                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.95rem', marginBottom: '30px' }}>
-                      We have successfully secured your table and sent a confirmation email to your inbox. We look forward to hosting you!
-                    </p>
-                    <button type="button" onClick={() => setIsSuccess(false)} className="btn btn-primary">
+                    
+                    {email ? (
+                      <p style={{ color: 'var(--clr-grey)', fontSize: '0.95rem', marginBottom: '30px' }}>
+                        We have securely reserved your table and sent a confirmation email to <strong>{email}</strong>.
+                      </p>
+                    ) : (
+                      <p style={{ color: 'var(--clr-grey)', fontSize: '0.95rem', marginBottom: '30px' }}>
+                        <strong>Please take a screenshot of your Booking Reference above.</strong> Just show it to our staff when you arrive.
+                      </p>
+                    )}
+                    
+                    <button type="button" onClick={() => { setIsSuccess(false); setBookingRef(""); }} className="btn btn-primary">
                       Book Another Table
                     </button>
                   </div>
@@ -796,12 +801,12 @@ function App() {
                         <input type="text" className="form-input" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
                       </div>
                       <div className="form-group">
-                        <label>Email</label>
-                        <input type="email" className="form-input" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <label>Email (Optional)</label>
+                        <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For email confirmation" />
                       </div>
                       <div className="form-group">
-                        <label>Phone Number</label>
-                        <input type="tel" className="form-input" required value={phone} onChange={(e) => setPhone(e.target.value)} />
+                        <label>UK Mobile Number *</label>
+                        <input type="tel" className="form-input" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 07123456789" />
                       </div>
                       
                       <div className="form-group">
@@ -832,7 +837,6 @@ function App() {
                         <input type="number" className="form-input" min="1" max="25" required value={partySize} onChange={(e) => setPartySize(e.target.value)} />
                       </div>
 
-                      {/* WEEKDAY MANUAL TABLE SELECTION (SUN, MON, WED, THU) VS WEEKEND AUTO-ASSIGN (FRI, SAT) */}
                       {date && customerDayOfWeek !== 2 && (
                         <div className="form-group full-width">
                           <label>Select Table</label>
@@ -841,20 +845,27 @@ function App() {
                               Friday & Saturday Peak Service: Your best available table will be assigned automatically.
                             </div>
                           ) : availableTables.length > 0 ? (
-                            <select
-                              className="form-input"
-                              value={selectedTable}
-                              onChange={(e) => setSelectedTable(e.target.value)}
-                              required
-                            >
-                              {availableTables.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  Table {t.tableNumber} (Seats up to {t.capacity})
-                                  {t.tableNumber === 1 || t.tableNumber === 5 ? " — Window Table (4+ Guests)" : ""}
-                                  {t.tableNumber === 13 ? " — Next to Chef's Grill" : ""}
-                                </option>
-                              ))}
-                            </select>
+                            <>
+                              <select
+                                className="form-input"
+                                value={selectedTable}
+                                onChange={(e) => setSelectedTable(e.target.value)}
+                                required
+                              >
+                                {availableTables.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    Table {t.tableNumber} (Seats up to {t.capacity})
+                                    {t.tableNumber === 1 || t.tableNumber === 5 ? " — Window Table (4+ Guests)" : ""}
+                                    {t.tableNumber === 13 ? " — Next to Chef's Grill" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                              {selectedTableObj?.tableNumber === 13 && (
+                                <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'rgba(200, 157, 84, 0.15)', border: '1px solid var(--clr-gold)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: 'var(--clr-charcoal)' }}>
+                                  🔥 <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill—great for watching the chef cook, though it can be warmer during busy service.
+                                </div>
+                              )}
+                            </>
                           ) : null}
                         </div>
                       )}
@@ -864,7 +875,6 @@ function App() {
                         <textarea className="form-input" rows="2" value={requests} onChange={(e) => setRequests(e.target.value)} placeholder="Anniversary, allergies, high chair..."/>
                       </div>
 
-                      {/* 2-HOUR TABLE RULE TERMS & CONDITIONS */}
                       <div className="form-group full-width" style={{ marginTop: '5px' }}>
                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--clr-charcoal)', cursor: 'pointer', fontWeight: 'normal' }}>
                           <input
@@ -875,13 +885,12 @@ function App() {
                             style={{ marginTop: '3px' }}
                           />
                           <span>
-                            <strong>Terms & Conditions:</strong> I understand all reservations are allocated for a strict <strong>2-hour table sitting</strong> and tables are held for 15 minutes past the booking time.
+                            <strong>Terms & Conditions:</strong> I agree to the strict <strong>2-hour table sitting</strong> (tables held for 15 mins). I consent to marketing communications (opt-out anytime) and understand my data will be securely deleted after 6 months in compliance with UK GDPR.
                           </span>
                         </label>
                       </div>
                     </div>
 
-                    {/* ONLY SHOW BUTTON IF THERE IS AVAILABILITY FOR THE SELECTED TIME */}
                     {availableTables.length > 0 ? (
                       <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '20px' }} disabled={message === "Processing reservation..." || message === "Verifying availability..."}>
                         {(message === "Processing reservation..." || message === "Verifying availability...") ? "Processing..." : "Reserve a Table"}
@@ -902,7 +911,6 @@ function App() {
             </div>
           </section>
 
-          {/* VISIT US */}
           <section id="visit" className="visit-section">
             <img src="/images/storefront.webp" alt="MyHosh Storefront" className="visit-image" loading="lazy" />
             <div className="visit-details">
@@ -925,7 +933,6 @@ function App() {
             </div>
           </section>
 
-          {/* FOOTER */}
           <footer className="site-footer">
             <div className="footer-logo">MYHOSH</div>
             <div className="footer-links">
@@ -939,7 +946,6 @@ function App() {
             </div>
           </footer>
 
-          {/* LIGHTBOX FOR MENU */}
           {isLightboxOpen && (
             <div className="lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
               <div className="lightbox-header">
@@ -973,7 +979,6 @@ function App() {
           ) : (
             <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
               
-              {/* ADMIN HEADER */}
               <header className="admin-header">
                 <div>
                   <h1>Live Reservations Dashboard</h1>
@@ -986,7 +991,6 @@ function App() {
                 </button>
               </header>
 
-              {/* ADMIN ONLY: CREATE STAFF */}
               {currentUser?.role === "ADMIN" && (
                 <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
                   <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register New Staff</h3>
@@ -1016,7 +1020,6 @@ function App() {
                 </div>
               )}
 
-              {/* MASTER TOOLBAR */}
               <div className="admin-toolbar">
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
@@ -1026,7 +1029,6 @@ function App() {
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
                     <button onClick={handleExportCSV} className="btn btn-secondary">📥 Export CSV</button>
                     <button onClick={() => setShowWalkInModal(true)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>+ Walk-In</button>
-                    {/* NEW STAFF BOOKING BUTTON */}
                     <button onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Add Reservation</button>
                   </div>
                 </div>
@@ -1057,7 +1059,64 @@ function App() {
                 </div>
               </div>
 
-              {/* BOOKING CARDS */}
+              {/* PHASE 2: LIVE 13-TABLE FLOOR STATUS GRID */}
+              {tables.length > 0 && (
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--clr-emerald)' }}>
+                      Live Floor Status ({floorPlanDate})
+                    </h3>
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
+                      <span>🟢 Free All Day</span>
+                      <span>🟡 Reserved</span>
+                      <span>🔴 Seated Now</span>
+                      <span>⚪ Offline</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))', gap: '10px' }}>
+                    {[...tables].sort((a, b) => a.tableNumber - b.tableNumber).map(t => {
+                      const isOffline = t.tableNumber === 4;
+                      const tableBookings = allBookings.filter(
+                        b => b.bookingDate === floorPlanDate && b.restaurantTable?.id === t.id && b.status !== 'NO_SHOW'
+                      );
+                      const isSeated = tableBookings.some(b => b.status === 'ARRIVED');
+                      const isReserved = tableBookings.length > 0;
+
+                      let bg = 'rgba(15, 77, 58, 0.08)';
+                      let border = '1px solid var(--clr-emerald)';
+                      let badge = '🟢 Free';
+                      if (isOffline) {
+                        bg = 'rgba(0,0,0,0.05)';
+                        border = '1px dashed rgba(27,26,23,0.25)';
+                        badge = '⚪ Offline';
+                      } else if (isSeated) {
+                        bg = 'rgba(179, 64, 47, 0.12)';
+                        border = '1px solid var(--clr-error)';
+                        badge = '🔴 Seated';
+                      } else if (isReserved) {
+                        bg = 'rgba(200, 157, 84, 0.18)';
+                        border = '1px solid var(--clr-gold)';
+                        badge = `🟡 ${tableBookings.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')}`;
+                      }
+
+                      return (
+                        <div key={t.id} style={{ padding: '10px', borderRadius: '8px', background: bg, border, textAlign: 'center' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--clr-charcoal)' }}>
+                            Table {t.tableNumber}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--clr-grey)', marginBottom: '4px' }}>
+                            Seats {t.capacity}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>
+                            {badge}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
                 {Array.from(new Set(displayedBookings.map(b => b.bookingDate))).sort().map(bookingDate => {
                   const dateBookings = displayedBookings.filter(b => b.bookingDate === bookingDate);
@@ -1079,10 +1138,15 @@ function App() {
                           </div>
 
                           <div className="card-guest-info" style={{ flex: '1 1 auto' }}>
-                            <h3>{booking.customer?.fullName || "No Name"}</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <h3>{booking.customer?.fullName || "No Name"}</h3>
+                                <span style={{ fontSize: '0.8rem', backgroundColor: 'var(--clr-marble)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--clr-gold)' }}>
+                                    Ref: MH-{String(booking.id).padStart(4, '0')}
+                                </span>
+                            </div>
                             <p>
                               <span>📞 {booking.customer?.phone || "N/A"}</span>
-                              <span>✉️ {booking.customer?.email || "N/A"}</span>
+                              {booking.customer?.email && <span>✉️ {booking.customer.email}</span>}
                             </p>
                             
                             {(booking.specialRequests || booking.staffNotes) && (
@@ -1126,9 +1190,6 @@ function App() {
                 )}
               </div>
 
-              {/* MODALS */}
-
-              {/* NEW: 1. ADD MANUAL RESERVATION (STAFF ONLY) */}
               {showStaffBookingModal && (
                 <div className="modal-overlay">
                   <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -1168,7 +1229,7 @@ function App() {
                           <select required value={staffBookingData.tableId} onChange={(e) => setStaffBookingData({...staffBookingData, tableId: e.target.value})} className="admin-input">
                             <option value="">-- Choose --</option>
                             <option value="OTHER" style={{ fontWeight: 'bold' }}>Other / Custom Location</option>
-                            {tables.map(t => (
+                            {activeStaffTables.map(t => (
                               <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                             ))}
                           </select>
@@ -1198,7 +1259,6 @@ function App() {
                 </div>
               )}
               
-              {/* 2. EDIT MODAL */}
               {editModalBooking && (
                 <div className="modal-overlay">
                   <div className="modal-content">
@@ -1217,7 +1277,7 @@ function App() {
                     <div style={{ marginBottom: '20px' }}>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--clr-emerald-dark)', marginBottom: '8px', fontWeight: 'bold' }}>Reassign Table:</label>
                       <select value={editModalBooking.restaurantTable?.id || ""} onChange={(e) => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                        {tables.map(t => (
+                        {activeStaffTables.map(t => (
                           <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                         ))}
                       </select>
@@ -1238,7 +1298,6 @@ function App() {
                 </div>
               )}
 
-              {/* 3. CANCEL REASON MODAL */}
               {cancelModalBooking && (
                 <div className="modal-overlay">
                   <div className="modal-content">
@@ -1270,7 +1329,6 @@ function App() {
                 </div>
               )}
 
-              {/* 4. WALK-IN MODAL */}
               {showWalkInModal && (
                 <div className="modal-overlay">
                   <div className="modal-content" style={{ maxWidth: '400px' }}>
@@ -1286,7 +1344,7 @@ function App() {
                       <select value={walkInDetails.tableId} onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} className="admin-input" style={{ width: '100%' }}>
                         <option value="">-- Choose a Table --</option>
                         <option value="OTHER" style={{ fontWeight: 'bold' }}>Other / Custom Location</option>
-                        {tables.map(t => (
+                        {activeStaffTables.map(t => (
                           <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                         ))}
                       </select>
