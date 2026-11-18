@@ -117,6 +117,14 @@ function App() {
     }
   }, [date]);
 
+  // --- M3 ZERO-TRUST STAFF TOKEN HEADER HELPER ---
+  const getStaffHeaders = (includeJson = true) => {
+    const headers = {};
+    if (includeJson) headers['Content-Type'] = 'application/json';
+    if (currentUser?.token) headers['X-Staff-Token'] = currentUser.token;
+    return headers;
+  };
+
   // --- DATA FETCHING ---
   useEffect(() => {
     fetch('https://myhosh-backend.onrender.com/api/tables')
@@ -128,10 +136,14 @@ function App() {
   const fetchBookings = async () => {
     try {
       const endpoint = viewMode === 'history' ? '/api/bookings/history' : '/api/bookings';
-      const response = await fetch(`https://myhosh-backend.onrender.com${endpoint}`);
+      const response = await fetch(`https://myhosh-backend.onrender.com${endpoint}`, {
+        headers: currentUser?.token ? { 'X-Staff-Token': currentUser.token } : {}
+      });
       if (response.ok) {
         const data = await response.json();
         setAllBookings(Array.isArray(data) ? data : []);
+      } else if (response.status === 401 && isAuthenticated) {
+        handleLogout();
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -140,7 +152,7 @@ function App() {
 
   useEffect(() => {
     fetchBookings();
-  }, [view, isSuccess, viewMode]);
+  }, [view, isSuccess, viewMode, currentUser]);
 
   // --- STAFF MODAL STATES ---
   const [showWalkInModal, setShowWalkInModal] = useState(false);
@@ -155,7 +167,7 @@ function App() {
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getStaffHeaders(),
         body: JSON.stringify({ status: newStatus })
       });
       if (response.ok) fetchBookings();
@@ -209,7 +221,7 @@ function App() {
 
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBooking)
+        method: 'POST', headers: getStaffHeaders(), body: JSON.stringify(newBooking)
       });
       if (response.ok) {
         setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); fetchBookings();
@@ -265,7 +277,7 @@ function App() {
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getStaffHeaders(),
         body: JSON.stringify(newBooking)
       });
       if (response.ok) {
@@ -399,26 +411,6 @@ function App() {
       setMessage("We are currently fully booked for this time and party size. Please select another time or call us directly.");
       return;
     }
-    
-    setMessage("Verifying availability...");
-    try {
-      const liveResponse = await fetch('https://myhosh-backend.onrender.com/api/bookings');
-      if (!liveResponse.ok) throw new Error("Network response was not OK");
-      const liveBookings = await liveResponse.json();
-      const cleanInputPhone = String(phone).replace(/\D/g, '');
-      const inputDate = String(date);
-      const phoneAlreadyBooked = liveBookings.some((booking) => {
-        const existingPhone = String(booking.customer?.phone || "").replace(/\D/g, '');
-        const existingDate = String(booking.bookingDate);
-        return existingDate === inputDate && existingPhone === cleanInputPhone;
-      });
-      if (phoneAlreadyBooked) {
-        setIsSuccess(false); setMessage("❌ Anti-Spam Protection: A reservation is already secured under this phone number for this date."); return;
-      }
-    } catch (err) {
-      console.error("Anti-spam security check failed:", err);
-      setIsSuccess(false); setMessage("System verification timeout. Please click submit again."); return;
-    }
 
     setMessage("Processing reservation...");
     setIsProcessing(true);
@@ -467,7 +459,7 @@ function App() {
       });
       if (response.ok) {
         const staffData = await response.json();
-        setCurrentUser(staffData); setIsAuthenticated(true); fetchBookings();
+        setCurrentUser(staffData); setIsAuthenticated(true);
       } else {
         alert("Invalid staff username or password.");
       }
@@ -484,7 +476,7 @@ function App() {
     setStaffRegMessage("Creating account...");
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/staff/register', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: getStaffHeaders(),
         body: JSON.stringify({ username: newStaffUsername.trim(), password: newStaffPassword, role: newStaffRole })
       });
       if (response.ok) {
@@ -505,7 +497,7 @@ function App() {
     setIsProcessing(true);
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${cancelModalBooking.id}/cancel`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: getStaffHeaders(),
         body: JSON.stringify({ reason: finalReason })
       });
       if (response.ok) {
@@ -531,7 +523,7 @@ function App() {
     if (!editModalBooking) return;
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/notes`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: modalNoteText })
+        method: 'PUT', headers: getStaffHeaders(), body: JSON.stringify({ notes: modalNoteText })
       });
       if (response.ok) {
         const updated = await response.json();
@@ -545,7 +537,7 @@ function App() {
     if (!newTime || !editModalBooking) return;
     try {
       const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/time`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingTime: newTime })
+        method: 'PUT', headers: getStaffHeaders(), body: JSON.stringify({ bookingTime: newTime })
       });
       if (response.ok) {
         const updated = await response.json();
@@ -558,7 +550,10 @@ function App() {
   const handleModalTableChange = async (newTableId) => {
     if (!newTableId || !editModalBooking) return;
     try {
-      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/table/${newTableId}`, { method: 'PUT' });
+      const response = await fetch(`https://myhosh-backend.onrender.com/api/bookings/${editModalBooking.id}/table/${newTableId}`, {
+        method: 'PUT',
+        headers: getStaffHeaders(false)
+      });
       if (response.ok) {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => b.id === editModalBooking.id ? updated : b));
@@ -570,6 +565,12 @@ function App() {
   };
 
   const handleLogout = () => {
+    if (currentUser?.token) {
+      fetch('https://myhosh-backend.onrender.com/api/staff/logout', {
+        method: 'POST',
+        headers: getStaffHeaders(false)
+      }).catch(() => {});
+    }
     setCurrentUser(null); setIsAuthenticated(false); setView('customer'); sessionStorage.clear();
   };
 
