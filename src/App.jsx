@@ -60,6 +60,7 @@ function App() {
   const [newStaffRole, setNewStaffRole] = useState("STAFF")
   const [staffRegMessage, setStaffRegMessage] = useState("")
   const [adminDateFilter, setAdminDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -570,9 +571,20 @@ function App() {
   };
 
   const displayedBookings = allBookings.filter(b => {
-    if (adminDateFilter === "ALL") return true;
-    return b.bookingDate === adminDateFilter;
+    const matchesDate = (adminDateFilter === "ALL" || b.bookingDate === adminDateFilter);
+    
+    if (!searchQuery.trim()) return matchesDate;
+
+    const query = searchQuery.toLowerCase().trim();
+    const guestName = (b.customer?.fullName || "").toLowerCase();
+    const phone = (b.customer?.phone || "").toLowerCase();
+    const refCode = ("mh-" + String(b.id || "").padStart(4, '0')).toLowerCase();
+
+    const matchesSearch = guestName.includes(query) || phone.includes(query) || refCode.includes(query);
+
+    return matchesDate && matchesSearch;
   });
+  
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
 
   // Active tables excluding offline Table 4 for Staff Modals
