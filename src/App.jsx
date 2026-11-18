@@ -584,7 +584,7 @@ function App() {
 
     return matchesDate && matchesSearch;
   });
-  
+
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
 
   // Active tables excluding offline Table 4 for Staff Modals
@@ -1044,6 +1044,18 @@ function App() {
                     <button onClick={() => setShowWalkInModal(true)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>+ Walk-In</button>
                     <button onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Add Reservation</button>
                   </div>
+                </div>
+
+                {/* INSTANT SEARCH BAR */}
+                <div style={{ marginBottom: '15px' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Search by guest name, phone, or reference code (e.g. MH-0012)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="admin-input"
+                    style={{ width: '100%', padding: '12px 16px', fontSize: '0.95rem' }}
+                  />
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
