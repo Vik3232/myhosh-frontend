@@ -7,14 +7,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- SEO & WhatsApp Link Previews -->
-    <title>MyHosh Salisbury | Authentic Turkish Restaurant</title>
-    <meta name="description" content="Authentic Turkish charcoal grill and fresh meze in the heart of Salisbury. Reserve your table today." />
+    <title>MyHosh Salisbury | Best Authentic Turkish Food</title>
+    <meta name="description" content="Best Turkish food in Salisbury! Authentic Turkish charcoal grill, fresh meze, and a 5-star on Google dining experience. Reserve your table today." />
     
-    <meta property="og:title" content="MyHosh Salisbury | Authentic Turkish Restaurant" />
-    <meta property="og:description" content="Authentic Turkish charcoal grill and fresh meze in the heart of Salisbury." />
+    <meta property="og:title" content="MyHosh Salisbury | Best Authentic Turkish Food" />
+    <meta property="og:description" content="Best Turkish food in Salisbury! Authentic Turkish charcoal grill, fresh meze, and a 5-star on Google dining experience." />
     <meta property="og:image" content="https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png" />
     <meta property="og:url" content="https://myhosh-salisbury.co.uk" />
     <meta property="og:type" content="website" />
+
+    <!-- GOOGLE "RESERVE A TABLE" & LOCAL SEO SCHEMA -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Restaurant",
+      "name": "MyHosh Salisbury",
+      "description": "Best authentic Turkish food in Salisbury. 5-star on Google.",
+      "image": "https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png",
+      "@id": "https://myhosh-salisbury.co.uk",
+      "url": "https://myhosh-salisbury.co.uk",
+      "telephone": "07853404534",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "99 Fisherton St",
+        "addressLocality": "Salisbury",
+        "postalCode": "SP2 7SP",
+        "addressCountry": "UK"
+      },
+      "servesCuisine": "Turkish",
+      "menu": "https://myhosh-salisbury.co.uk/#menu",
+      "potentialAction": {
+        "@type": "ReserveAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://myhosh-salisbury.co.uk/#reserve",
+          "inLanguage": "en-GB",
+          "actionPlatform": [
+            "http://schema.org/DesktopWebPlatform",
+            "http://schema.org/MobileWebPlatform"
+          ]
+        },
+        "result": {
+          "@type": "FoodEstablishmentReservation"
+        }
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
