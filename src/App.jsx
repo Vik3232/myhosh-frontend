@@ -842,7 +842,7 @@ function App() {
                           <label>Select Table</label>
                           {isWeekendAutoSeating ? (
                             <div style={{ padding: '10px 14px', backgroundColor: 'rgba(15, 77, 58, 0.08)', border: '1px solid var(--clr-emerald)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', color: 'var(--clr-charcoal)' }}>
-                             For Friday & Saturday Busy Days Please write note or call the restaurent.
+                            
                             </div>
                           ) : availableTables.length > 0 ? (
                             <>
@@ -860,6 +860,7 @@ function App() {
                                   </option>
                                 ))}
                               </select>
+
                               {selectedTableObj?.tableNumber === 13 && (
                                 <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'rgba(200, 157, 84, 0.15)', border: '1px solid var(--clr-gold)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', color: 'var(--clr-charcoal)' }}>
                                   🔥 <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill—great for watching the chef cook, though it can be warmer during busy service.
