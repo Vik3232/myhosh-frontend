@@ -597,7 +597,7 @@ function App() {
       <header className="site-header">
 
       <div className="brand-logo" onClick={() => setView('customer')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}>
-          <img src="/images/myhosh-salisbury-logo-horizontal-transparent.png" alt="MyHosh Salisbury" style={{ height: '75px', width: 'auto' }} />
+          <img src="/images/myhosh-salisbury-logo-horizontal-transparent.png" alt="MyHosh Salisbury" style={{ height: '65px', width: 'auto' }} />
         </div>
         
         <nav className="nav-links">
