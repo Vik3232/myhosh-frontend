@@ -596,8 +596,12 @@ function App() {
       {/* GLOBAL HEADER */}
       <header className="site-header">
 
-      <div className="brand-logo" onClick={() => setView('customer')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center'}}>
-          <img src="/images/myhosh-salisbury-logo-horizontal-transparent.png" alt="MyHosh Salisbury" style={{ height: '55px', width: 'auto' }} />
+      <div className="brand-logo" onClick={() => setView('customer')} style={{cursor: 'pointer', display: 'flex', alignItems: 'center', margin: '-12px 0'}}>
+          <img 
+            src="/images/myhosh-salisbury-logo-horizontal-transparent.png" 
+            alt="MyHosh Salisbury" 
+            style={{ height: '75px', width: 'auto', objectFit: 'contain' }} 
+          />
         </div>
         
         <nav className="nav-links">
