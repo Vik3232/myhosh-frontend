@@ -798,11 +798,11 @@ function App() {
                     <div className="form-grid">
                       <div className="form-group full-width">
                         <label>Full Name</label>
-                        <input type="text" className="form-input" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                        <input type="text" className="form-input" required value={fullName} placeholder="Enter your Booking Name" onChange={(e) => setFullName(e.target.value)} />
                       </div>
                       <div className="form-group">
                         <label>Email (Optional)</label>
-                        <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="For email confirmation" />
+                        <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email confirmation" />
                       </div>
                       <div className="form-group">
                         <label>UK Mobile Number *</label>
@@ -842,7 +842,7 @@ function App() {
                           <label>Select Table</label>
                           {isWeekendAutoSeating ? (
                             <div style={{ padding: '10px 14px', backgroundColor: 'rgba(15, 77, 58, 0.08)', border: '1px solid var(--clr-emerald)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', color: 'var(--clr-charcoal)' }}>
-                              Friday & Saturday Peak Service: Your best available table will be assigned automatically.
+                             For Friday & Saturday Busy Days Please write note or call the restaurent.
                             </div>
                           ) : availableTables.length > 0 ? (
                             <>
