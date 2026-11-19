@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
-import { LegalModals } from './components/LegalModals';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
@@ -55,7 +54,6 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isTimeSheetOpen, setIsTimeSheetOpen] = useState(false);
-  const [legalModal, setLegalModal] = useState(null);
   const [timeGroupRanges] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('myhosh_time_groups'));
@@ -121,20 +119,6 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewMode, setViewMode] = useState('today');
 
-  const [seatedColorMode, setSeatedColorMode] = useState(() => localStorage.getItem('myhosh_seated_color_mode') || 'GREEN');
-  const [graceMinutes, setGraceMinutes] = useState(() => {
-    const saved = Number(localStorage.getItem('myhosh_late_grace_mins'));
-    return Number.isFinite(saved) && saved >= 0 ? saved : 0;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('myhosh_seated_color_mode', seatedColorMode);
-  }, [seatedColorMode]);
-
-  useEffect(() => {
-    localStorage.setItem('myhosh_late_grace_mins', String(graceMinutes));
-  }, [graceMinutes]);
-
   useEffect(() => {
     const timer = setInterval(() => setLondonNow(new Date()), 15000);
     return () => clearInterval(timer);
@@ -162,34 +146,52 @@ function App() {
 
   const getEffectiveBookingState = (booking) => {
     const raw = normalizeRawStatus(booking.status);
-    const terminalOrSeated = ['SEATED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(raw);
-    const nowMins = getLondonMinutesOfDay();
-    const [bh = 0, bm = 0] = (booking.bookingTime || '00:00').split(':').map(Number);
-    const bookingMins = bh * 60 + bm;
 
-    let minutesLate = 0;
-    let isPastGrace = false;
-    if (!terminalOrSeated && booking.bookingDate) {
-      if (booking.bookingDate < londonTodayStr) {
-        minutesLate = Math.max(1, nowMins + (24 * 60 - bookingMins));
-        isPastGrace = true;
-      } else if (booking.bookingDate === londonTodayStr && nowMins - (bookingMins + graceMinutes) >= 0) {
-        minutesLate = Math.max(1, nowMins - bookingMins);
-        isPastGrace = true;
+    // 1. Past dates (before today): normal card colour; Attended vs Did Not Show Up
+    if (booking.bookingDate && booking.bookingDate < londonTodayStr) {
+      if (['SEATED', 'ARRIVED', 'COMPLETED'].includes(raw)) {
+        return { effectiveStatus: 'ATTENDED', visualTone: 'attended', cardClass: '', statusLabel: 'Attended' };
+      }
+      if (raw === 'CANCELLED') {
+        return { effectiveStatus: 'CANCELLED', visualTone: 'cancelled', cardClass: '', statusLabel: 'Cancelled' };
+      }
+      return { effectiveStatus: 'NO_SHOW', visualTone: 'did-not-show', cardClass: '', statusLabel: 'Did Not Show Up' };
+    }
+
+    // 2. Today's bookings: Green if seated/arrived, Red if past booking time
+    if (booking.bookingDate === londonTodayStr) {
+      if (raw === 'SEATED' || raw === 'ARRIVED') {
+        return {
+          effectiveStatus: raw,
+          visualTone: raw.toLowerCase(),
+          cardClass: 'is-seated',
+          statusLabel: raw === 'SEATED' ? 'Seated' : 'Arrived'
+        };
+      }
+      if (raw === 'NO_SHOW') {
+        return { effectiveStatus: 'NO_SHOW', visualTone: 'did-not-show', cardClass: '', statusLabel: 'Did Not Show Up' };
+      }
+      if (!['CANCELLED', 'COMPLETED'].includes(raw)) {
+        const nowMins = getLondonMinutesOfDay();
+        const [bh = 0, bm = 0] = (booking.bookingTime || '00:00').split(':').map(Number);
+        if (nowMins > bh * 60 + bm) {
+          return {
+            effectiveStatus: 'LATE',
+            visualTone: 'late',
+            cardClass: 'is-late',
+            statusLabel: `Late (${nowMins - (bh * 60 + bm)}m)`
+          };
+        }
       }
     }
 
-    const effectiveStatus = isPastGrace ? 'LATE' : raw;
-    let visualTone = 'booked';
-    if (effectiveStatus === 'LATE') visualTone = 'late';
-    else if (effectiveStatus === 'SEATED') visualTone = seatedColorMode === 'PREVIOUS' ? (raw === 'ARRIVED' ? 'arrived' : 'booked') : 'seated';
-    else if (effectiveStatus === 'ARRIVED') visualTone = 'arrived';
-    else if (effectiveStatus === 'NO_SHOW') visualTone = 'no-show';
-    else if (effectiveStatus === 'CANCELLED') visualTone = 'cancelled';
-    else if (effectiveStatus === 'COMPLETED') visualTone = 'completed';
-
-    const statusLabel = effectiveStatus === 'LATE' ? `Late (${minutesLate}m)` : effectiveStatus.replace('_', ' ');
-    return { effectiveStatus, visualTone, statusLabel };
+    // 3. Upcoming today or future dates: normal card colour
+    return {
+      effectiveStatus: raw,
+      visualTone: raw === 'CANCELLED' ? 'cancelled' : 'booked',
+      cardClass: '',
+      statusLabel: raw === 'NO_SHOW' ? 'Did Not Show Up' : raw.replace('_', ' ')
+    };
   };
 
   const generate15MinSlots = (startStr, endStr) => {
@@ -823,7 +825,6 @@ function App() {
   const activeStaffTables = tables.filter(t => t.tableNumber !== 4);
   const floorPlanDate = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
 
-  // Derived menu categories
   const publicMenuCategories = Array.from(new Set(menuItems.filter(m => m.available !== false).map(m => m.category)));
   const currentPublicCat = publicMenuCategories.includes(activeMenuCategory) ? activeMenuCategory : (publicMenuCategories[0] || '');
   const visiblePublicDishes = menuItems.filter(m => m.available !== false && m.category === currentPublicCat);
@@ -1133,11 +1134,7 @@ function App() {
                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
                           <input type="checkbox" required checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: '3px' }} />
                           <span>
-                          I agree to the{' '}
-<button type="button" className="legal-inline-link" onClick={() => setLegalModal('terms')}>Terms &amp; Conditions</button>
-{' '}(2-hour sitting, 15-min hold) and have read the{' '}
-<button type="button" className="legal-inline-link" onClick={() => setLegalModal('privacy')}>Privacy Policy</button>
-{' '}(6-month UK GDPR auto-deletion; immediate erasure on request).
+                            <strong>Terms &amp; Conditions:</strong> I agree to the 2-hour table sitting (15-min hold) and 6-month UK GDPR data retention policy.
                           </span>
                         </label>
                       </div>
@@ -1185,11 +1182,9 @@ function App() {
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
             </div>
-            <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
-  <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
-  <button type="button" onClick={() => setLegalModal('privacy')} style={{ color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem' }}>Privacy Policy</button>
-  <button type="button" onClick={() => setLegalModal('terms')} style={{ color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem' }}>Terms &amp; Conditions</button>
-</div>
+            <div className="footer-bottom">
+              <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
+            </div>
           </footer>
 
           {isTimeSheetOpen && (
@@ -1286,7 +1281,7 @@ function App() {
               {currentUser?.role === 'ADMIN' && showAdminMenuEditor && (
                 <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-                    <h3 style={{ margin: 0, color: 'var(--clr-emerald)' }}>Menu & Price Editor (By Category)</h3>
+                    <h3 style={{ margin: 0, color: 'var(--clr-emerald)' }}>Menu &amp; Price Editor (By Category)</h3>
                     <button type="button" onClick={() => loadMenuData(true)} className="btn btn-secondary" style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
                       Refresh Menu
                     </button>
@@ -1404,7 +1399,7 @@ function App() {
 
               {currentUser?.role === 'ADMIN' && (
                 <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
-                  <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register & Manage Staff</h3>
+                  <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register &amp; Manage Staff</h3>
                   <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={{ flex: '1 1 200px' }}>
                       <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Username</label>
@@ -1487,7 +1482,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* RESTORED DATE NAVIGATION WITH DAY-BY-DAY ARROWS */}
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
                     <button type="button" onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
@@ -1542,26 +1536,6 @@ function App() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between', background: 'var(--clr-marble)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', border: '1px solid rgba(27,26,23,0.08)', fontSize: '0.85rem' }}>
-                <div>
-                  <strong>Seated Colour:</strong>{' '}
-                  <select value={seatedColorMode} onChange={e => setSeatedColorMode(e.target.value)} className="admin-input" style={{ padding: '6px 10px' }}>
-                    <option value="GREEN">Emerald Green</option>
-                    <option value="PREVIOUS">Previous Status Colour</option>
-                  </select>
-                </div>
-                <div>
-                  <strong>Late Grace:</strong>{' '}
-                  <select value={graceMinutes} onChange={e => setGraceMinutes(Number(e.target.value))} className="admin-input" style={{ padding: '6px 10px' }}>
-                    <option value={0}>0 mins</option>
-                    <option value={5}>5 mins</option>
-                    <option value={10}>10 mins</option>
-                    <option value={15}>15 mins</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* RESTORED & FIXED LIVE 13-TABLE FLOOR STATUS GRID */}
               {tables.length > 0 && (
                 <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
@@ -1645,7 +1619,7 @@ function App() {
                         const st = getEffectiveBookingState(booking);
                         const raw = normalizeRawStatus(booking.status);
                         return (
-                          <div key={booking.id} className={`admin-card ${st.visualTone === 'late' ? 'is-late' : st.visualTone === 'seated' ? 'is-seated' : ''}`}>
+                          <div key={booking.id} className={`admin-card ${st.cardClass}`}>
                             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
                               <div className="card-time">{booking.bookingTime}</div>
                               <div className="card-table-pill">Table {booking.restaurantTable?.tableNumber || 'N/A'} ({booking.partySize} Guests)</div>
@@ -1698,268 +1672,269 @@ function App() {
                   </div>
                 )}
               </div>
-
-              {showStaffBookingModal && (
-                <div className="modal-overlay">
-                  <div className="modal-content" style={{ maxWidth: '600px' }}>
-                    <h3 style={{ color: 'var(--clr-emerald)' }}>+ Add Reservation (Staff)</h3>
-                    <form onSubmit={handleStaffAddBooking}>
-                      <div className="form-grid">
-                        <div className="form-group full-width">
-                          <label>Guest Name *</label>
-                          <input type="text" required value={staffBookingData.fullName} onChange={e => setStaffBookingData({ ...staffBookingData, fullName: e.target.value })} className="admin-input" />
-                        </div>
-                        <div className="form-group">
-                          <label>Phone (Optional)</label>
-                          <input type="tel" value={staffBookingData.phone} onChange={e => setStaffBookingData({ ...staffBookingData, phone: e.target.value })} className="admin-input" />
-                        </div>
-                        <div className="form-group">
-                          <label>Email (Optional)</label>
-                          <input type="email" value={staffBookingData.email} onChange={e => setStaffBookingData({ ...staffBookingData, email: e.target.value })} className="admin-input" />
-                        </div>
-                        <div className="form-group">
-                          <label>Date *</label>
-                          <input type="date" required value={staffBookingData.date} onChange={e => setStaffBookingData({ ...staffBookingData, date: e.target.value })} className="admin-input" />
-                        </div>
-                        <div className="form-group">
-                          <label>Time *</label>
-                          <input type="time" required value={staffBookingData.time} onChange={e => setStaffBookingData({ ...staffBookingData, time: e.target.value })} className="admin-input" />
-                        </div>
-                        <div className="form-group">
-                          <label>Party Size *</label>
-                          <input type="number" min="1" required value={staffBookingData.partySize} onChange={e => setStaffBookingData({ ...staffBookingData, partySize: e.target.value })} className="admin-input" />
-                        </div>
-                        <div className="form-group">
-                          <label>Assign Table *</label>
-                          <select required value={staffBookingData.tableId} onChange={e => setStaffBookingData({ ...staffBookingData, tableId: e.target.value })} className="admin-input">
-                            <option value="">-- Choose --</option>
-                            <option value="OTHER">Other / Custom Location</option>
-                            {activeStaffTables.map(t => (
-                              <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
-                            ))}
-                          </select>
-                        </div>
-                        {staffBookingData.tableId === 'OTHER' && (
-                          <div className="form-group full-width">
-                            <label>Custom Location Details *</label>
-                            <input type="text" required value={staffBookingData.customLocation} onChange={e => setStaffBookingData({ ...staffBookingData, customLocation: e.target.value })} className="admin-input" />
-                          </div>
-                        )}
-                        <div className="form-group full-width">
-                          <label>Notes / Special Requests (Optional)</label>
-                          <textarea rows="2" value={staffBookingData.requests} onChange={e => setStaffBookingData({ ...staffBookingData, requests: e.target.value })} className="admin-input" />
-                        </div>
-                      </div>
-                      <div className="modal-actions" style={{ marginTop: '20px' }}>
-                        <button type="button" onClick={() => setShowStaffBookingModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
-                        <button type="submit" disabled={isProcessing} className="btn btn-emerald" style={{ flex: 1 }}>Create Reservation</button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              {editModalBooking && (
-                <div className="modal-overlay">
-                  <div className="modal-content">
-                    <h3>Edit Reservation</h3>
-                    <p style={{ marginBottom: '16px', color: 'var(--clr-grey)' }}>
-                      Guest: <strong>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})
-                    </p>
-                    <div style={{ marginBottom: '14px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Change Sitting Time:</label>
-                      <select value={(editModalBooking.bookingTime || '').slice(0, 5)} onChange={e => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                        {generate15MinSlots('12:00', '22:00').map(slot => <option key={slot} value={slot}>{slot}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Reassign Table:</label>
-                      <select value={editModalBooking.restaurantTable?.id || ''} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                        {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
-                      </select>
-                    </div>
-                    <div style={{ background: 'var(--clr-marble)', padding: '14px', borderRadius: '8px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px' }}>Staff Internal Notes:</label>
-                      <textarea rows="3" value={modalNoteText} onChange={e => setModalNoteText(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '10px' }} />
-                      <button type="button" onClick={handleSaveModalNote} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Save Note</button>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '18px', marginTop: '18px' }}>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => { const target = editModalBooking; setEditModalBooking(null); setCancelModalBooking(target); }}
-                          className="btn"
-                          style={{ background: 'rgba(179, 64, 47, 0.1)', color: 'var(--clr-error)', border: '1px solid var(--clr-error)', padding: '10px 14px', fontSize: '0.85rem' }}
-                        >
-                          Cancel Booking
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteCustomerStep(1)}
-                          className="btn"
-                          style={{ background: '#3B0D0C', color: '#FBF6EA', padding: '10px 14px', fontSize: '0.85rem' }}
-                        >
-                          Delete Customer Data
-                        </button>
-                      </div>
-                      <button type="button" onClick={() => { setDeleteCustomerStep(0); setEditModalBooking(null); }} className="btn btn-primary">Done</button>
-                    </div>
-
-                    {deleteCustomerStep > 0 && (
-                      <div style={{ marginTop: '14px', padding: '14px', borderRadius: '8px', background: 'rgba(179, 64, 47, 0.1)', border: '1px solid var(--clr-error)' }}>
-                        <p style={{ fontSize: '0.88rem', color: 'var(--clr-error)', fontWeight: '600', marginBottom: '10px' }}>
-                          {deleteCustomerStep === 1
-                            ? 'Step 1 of 2: Full deletion permanently removes customer name, phone, email, notes, and booking data. Continue?'
-                            : 'Step 2 of 2 (Final Warning): This cannot be undone. Permanently delete all customer data for this booking now?'}
-                        </p>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button type="button" onClick={() => setDeleteCustomerStep(0)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>Keep Data</button>
-                          {deleteCustomerStep === 1 ? (
-                            <button type="button" onClick={() => setDeleteCustomerStep(2)} className="btn" style={{ background: 'var(--clr-error)', color: '#fff', padding: '8px 14px', fontSize: '0.82rem' }}>Yes, Next Step</button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={isProcessing}
-                              onClick={async () => {
-                                const targetId = editModalBooking.id;
-                                setLoadingLabel('Deleting customer data...');
-                                setIsProcessing(true);
-                                try {
-                                  const res = await fetch(`${API_BASE}/api/bookings/${targetId}/customer-data`, {
-                                    method: 'DELETE', headers: getStaffHeaders(false)
-                                  });
-                                  if (res.ok) {
-                                    setAllBookings(prev => prev.filter(b => b.id !== targetId));
-                                    setDeleteCustomerStep(0);
-                                    setEditModalBooking(null);
-                                  } else {
-                                    alert((await res.text()) || 'Could not delete customer data.');
-                                  }
-                                } catch (_) {
-                                  alert('Network error while deleting customer data.');
-                                } finally {
-                                  setIsProcessing(false);
-                                }
-                              }}
-                              className="btn"
-                              style={{ background: '#3B0D0C', color: '#fff', padding: '8px 14px', fontSize: '0.82rem' }}
-                            >
-                              Permanently Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {cancelModalBooking && (
-                <div className="modal-overlay">
-                  <div className="modal-content">
-                    <h3 style={{ color: 'var(--clr-error)' }}>Cancel Reservation</h3>
-                    <p style={{ marginBottom: '16px', color: 'var(--clr-grey)' }}>
-                      Cancel booking for <strong>{cancelModalBooking.customer?.fullName}</strong> on <strong>{cancelModalBooking.bookingDate}</strong> at <strong>{cancelModalBooking.bookingTime}</strong>?
-                    </p>
-                    <select value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '14px' }}>
-                      <option value="Guest requested cancellation">Guest requested cancellation</option>
-                      <option value="Customer was a no-show">Customer was a no-show</option>
-                      <option value="Operational capacity / kitchen issue">Operational capacity / kitchen issue</option>
-                      <option value="Table double-booking resolved">Table double-booking resolved</option>
-                      <option value="Other">Other (Enter custom reason)</option>
-                    </select>
-                    {cancelReason === 'Other' && (
-                      <textarea rows="3" placeholder="Type cancellation details..." value={customReasonText} onChange={e => setCustomReasonText(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '14px' }} />
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                      <button type="button" onClick={() => setCancelModalBooking(null)} className="btn btn-secondary">Keep Booking</button>
-                      <button type="button" onClick={handleConfirmCancellation} disabled={isProcessing} className="btn" style={{ background: 'var(--clr-error)', color: '#fff' }}>Confirm & Notify</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showWalkInModal && (
-                <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
-                  <div className="modal-content walkin-panel">
-                    <h3 id="walkin-modal-title" style={{ color: 'var(--clr-emerald)', marginBottom: '4px' }}>Seat Walk-In Guest</h3>
-                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.85rem', marginBottom: '14px' }}>Name, phone, and notes are optional.</p>
-
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', fontWeight: '600' }}>Party Size</label>
-                      <div className="party-stepper-row">
-                        <button type="button" disabled={Number(walkInDetails.partySize) <= 1} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.max(1, Number(p.partySize) - 1) }))} className="party-step-btn">−</button>
-                        <div className="party-count-display">{walkInDetails.partySize} {Number(walkInDetails.partySize) === 1 ? 'Guest' : 'Guests'}</div>
-                        <button type="button" disabled={Number(walkInDetails.partySize) >= 20} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.min(20, Number(p.partySize) + 1) }))} className="party-step-btn">+</button>
-                      </div>
-                      <div className="quick-party-grid">
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setWalkInDetails(p => ({ ...p, partySize: n }))}
-                            className={`quick-party-chip ${Number(walkInDetails.partySize) === n ? 'active' : ''}`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div style={{ marginBottom: '12px' }}>
-                      <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Table *</label>
-                      <select value={walkInDetails.tableId} onChange={e => setWalkInDetails(p => ({ ...p, tableId: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }}>
-                        <option value="">-- Choose a Table --</option>
-                        <option value="OTHER">Other / Custom Location</option>
-                        {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
-                      </select>
-                    </div>
-
-                    {walkInDetails.tableId === 'OTHER' && (
-                      <div style={{ marginBottom: '12px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Custom Location *</label>
-                        <input type="text" placeholder="e.g. Bar counter" value={walkInDetails.customLocation} onChange={e => setWalkInDetails(p => ({ ...p, customLocation: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
-                      </div>
-                    )}
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Guest Name (Optional)</label>
-                        <input type="text" placeholder="Walk-In Guest" value={walkInDetails.guestName} onChange={e => setWalkInDetails(p => ({ ...p, guestName: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Phone (Optional)</label>
-                        <input type="tel" placeholder="e.g. 07123456789" value={walkInDetails.phone} onChange={e => setWalkInDetails(p => ({ ...p, phone: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
-                      </div>
-                    </div>
-
-                    <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Notes (Optional)</label>
-                      <input type="text" placeholder="High chair, allergy note..." value={walkInDetails.notes} onChange={e => setWalkInDetails(p => ({ ...p, notes: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button type="button" disabled={isProcessing} onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1, minHeight: '44px' }}>Seat Now</button>
-                      <button
-                        type="button"
-                        disabled={isProcessing}
-                        onClick={() => { setShowWalkInModal(false); setWalkInDetails({ guestName: '', phone: '', partySize: 2, tableId: '', customLocation: '', notes: '' }); }}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, minHeight: '44px' }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ALL 4 STAFF MODALS (Outside .fade-in so they center cleanly across the full screen) */}
+      {view === 'admin' && isAuthenticated && showStaffBookingModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <h3 style={{ color: 'var(--clr-emerald)' }}>+ Add Reservation (Staff)</h3>
+            <form onSubmit={handleStaffAddBooking}>
+              <div className="form-grid">
+                <div className="form-group full-width">
+                  <label>Guest Name *</label>
+                  <input type="text" required value={staffBookingData.fullName} onChange={e => setStaffBookingData({ ...staffBookingData, fullName: e.target.value })} className="admin-input" />
+                </div>
+                <div className="form-group">
+                  <label>Phone (Optional)</label>
+                  <input type="tel" value={staffBookingData.phone} onChange={e => setStaffBookingData({ ...staffBookingData, phone: e.target.value })} className="admin-input" />
+                </div>
+                <div className="form-group">
+                  <label>Email (Optional)</label>
+                  <input type="email" value={staffBookingData.email} onChange={e => setStaffBookingData({ ...staffBookingData, email: e.target.value })} className="admin-input" />
+                </div>
+                <div className="form-group">
+                  <label>Date *</label>
+                  <input type="date" required value={staffBookingData.date} onChange={e => setStaffBookingData({ ...staffBookingData, date: e.target.value })} className="admin-input" />
+                </div>
+                <div className="form-group">
+                  <label>Time *</label>
+                  <input type="time" required value={staffBookingData.time} onChange={e => setStaffBookingData({ ...staffBookingData, time: e.target.value })} className="admin-input" />
+                </div>
+                <div className="form-group">
+                  <label>Party Size *</label>
+                  <input type="number" min="1" required value={staffBookingData.partySize} onChange={e => setStaffBookingData({ ...staffBookingData, partySize: e.target.value })} className="admin-input" />
+                </div>
+                <div className="form-group">
+                  <label>Assign Table *</label>
+                  <select required value={staffBookingData.tableId} onChange={e => setStaffBookingData({ ...staffBookingData, tableId: e.target.value })} className="admin-input">
+                    <option value="">-- Choose --</option>
+                    <option value="OTHER">Other / Custom Location</option>
+                    {activeStaffTables.map(t => (
+                      <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
+                    ))}
+                  </select>
+                </div>
+                {staffBookingData.tableId === 'OTHER' && (
+                  <div className="form-group full-width">
+                    <label>Custom Location Details *</label>
+                    <input type="text" required value={staffBookingData.customLocation} onChange={e => setStaffBookingData({ ...staffBookingData, customLocation: e.target.value })} className="admin-input" />
+                  </div>
+                )}
+                <div className="form-group full-width">
+                  <label>Notes / Special Requests (Optional)</label>
+                  <textarea rows="2" value={staffBookingData.requests} onChange={e => setStaffBookingData({ ...staffBookingData, requests: e.target.value })} className="admin-input" />
+                </div>
+              </div>
+              <div className="modal-actions" style={{ marginTop: '20px' }}>
+                <button type="button" onClick={() => setShowStaffBookingModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
+                <button type="submit" disabled={isProcessing} className="btn btn-emerald" style={{ flex: 1 }}>Create Reservation</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {view === 'admin' && isAuthenticated && editModalBooking && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Edit Reservation</h3>
+            <p style={{ marginBottom: '16px', color: 'var(--clr-grey)' }}>
+              Guest: <strong>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})
+            </p>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Change Sitting Time:</label>
+              <select value={(editModalBooking.bookingTime || '').slice(0, 5)} onChange={e => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+                {generate15MinSlots('12:00', '22:00').map(slot => <option key={slot} value={slot}>{slot}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Reassign Table:</label>
+              <select value={editModalBooking.restaurantTable?.id || ''} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+                {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
+              </select>
+            </div>
+            <div style={{ background: 'var(--clr-marble)', padding: '14px', borderRadius: '8px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px' }}>Staff Internal Notes:</label>
+              <textarea rows="3" value={modalNoteText} onChange={e => setModalNoteText(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '10px' }} />
+              <button type="button" onClick={handleSaveModalNote} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Save Note</button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '18px', marginTop: '18px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => { const target = editModalBooking; setEditModalBooking(null); setCancelModalBooking(target); }}
+                  className="btn"
+                  style={{ background: 'rgba(179, 64, 47, 0.1)', color: 'var(--clr-error)', border: '1px solid var(--clr-error)', padding: '10px 14px', fontSize: '0.85rem' }}
+                >
+                  Cancel Booking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteCustomerStep(1)}
+                  className="btn"
+                  style={{ background: '#3B0D0C', color: '#FBF6EA', padding: '10px 14px', fontSize: '0.85rem' }}
+                >
+                  Delete Customer Data
+                </button>
+              </div>
+              <button type="button" onClick={() => { setDeleteCustomerStep(0); setEditModalBooking(null); }} className="btn btn-primary">Done</button>
+            </div>
+
+            {deleteCustomerStep > 0 && (
+              <div style={{ marginTop: '14px', padding: '14px', borderRadius: '8px', background: 'rgba(179, 64, 47, 0.1)', border: '1px solid var(--clr-error)' }}>
+                <p style={{ fontSize: '0.88rem', color: 'var(--clr-error)', fontWeight: '600', marginBottom: '10px' }}>
+                  {deleteCustomerStep === 1
+                    ? 'Step 1 of 2: Full deletion permanently removes customer name, phone, email, notes, and booking data. Continue?'
+                    : 'Step 2 of 2 (Final Warning): This cannot be undone. Permanently delete all customer data for this booking now?'}
+                </p>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setDeleteCustomerStep(0)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>Keep Data</button>
+                  {deleteCustomerStep === 1 ? (
+                    <button type="button" onClick={() => setDeleteCustomerStep(2)} className="btn" style={{ background: 'var(--clr-error)', color: '#fff', padding: '8px 14px', fontSize: '0.82rem' }}>Yes, Next Step</button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={async () => {
+                        const targetId = editModalBooking.id;
+                        setLoadingLabel('Deleting customer data...');
+                        setIsProcessing(true);
+                        try {
+                          const res = await fetch(`${API_BASE}/api/bookings/${targetId}/customer-data`, {
+                            method: 'DELETE', headers: getStaffHeaders(false)
+                          });
+                          if (res.ok) {
+                            setAllBookings(prev => prev.filter(b => b.id !== targetId));
+                            setDeleteCustomerStep(0);
+                            setEditModalBooking(null);
+                          } else {
+                            alert((await res.text()) || 'Could not delete customer data.');
+                          }
+                        } catch (_) {
+                          alert('Network error while deleting customer data.');
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      className="btn"
+                      style={{ background: '#3B0D0C', color: '#fff', padding: '8px 14px', fontSize: '0.82rem' }}
+                    >
+                      Permanently Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {view === 'admin' && isAuthenticated && cancelModalBooking && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 style={{ color: 'var(--clr-error)' }}>Cancel Reservation</h3>
+            <p style={{ marginBottom: '16px', color: 'var(--clr-grey)' }}>
+              Cancel booking for <strong>{cancelModalBooking.customer?.fullName}</strong> on <strong>{cancelModalBooking.bookingDate}</strong> at <strong>{cancelModalBooking.bookingTime}</strong>?
+            </p>
+            <select value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '14px' }}>
+              <option value="Guest requested cancellation">Guest requested cancellation</option>
+              <option value="Customer was a no-show">Customer was a no-show</option>
+              <option value="Operational capacity / kitchen issue">Operational capacity / kitchen issue</option>
+              <option value="Table double-booking resolved">Table double-booking resolved</option>
+              <option value="Other">Other (Enter custom reason)</option>
+            </select>
+            {cancelReason === 'Other' && (
+              <textarea rows="3" placeholder="Type cancellation details..." value={customReasonText} onChange={e => setCustomReasonText(e.target.value)} className="admin-input" style={{ width: '100%', marginBottom: '14px' }} />
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" onClick={() => setCancelModalBooking(null)} className="btn btn-secondary">Keep Booking</button>
+              <button type="button" onClick={handleConfirmCancellation} disabled={isProcessing} className="btn" style={{ background: 'var(--clr-error)', color: '#fff' }}>Confirm &amp; Notify</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {view === 'admin' && isAuthenticated && showWalkInModal && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
+          <div className="modal-content walkin-panel">
+            <h3 id="walkin-modal-title" style={{ color: 'var(--clr-emerald)', marginBottom: '4px' }}>Seat Walk-In Guest</h3>
+            <p style={{ color: 'var(--clr-grey)', fontSize: '0.85rem', marginBottom: '14px' }}>Name, phone, and notes are optional.</p>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', fontWeight: '600' }}>Party Size</label>
+              <div className="party-stepper-row">
+                <button type="button" disabled={Number(walkInDetails.partySize) <= 1} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.max(1, Number(p.partySize) - 1) }))} className="party-step-btn">−</button>
+                <div className="party-count-display">{walkInDetails.partySize} {Number(walkInDetails.partySize) === 1 ? 'Guest' : 'Guests'}</div>
+                <button type="button" disabled={Number(walkInDetails.partySize) >= 20} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.min(20, Number(p.partySize) + 1) }))} className="party-step-btn">+</button>
+              </div>
+              <div className="quick-party-grid">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setWalkInDetails(p => ({ ...p, partySize: n }))}
+                    className={`quick-party-chip ${Number(walkInDetails.partySize) === n ? 'active' : ''}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Table *</label>
+              <select value={walkInDetails.tableId} onChange={e => setWalkInDetails(p => ({ ...p, tableId: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }}>
+                <option value="">-- Choose a Table --</option>
+                <option value="OTHER">Other / Custom Location</option>
+                {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
+              </select>
+            </div>
+
+            {walkInDetails.tableId === 'OTHER' && (
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Custom Location *</label>
+                <input type="text" placeholder="e.g. Bar counter" value={walkInDetails.customLocation} onChange={e => setWalkInDetails(p => ({ ...p, customLocation: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Guest Name (Optional)</label>
+                <input type="text" placeholder="Walk-In Guest" value={walkInDetails.guestName} onChange={e => setWalkInDetails(p => ({ ...p, guestName: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Phone (Optional)</label>
+                <input type="tel" placeholder="e.g. 07123456789" value={walkInDetails.phone} onChange={e => setWalkInDetails(p => ({ ...p, phone: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Notes (Optional)</label>
+              <input type="text" placeholder="High chair, allergy note..." value={walkInDetails.notes} onChange={e => setWalkInDetails(p => ({ ...p, notes: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" disabled={isProcessing} onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1, minHeight: '44px' }}>Seat Now</button>
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => { setShowWalkInModal(false); setWalkInDetails({ guestName: '', phone: '', partySize: 2, tableId: '', customLocation: '', notes: '' }); }}
+                className="btn btn-secondary"
+                style={{ flex: 1, minHeight: '44px' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
   );
 }
-<LegalModals activeModal={legalModal} onClose={() => setLegalModal(null)} />
+
 export default App;

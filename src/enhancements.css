@@ -657,3 +657,54 @@ body {
       height: 44px;
     }
   }
+  /* Centered full-screen modal with neutral dark backdrop */
+.modal-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw;
+    height: 100dvh;
+    z-index: 1200 !important;
+    background: rgba(15, 20, 18, 0.58) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px;
+  }
+  
+  .modal-content {
+    margin: auto !important;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+  
+  /* Keep every menu price on one single line */
+  .menu-card { gap: 16px; }
+  .menu-item-info { flex: 1 1 auto; min-width: 0; }
+  .menu-item-price {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    text-align: right;
+    align-self: flex-start;
+  }
+  
+  /* Booking card colours: Green = Seated, Red = Late (today only), Normal = Past/Upcoming */
+  .admin-card.is-seated {
+    border-left: 5px solid #0F4D3A !important;
+    background: rgba(15, 77, 58, 0.12) !important;
+  }
+  .admin-card.is-late {
+    border-left: 5px solid #B3402F !important;
+    background: rgba(179, 64, 47, 0.12) !important;
+  }
+  .status-pill--did-not-show {
+    background: rgba(94, 90, 82, 0.14);
+    color: #4A4741;
+    border-color: rgba(94, 90, 82, 0.35);
+  }
+  .status-pill--attended {
+    background: rgba(27, 26, 23, 0.06);
+    color: var(--clr-charcoal, #1B1A17);
+    border-color: rgba(27, 26, 23, 0.18);
+  }
