@@ -1,3 +1,20 @@
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none !important;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+}
 /* --- MODAL CENTERING & SCROLL FIX (Prevents bottom button clipping) --- */
 .modal-overlay {
     position: fixed;
