@@ -1,8 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
+import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
+
+const getLondonDateStr = (d = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(d);
+  const y = parts.find(p => p.type === 'year')?.value;
+  const m = parts.find(p => p.type === 'month')?.value;
+  const day = parts.find(p => p.type === 'day')?.value;
+  return `${y}-${m}-${day}`;
+};
+
+const shiftDateStr = (dateStr, deltaDays) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + deltaDays));
+  return dt.toISOString().split('T')[0];
+};
 
 function App() {
   const [view, setView] = useState(() => sessionStorage.getItem('myhosh_session') || 'customer');
@@ -70,14 +90,23 @@ function App() {
   const [newStaffRole, setNewStaffRole] = useState('STAFF');
   const [staffRegMessage, setStaffRegMessage] = useState('');
   const [staffList, setStaffList] = useState([]);
+
+  // Menu & Category Tabs (Public + Admin)
   const [menuItems, setMenuItems] = useState([]);
+  const [activeMenuCategory, setActiveMenuCategory] = useState('Cold Meze');
+  const [showAdminMenuEditor, setShowAdminMenuEditor] = useState(false);
+  const [adminMenuCategory, setAdminMenuCategory] = useState('Cold Meze');
   const [priceHistory, setPriceHistory] = useState([]);
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [menuDraft, setMenuDraft] = useState({
     name: '', category: '', description: '', dietaryTags: '', price: '', available: true
   });
 
-  const [adminDateFilter, setAdminDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [londonNow, setLondonNow] = useState(() => new Date());
+  const londonTodayStr = getLondonDateStr(londonNow);
+  const londonTomorrowStr = shiftDateStr(londonTodayStr, 1);
+
+  const [adminDateFilter, setAdminDateFilter] = useState(() => getLondonDateStr());
   const [searchQuery, setSearchQuery] = useState('');
 
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
@@ -90,7 +119,6 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewMode, setViewMode] = useState('today');
 
-  const [londonNow, setLondonNow] = useState(() => new Date());
   const [seatedColorMode, setSeatedColorMode] = useState(() => localStorage.getItem('myhosh_seated_color_mode') || 'GREEN');
   const [graceMinutes, setGraceMinutes] = useState(() => {
     const saved = Number(localStorage.getItem('myhosh_late_grace_mins'));
@@ -110,25 +138,15 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
-  const futureDate = new Date(today);
-  futureDate.setMonth(today.getMonth() + 3);
-  const maxDate = futureDate.toISOString().split('T')[0];
-
-  const getLondonDateStr = (d = londonNow) => {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).formatToParts(d);
-    const y = parts.find(p => p.type === 'year')?.value;
-    const m = parts.find(p => p.type === 'month')?.value;
-    const day = parts.find(p => p.type === 'day')?.value;
-    return `${y}-${m}-${day}`;
-  };
+  const minDate = londonTodayStr;
+  const maxDate = shiftDateStr(londonTodayStr, 92);
 
   const getLondonMinutesOfDay = (d = londonNow) => {
     const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false
+      timeZone: 'Europe/London',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
     }).formatToParts(d);
     const h = Number(parts.find(p => p.type === 'hour')?.value || 0);
     const min = Number(parts.find(p => p.type === 'minute')?.value || 0);
@@ -143,7 +161,6 @@ function App() {
   const getEffectiveBookingState = (booking) => {
     const raw = normalizeRawStatus(booking.status);
     const terminalOrSeated = ['SEATED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(raw);
-    const todayLondon = getLondonDateStr();
     const nowMins = getLondonMinutesOfDay();
     const [bh = 0, bm = 0] = (booking.bookingTime || '00:00').split(':').map(Number);
     const bookingMins = bh * 60 + bm;
@@ -151,10 +168,10 @@ function App() {
     let minutesLate = 0;
     let isPastGrace = false;
     if (!terminalOrSeated && booking.bookingDate) {
-      if (booking.bookingDate < todayLondon) {
+      if (booking.bookingDate < londonTodayStr) {
         minutesLate = Math.max(1, nowMins + (24 * 60 - bookingMins));
         isPastGrace = true;
-      } else if (booking.bookingDate === todayLondon && nowMins - (bookingMins + graceMinutes) >= 0) {
+      } else if (booking.bookingDate === londonTodayStr && nowMins - (bookingMins + graceMinutes) >= 0) {
         minutesLate = Math.max(1, nowMins - bookingMins);
         isPastGrace = true;
       }
@@ -188,7 +205,7 @@ function App() {
     return slots;
   };
 
-  const customerDayOfWeek = date ? new Date(date + 'T00:00:00').getDay() : -1;
+  const customerDayOfWeek = date ? new Date(`${date}T00:00:00`).getDay() : -1;
   const isWeekendAutoSeating = customerDayOfWeek === 5 || customerDayOfWeek === 6;
 
   const getCustomerTimeSlots = () => {
@@ -235,7 +252,7 @@ function App() {
 
     return eligibleTables.some(table => !allBookings.some(b => {
       if (b.bookingDate !== date || b.restaurantTable?.id !== table.id) return false;
-      if ((b.status || '').toUpperCase() === 'NO_SHOW') return false;
+      if (['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(b.status))) return false;
       const [bh, bm] = (b.bookingTime || '00:00').split(':').map(Number);
       const bStart = new Date(`${date}T${String(bh).padStart(2, '0')}:${String(bm).padStart(2, '0')}`);
       const bEnd = new Date(bStart.getTime() + 120 * 60000);
@@ -278,18 +295,36 @@ function App() {
     return headers;
   };
 
+  const loadMenuData = async (includeHistory = false) => {
+    try {
+      const mRes = await fetch(`${API_BASE}/api/menu`);
+      if (mRes.ok) {
+        const data = await mRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setMenuItems(data);
+          const cats = Array.from(new Set(data.map(m => m.category)));
+          if (cats.length > 0) {
+            setActiveMenuCategory(prev => (cats.includes(prev) ? prev : cats[0]));
+            setAdminMenuCategory(prev => (cats.includes(prev) ? prev : cats[0]));
+          }
+        }
+      }
+      if (includeHistory && currentUser?.role === 'ADMIN') {
+        const hRes = await fetch(`${API_BASE}/api/menu/price-history`, { headers: getStaffHeaders(false) });
+        if (hRes.ok) setPriceHistory(await hRes.json());
+      }
+    } catch (err) {
+      console.error('Error loading menu:', err);
+    }
+  };
+
   useEffect(() => {
     fetch(`${API_BASE}/api/tables`)
       .then(r => r.json())
       .then(data => setTables(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching tables:', err));
 
-    fetch(`${API_BASE}/api/menu`)
-      .then(r => (r.ok ? r.json() : []))
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) setMenuItems(data);
-      })
-      .catch(err => console.error('Error fetching menu:', err));
+    loadMenuData(false);
   }, []);
 
   const fetchBookings = async () => {
@@ -320,7 +355,7 @@ function App() {
 
   const [showStaffBookingModal, setShowStaffBookingModal] = useState(false);
   const [staffBookingData, setStaffBookingData] = useState({
-    fullName: '', email: '', phone: '', date: minDate, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: ''
+    fullName: '', email: '', phone: '', date: londonTodayStr, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: ''
   });
 
   const handleUpdateStatus = async (id, newStatus) => {
@@ -338,8 +373,12 @@ function App() {
 
   const handleSeatWalkIn = async () => {
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const londonDate = getLondonDateStr(now);
+    const dayOfWeek = new Date(`${londonDate}T12:00:00Z`).getUTCDay();
+    const londonParts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false
+    }).formatToParts(now);
+    const currentTimeStr = `${londonParts.find(p => p.type === 'hour')?.value}:${londonParts.find(p => p.type === 'minute')?.value}`;
 
     if (dayOfWeek === 2) {
       alert('We are closed on Tuesdays. Walk-ins cannot be seated today.');
@@ -372,7 +411,7 @@ function App() {
     const newBooking = {
       customer: { fullName: guestName, email: 'walkin@myhosh.local', phone: walkInDetails.phone?.trim() || 'N/A' },
       restaurantTable: { id: parseInt(finalTableId, 10) },
-      bookingDate: now.toISOString().split('T')[0],
+      bookingDate: londonDate,
       bookingTime: `${currentTimeStr}:00`,
       partySize: parseInt(walkInDetails.partySize, 10),
       specialRequests: walkInDetails.notes?.trim() || null,
@@ -447,7 +486,7 @@ function App() {
       });
       if (response.ok) {
         setShowStaffBookingModal(false);
-        setStaffBookingData({ fullName: '', email: '', phone: '', date: minDate, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: '' });
+        setStaffBookingData({ fullName: '', email: '', phone: '', date: londonTodayStr, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: '' });
         fetchBookings();
         alert('Reservation manually added to the system.');
       } else {
@@ -509,6 +548,7 @@ function App() {
       const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000);
       for (const booking of allBookings) {
         if (booking.bookingDate === date && booking.restaurantTable?.id === table.id) {
+          if (['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(booking.status))) continue;
           const parts = (booking.bookingTime || '00:00').split(':');
           const existingStart = new Date(`${date}T${parts[0]}:${parts[1]}`);
           const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
@@ -779,7 +819,16 @@ function App() {
 
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
   const activeStaffTables = tables.filter(t => t.tableNumber !== 4);
-  const floorPlanDate = adminDateFilter === 'ALL' ? minDate : adminDateFilter;
+  const floorPlanDate = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
+
+  // Derived menu categories
+  const publicMenuCategories = Array.from(new Set(menuItems.filter(m => m.available !== false).map(m => m.category)));
+  const currentPublicCat = publicMenuCategories.includes(activeMenuCategory) ? activeMenuCategory : (publicMenuCategories[0] || '');
+  const visiblePublicDishes = menuItems.filter(m => m.available !== false && m.category === currentPublicCat);
+
+  const adminMenuCategories = Array.from(new Set(menuItems.map(m => m.category)));
+  const currentAdminCat = adminMenuCategories.includes(adminMenuCategory) ? adminMenuCategory : (adminMenuCategories[0] || '');
+  const visibleAdminDishes = menuItems.filter(m => m.category === currentAdminCat);
 
   return (
     <>
@@ -824,27 +873,27 @@ function App() {
         <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
           {view === 'customer' && (
             <>
-              <a href="#menu" onClick={() => setIsMobileMenuOpen(false)}>Menu</a>
-              <a href="#space" onClick={() => setIsMobileMenuOpen(false)}>Our Space</a>
-              <a href="#visit" onClick={() => setIsMobileMenuOpen(false)}>Visit Us</a>
+              <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Menu</a>
+              <a href="#space" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Our Space</a>
+              <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Visit Us</a>
             </>
           )}
           <button
             type="button"
             onClick={() => { setIsMobileMenuOpen(false); setView(view === 'customer' ? 'admin' : 'customer'); }}
-            style={{ textAlign: 'left', padding: 0 }}
+            style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
           >
             {view === 'customer' ? 'Staff Login' : 'Return to Site'}
           </button>
           {view === 'customer' && (
-            <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ color: 'var(--clr-emerald)' }}>Reserve a Table</a>
+            <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
           )}
         </div>
       )}
 
       {view === 'customer' ? (
         <div className="customer-view">
-          <section className="hero-section">
+          <section id="hero" className="hero-section">
             <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
             <div className="hero-overlay"></div>
             <div className="hero-content fade-in">
@@ -857,37 +906,65 @@ function App() {
             </div>
           </section>
 
+          <section className="feature-strip">
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path><path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path></svg>
+              <h3>Charcoal Grill</h3>
+              <p>Authentic fire-roasted meats and skewers.</p>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path><path d="M12 7V3M8 5v2M16 5v2"></path><path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path></svg>
+              <h3>Fresh Meze</h3>
+              <p>Traditional cold and hot starters prepared daily.</p>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+              <h3>Warm Welcome</h3>
+              <p>A beautifully designed space to relax and dine.</p>
+            </div>
+          </section>
+
           <section id="menu" className="menu-section">
             <div className="menu-section-header">
               <h2>Our Menu</h2>
               <div className="gold-divider"><span></span></div>
-              <p className="text-muted">All prices in GBP (£). Please inform staff of any food allergies or intolerances.</p>
+              <p className="text-muted">Tap a category to explore our dishes. Please inform staff of any food allergies or intolerances.</p>
             </div>
 
-            {menuItems.length > 0 ? (
-              Array.from(new Set(menuItems.filter(m => m.available !== false).map(m => m.category))).map(cat => (
-                <div key={cat} style={{ marginBottom: '36px' }}>
-                  <h3 style={{ color: 'var(--clr-emerald)', marginBottom: '14px', fontSize: '1.35rem' }}>{cat}</h3>
-                  <div className="menu-grid">
-                    {menuItems
-                      .filter(m => m.available !== false && m.category === cat)
-                      .map(dish => (
-                        <div key={dish.id} className="menu-card">
-                          <div className="menu-item-info">
-                            <h4>
-                              {dish.name}{' '}
-                              {dish.dietaryTags && (
-                                <span style={{ fontSize: '0.78rem', color: 'var(--clr-emerald)', fontWeight: 600 }}>({dish.dietaryTags})</span>
-                              )}
-                            </h4>
-                            {dish.description && <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>{dish.description}</p>}
-                          </div>
-                          <div className="menu-item-price">£{Number(dish.price).toFixed(2)}</div>
-                        </div>
-                      ))}
-                  </div>
+            {publicMenuCategories.length > 0 ? (
+              <>
+                <div className="menu-category-tabs" role="tablist" aria-label="Menu categories">
+                  {publicMenuCategories.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      role="tab"
+                      aria-selected={currentPublicCat === cat}
+                      onClick={() => setActiveMenuCategory(cat)}
+                      className={`menu-cat-tab ${currentPublicCat === cat ? 'active' : ''}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
                 </div>
-              ))
+
+                <div className="menu-grid">
+                  {visiblePublicDishes.map(dish => (
+                    <div key={dish.id} className="menu-card">
+                      <div className="menu-item-info">
+                        <h4>
+                          {dish.name}{' '}
+                          {dish.dietaryTags && (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--clr-emerald)', fontWeight: 600 }}>({dish.dietaryTags})</span>
+                          )}
+                        </h4>
+                        {dish.description && <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>{dish.description}</p>}
+                      </div>
+                      <div className="menu-item-price">£{Number(dish.price).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="menu-grid">
                 <div className="menu-card">
@@ -914,8 +991,8 @@ function App() {
               </div>
             )}
 
-            <div className="text-center">
-              <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-emerald">View Full Menu</button>
+            <div className="text-center" style={{ marginTop: '24px' }}>
+              <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-emerald">View Full Menu Image</button>
             </div>
           </section>
 
@@ -1039,7 +1116,7 @@ function App() {
                           </select>
                           {selectedTableObj?.tableNumber === 13 && (
                             <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'rgba(200, 157, 84, 0.15)', border: '1px solid var(--clr-gold)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
-                              Table 13 is next to the open charcoal grill and may be warmer during busy service.
+                              🔥 <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill and may be warmer during busy service.
                             </div>
                           )}
                         </div>
@@ -1087,11 +1164,21 @@ function App() {
               <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '15px 0' }}><span></span></div>
               <p><strong>Address:</strong><br />99 Fisherton Street<br />SP2 7SP Salisbury, UK</p>
               <p><strong>Phone:</strong><br /><a href={`tel:${clientPhoneNumber.replace(/\s+/g, '')}`} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a></p>
+              <p style={{ marginTop: '30px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
+                No online availability or booking a large event?<br />
+                Please call the restaurant directly and we will do our best to accommodate you.
+              </p>
             </div>
           </section>
 
           <footer className="site-footer">
             <div className="footer-logo">MYHOSH</div>
+            <div className="footer-links">
+              <a href="#hero">Home</a>
+              <a href="#menu">Menu</a>
+              <a href="#reserve">Reserve</a>
+              <a href="#visit">Contact</a>
+            </div>
             <div className="footer-bottom">
               <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
             </div>
@@ -1147,14 +1234,15 @@ function App() {
           <LoadingOverlay show={isProcessing || isLoggingIn} label={isLoggingIn ? 'Signing into Staff Gateway...' : loadingLabel} fullscreen />
 
           {!isAuthenticated ? (
-            <div className="fade-in" style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 30px', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', textAlign: 'center', boxShadow: 'var(--shadow-soft)' }}>
-              <h2 style={{ color: 'var(--clr-emerald)' }}>Staff Gateway</h2>
+            <div className="fade-in" style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 30px', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.1)', textAlign: 'center', boxShadow: 'var(--shadow-soft)' }}>
+              <h2 style={{ color: 'var(--clr-emerald)', margin: '0 0 10px 0' }}>Staff Gateway</h2>
+              <p style={{ color: 'var(--clr-grey)', marginBottom: '30px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
                 <div style={{ marginBottom: '15px' }}>
-                  <input type="text" placeholder="Staff Username" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
+                  <input type="text" placeholder="Staff Username" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required autoComplete="off" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
                 </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <input type="password" placeholder="Staff Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
+                <div style={{ marginBottom: '25px' }}>
+                  <input type="password" placeholder="Staff Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required autoComplete="new-password" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
                 </div>
                 {loginError && <div style={{ color: 'var(--clr-error)', marginBottom: '15px', fontSize: '0.9rem' }}>{loginError}</div>}
                 <button type="submit" disabled={isLoggingIn} className="btn btn-primary" style={{ width: '100%' }}>Access System</button>
@@ -1169,23 +1257,157 @@ function App() {
                     Logged in as: <strong>{currentUser?.username}</strong> ({currentUser?.role})
                   </div>
                 </div>
-                <button type="button" onClick={handleLogout} className="btn btn-secondary">Secure Logout</button>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {currentUser?.role === 'ADMIN' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !showAdminMenuEditor;
+                        setShowAdminMenuEditor(next);
+                        if (next) loadMenuData(true);
+                      }}
+                      className="btn btn-emerald"
+                    >
+                      {showAdminMenuEditor ? 'Close Menu Editor' : 'Edit Menu & Prices'}
+                    </button>
+                  )}
+                  <button type="button" onClick={handleLogout} className="btn btn-secondary">Secure Logout</button>
+                </div>
               </header>
 
+              {currentUser?.role === 'ADMIN' && showAdminMenuEditor && (
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                    <h3 style={{ margin: 0, color: 'var(--clr-emerald)' }}>Menu & Price Editor (By Category)</h3>
+                    <button type="button" onClick={() => loadMenuData(true)} className="btn btn-secondary" style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
+                      Refresh Menu
+                    </button>
+                  </div>
+
+                  {adminMenuCategories.length > 0 ? (
+                    <>
+                      <div className="menu-category-tabs menu-category-tabs--left" role="tablist" aria-label="Admin menu categories">
+                        {adminMenuCategories.map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            role="tab"
+                            aria-selected={currentAdminCat === cat}
+                            onClick={() => { setAdminMenuCategory(cat); setEditingMenuId(null); }}
+                            className={`menu-cat-tab ${currentAdminCat === cat ? 'active' : ''}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+
+                      {visibleAdminDishes.map(item => (
+                        <div key={item.id} style={{ padding: '12px', marginBottom: '8px', borderRadius: '8px', background: '#fff', border: '1px solid rgba(27,26,23,0.1)' }}>
+                          {editingMenuId === item.id ? (
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                              <input type="text" value={menuDraft.name} onChange={e => setMenuDraft({ ...menuDraft, name: e.target.value })} className="admin-input" placeholder="Dish name" />
+                              <input type="text" value={menuDraft.category} onChange={e => setMenuDraft({ ...menuDraft, category: e.target.value })} className="admin-input" placeholder="Category" />
+                              <input type="number" step="0.01" min="0" value={menuDraft.price} onChange={e => setMenuDraft({ ...menuDraft, price: e.target.value })} className="admin-input" placeholder="Price (£)" />
+                              <input type="text" value={menuDraft.dietaryTags} onChange={e => setMenuDraft({ ...menuDraft, dietaryTags: e.target.value })} className="admin-input" placeholder="Dietary tags (e.g. V, VG, GF)" />
+                              <textarea rows="2" value={menuDraft.description} onChange={e => setMenuDraft({ ...menuDraft, description: e.target.value })} className="admin-input" placeholder="Description" />
+                              <label style={{ fontSize: '0.85rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input type="checkbox" checked={menuDraft.available} onChange={e => setMenuDraft({ ...menuDraft, available: e.target.checked })} />
+                                Available on public menu
+                              </label>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  disabled={isProcessing}
+                                  onClick={async () => {
+                                    const numVal = Number(menuDraft.price);
+                                    if (!Number.isFinite(numVal) || numVal < 0) {
+                                      alert('Enter a valid non-negative price.');
+                                      return;
+                                    }
+                                    setLoadingLabel('Updating dish...');
+                                    setIsProcessing(true);
+                                    try {
+                                      const res = await fetch(`${API_BASE}/api/menu/${item.id}`, {
+                                        method: 'PUT', headers: getStaffHeaders(),
+                                        body: JSON.stringify({ ...menuDraft, price: numVal.toFixed(2) })
+                                      });
+                                      if (res.ok) {
+                                        const updated = await res.json();
+                                        setMenuItems(prev => prev.map(m => (m.id === item.id ? updated : m)));
+                                        setEditingMenuId(null);
+                                        loadMenuData(true);
+                                      } else {
+                                        alert(await res.text());
+                                      }
+                                    } finally {
+                                      setIsProcessing(false);
+                                    }
+                                  }}
+                                  className="btn btn-emerald"
+                                  style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+                                >
+                                  Save Changes
+                                </button>
+                                <button type="button" onClick={() => setEditingMenuId(null)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <div>
+                                <strong>{item.name}</strong> — <strong style={{ color: 'var(--clr-emerald)' }}>£{Number(item.price).toFixed(2)}</strong>
+                                {!item.available && <span style={{ marginLeft: '8px', color: 'var(--clr-error)', fontSize: '0.8rem' }}>[Hidden]</span>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingMenuId(item.id);
+                                  setMenuDraft({
+                                    name: item.name, category: item.category,
+                                    description: item.description || '', dietaryTags: item.dietaryTags || '',
+                                    price: Number(item.price).toFixed(2), available: item.available
+                                  });
+                                }}
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {priceHistory.length > 0 && (
+                        <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid rgba(27,26,23,0.1)', fontSize: '0.82rem', color: 'var(--clr-grey)' }}>
+                          <strong>Recent Price Changes:</strong>
+                          {priceHistory.slice(0, 6).map(h => (
+                            <div key={h.id} style={{ padding: '3px 0' }}>
+                              {h.dishName}: £{Number(h.oldPrice).toFixed(2)} → £{Number(h.newPrice).toFixed(2)} by <strong>{h.changedBy}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p style={{ color: 'var(--clr-grey)', margin: 0 }}>No menu items loaded yet. Click Refresh Menu once the backend is live.</p>
+                  )}
+                </div>
+              )}
+
               {currentUser?.role === 'ADMIN' && (
-                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', boxShadow: 'var(--shadow-soft)' }}>
-                  <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)' }}>Admin Control: Register New Staff</h3>
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
+                  <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register & Manage Staff</h3>
                   <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Username</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Username</label>
                       <input type="text" required value={newStaffUsername} onChange={e => setNewStaffUsername(e.target.value)} className="admin-input" style={{ width: '100%' }} />
                     </div>
                     <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Password</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Password</label>
                       <input type="password" required value={newStaffPassword} onChange={e => setNewStaffPassword(e.target.value)} className="admin-input" style={{ width: '100%' }} />
                     </div>
                     <div style={{ flex: '0 0 150px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px' }}>Role</label>
+                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Role</label>
                       <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                         <option value="STAFF">STAFF</option>
                         <option value="ADMIN">ADMIN</option>
@@ -1193,11 +1415,15 @@ function App() {
                     </div>
                     <button type="submit" disabled={isProcessing} className="btn btn-primary" style={{ padding: '12px 20px' }}>Create</button>
                   </form>
-                  {staffRegMessage && <div style={{ marginTop: '12px', fontSize: '0.9rem' }}>{staffRegMessage}</div>}
+                  {staffRegMessage && (
+                    <div style={{ marginTop: '12px', fontSize: '0.9rem', color: staffRegMessage.startsWith('Error') ? 'var(--clr-error)' : 'var(--clr-emerald)' }}>
+                      {staffRegMessage}
+                    </div>
+                  )}
 
-                  <div style={{ marginTop: '20px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <strong>Staff Accounts</strong>
+                  <div style={{ marginTop: '18px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '0.92rem' }}>Existing Staff Accounts</strong>
                       <button
                         type="button"
                         onClick={async () => {
@@ -1211,7 +1437,7 @@ function App() {
                       </button>
                     </div>
                     {staffList.map(stf => (
-                      <div key={stf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(27,26,23,0.06)' }}>
+                      <div key={stf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(27,26,23,0.06)' }}>
                         <span><strong>{stf.username}</strong> ({stf.role})</span>
                         <button
                           type="button"
@@ -1237,124 +1463,63 @@ function App() {
                       </div>
                     ))}
                   </div>
-
-                  <div style={{ marginTop: '20px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <h4 style={{ margin: 0, color: 'var(--clr-emerald)' }}>Admin Menu & Price Editor</h4>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const [mRes, hRes] = await Promise.all([
-                            fetch(`${API_BASE}/api/menu`),
-                            fetch(`${API_BASE}/api/menu/price-history`, { headers: getStaffHeaders(false) })
-                          ]);
-                          if (mRes.ok) setMenuItems(await mRes.json());
-                          if (hRes.ok) setPriceHistory(await hRes.json());
-                        }}
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                      >
-                        Refresh Menu & History
-                      </button>
-                    </div>
-                    {menuItems.map(item => (
-                      <div key={item.id} style={{ padding: '10px', marginBottom: '8px', borderRadius: '8px', background: '#fff', border: '1px solid rgba(27,26,23,0.1)' }}>
-                        {editingMenuId === item.id ? (
-                          <div style={{ display: 'grid', gap: '8px' }}>
-                            <input type="text" value={menuDraft.name} onChange={e => setMenuDraft({ ...menuDraft, name: e.target.value })} className="admin-input" placeholder="Dish name" />
-                            <input type="text" value={menuDraft.category} onChange={e => setMenuDraft({ ...menuDraft, category: e.target.value })} className="admin-input" placeholder="Category" />
-                            <input type="number" step="0.01" min="0" value={menuDraft.price} onChange={e => setMenuDraft({ ...menuDraft, price: e.target.value })} className="admin-input" placeholder="Price (£)" />
-                            <textarea rows="2" value={menuDraft.description} onChange={e => setMenuDraft({ ...menuDraft, description: e.target.value })} className="admin-input" placeholder="Description" />
-                            <label style={{ fontSize: '0.85rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <input type="checkbox" checked={menuDraft.available} onChange={e => setMenuDraft({ ...menuDraft, available: e.target.checked })} />
-                              Available
-                            </label>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button
-                                type="button"
-                                disabled={isProcessing}
-                                onClick={async () => {
-                                  const numVal = Number(menuDraft.price);
-                                  if (!Number.isFinite(numVal) || numVal < 0) {
-                                    alert('Enter a valid non-negative price.');
-                                    return;
-                                  }
-                                  setLoadingLabel('Updating dish...');
-                                  setIsProcessing(true);
-                                  try {
-                                    const res = await fetch(`${API_BASE}/api/menu/${item.id}`, {
-                                      method: 'PUT', headers: getStaffHeaders(),
-                                      body: JSON.stringify({ ...menuDraft, price: numVal.toFixed(2) })
-                                    });
-                                    if (res.ok) {
-                                      const updated = await res.json();
-                                      setMenuItems(prev => prev.map(m => (m.id === item.id ? updated : m)));
-                                      setEditingMenuId(null);
-                                      const hRes = await fetch(`${API_BASE}/api/menu/price-history`, { headers: getStaffHeaders(false) });
-                                      if (hRes.ok) setPriceHistory(await hRes.json());
-                                    } else {
-                                      alert(await res.text());
-                                    }
-                                  } finally {
-                                    setIsProcessing(false);
-                                  }
-                                }}
-                                className="btn btn-emerald"
-                                style={{ padding: '8px 14px', fontSize: '0.82rem' }}
-                              >
-                                Save Changes
-                              </button>
-                              <button type="button" onClick={() => setEditingMenuId(null)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>Cancel</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                            <span><strong>{item.name}</strong> ({item.category}) — <strong>£{Number(item.price).toFixed(2)}</strong></span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingMenuId(item.id);
-                                setMenuDraft({
-                                  name: item.name, category: item.category,
-                                  description: item.description || '', dietaryTags: item.dietaryTags || '',
-                                  price: Number(item.price).toFixed(2), available: item.available
-                                });
-                              }}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                            >
-                              Edit Inline
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {priceHistory.slice(0, 8).map(h => (
-                      <div key={h.id} style={{ fontSize: '0.82rem', color: 'var(--clr-grey)', padding: '3px 0' }}>
-                        {h.dishName}: £{Number(h.oldPrice).toFixed(2)} → £{Number(h.newPrice).toFixed(2)} by <strong>{h.changedBy}</strong>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
 
               <div className="admin-toolbar">
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(getLondonDateStr()); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Today's Bookings</button>
+                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+                    <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Today's Bookings</button>
                     <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <button type="button" onClick={handleExportCSV} className="btn btn-secondary">Export CSV</button>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={handleExportCSV} className="btn btn-secondary">📥 Export CSV</button>
                     <button type="button" onClick={() => setShowWalkInModal(true)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>+ Walk-In</button>
-                    <button type="button" onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald">+ Add Reservation</button>
+                    <button type="button" onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Add Reservation</button>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
-                  <button type="button" onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
-                  <button type="button" onClick={() => setAdminDateFilter(getLondonDateStr())} className={`btn-admin-tab ${adminDateFilter === getLondonDateStr() ? 'active' : ''}`}>Today</button>
-                  <input type="date" value={adminDateFilter === 'ALL' ? '' : adminDateFilter} onChange={e => setAdminDateFilter(e.target.value || 'ALL')} className="admin-input" />
+                {/* RESTORED DATE NAVIGATION WITH DAY-BY-DAY ARROWS */}
+                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+                    <button type="button" onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
+                    <button type="button" onClick={() => setAdminDateFilter(londonTodayStr)} className={`btn-admin-tab ${adminDateFilter === londonTodayStr ? 'active' : ''}`}>Today</button>
+                    <button type="button" onClick={() => setAdminDateFilter(londonTomorrowStr)} className={`btn-admin-tab ${adminDateFilter === londonTomorrowStr ? 'active' : ''}`}>Tomorrow</button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      aria-label="Previous day"
+                      onClick={() => {
+                        const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
+                        setAdminDateFilter(shiftDateStr(base, -1));
+                      }}
+                      className="admin-input"
+                      style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      &larr;
+                    </button>
+                    <input
+                      type="date"
+                      value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
+                      onChange={e => setAdminDateFilter(e.target.value || 'ALL')}
+                      className="admin-input"
+                      style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }}
+                    />
+                    <button
+                      type="button"
+                      aria-label="Next day"
+                      onClick={() => {
+                        const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
+                        setAdminDateFilter(shiftDateStr(base, 1));
+                      }}
+                      className="admin-input"
+                      style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      &rarr;
+                    </button>
+                  </div>
                 </div>
 
                 <div className="metric-grid" style={{ display: 'flex', gap: '15px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px', marginTop: '15px' }}>
@@ -1369,7 +1534,7 @@ function App() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between', background: 'var(--clr-marble)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between', background: 'var(--clr-marble)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '16px', border: '1px solid rgba(27,26,23,0.08)', fontSize: '0.85rem' }}>
                 <div>
                   <strong>Seated Colour:</strong>{' '}
                   <select value={seatedColorMode} onChange={e => setSeatedColorMode(e.target.value)} className="admin-input" style={{ padding: '6px 10px' }}>
@@ -1388,23 +1553,58 @@ function App() {
                 </div>
               </div>
 
+              {/* RESTORED & FIXED LIVE 13-TABLE FLOOR STATUS GRID */}
               {tables.length > 0 && (
-                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', boxShadow: 'var(--shadow-soft)' }}>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1.05rem', color: 'var(--clr-emerald)' }}>Live Floor Status ({floorPlanDate})</h3>
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--clr-emerald)' }}>
+                      Live Floor Status ({floorPlanDate})
+                    </h3>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
+                      <span>🟢 Free</span>
+                      <span>🟡 Reserved</span>
+                      <span>🔴 Seated / Late</span>
+                      <span>⚪ Offline</span>
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))', gap: '10px' }}>
                     {[...tables].sort((a, b) => a.tableNumber - b.tableNumber).map(t => {
                       const isOffline = t.tableNumber === 4;
-                      const tBookings = allBookings.filter(b => b.bookingDate === floorPlanDate && b.restaurantTable?.id === t.id && (b.status || '').toUpperCase() !== 'NO_SHOW');
-                      const isSeated = tBookings.some(b => ['SEATED', 'ARRIVED'].includes((b.status || '').toUpperCase()));
-                      let badge = 'Free';
-                      if (isOffline) badge = 'Offline';
-                      else if (isSeated) badge = 'Seated';
-                      else if (tBookings.length > 0) badge = tBookings.map(b => (b.bookingTime || '').slice(0, 5)).join(', ');
+                      const tableBookings = allBookings.filter(
+                        b => b.bookingDate === floorPlanDate
+                          && Number(b.restaurantTable?.id) === Number(t.id)
+                          && !['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(b.status))
+                      );
+                      const isSeated = tableBookings.some(b => ['SEATED', 'ARRIVED'].includes(normalizeRawStatus(b.status)));
+                      const isLate = !isSeated && tableBookings.some(b => getEffectiveBookingState(b).effectiveStatus === 'LATE');
+                      const isReserved = tableBookings.length > 0;
+
+                      let bg = 'rgba(15, 77, 58, 0.08)';
+                      let border = '1px solid var(--clr-emerald)';
+                      let badge = '🟢 Free';
+                      if (isOffline) {
+                        bg = 'rgba(0,0,0,0.05)';
+                        border = '1px dashed rgba(27,26,23,0.25)';
+                        badge = '⚪ Offline';
+                      } else if (isLate) {
+                        bg = 'rgba(179, 64, 47, 0.16)';
+                        border = '1px solid var(--clr-error)';
+                        badge = `⚠️ Late (${tableBookings.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')})`;
+                      } else if (isSeated) {
+                        bg = 'rgba(179, 64, 47, 0.12)';
+                        border = '1px solid var(--clr-error)';
+                        badge = '🔴 Seated';
+                      } else if (isReserved) {
+                        bg = 'rgba(200, 157, 84, 0.18)';
+                        border = '1px solid var(--clr-gold)';
+                        badge = `🟡 ${tableBookings.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')}`;
+                      }
+
                       return (
-                        <div key={t.id} style={{ padding: '10px', borderRadius: '8px', background: '#fff', border: '1px solid rgba(27,26,23,0.12)', textAlign: 'center' }}>
-                          <div style={{ fontWeight: 'bold' }}>Table {t.tableNumber}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--clr-grey)' }}>Seats {t.capacity}</div>
-                          <div style={{ fontSize: '0.78rem', fontWeight: 600, marginTop: '4px' }}>{badge}</div>
+                        <div key={t.id} style={{ padding: '10px', borderRadius: '8px', background: bg, border, textAlign: 'center' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--clr-charcoal)' }}>Table {t.tableNumber}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--clr-grey)', marginBottom: '4px' }}>Seats {t.capacity}</div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>{badge}</div>
                         </div>
                       );
                     })}
@@ -1415,11 +1615,11 @@ function App() {
               <div style={{ marginBottom: '15px' }}>
                 <input
                   type="text"
-                  placeholder="Search by guest name, phone, or reference code (e.g. MH-0012)..."
+                  placeholder="🔍 Search by guest name, phone, or reference code (e.g. MH-0012)..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="admin-input"
-                  style={{ width: '100%', padding: '12px 16px' }}
+                  style={{ width: '100%', padding: '12px 16px', fontSize: '0.95rem' }}
                 />
               </div>
 
@@ -1429,8 +1629,8 @@ function App() {
                   return (
                     <div key={bookingDate}>
                       <div className="date-group-header">
-                        <span style={{ color: 'var(--clr-cream)' }}>{bookingDate}</span>
-                        <span style={{ color: 'var(--clr-gold-pale)' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
+                        <span style={{ color: 'var(--clr-cream)' }}>📅 {new Date(`${bookingDate}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        <span style={{ color: 'var(--clr-gold-pale)', fontWeight: 'normal' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
                       </div>
 
                       {dateBookings.map(booking => {
@@ -1442,7 +1642,7 @@ function App() {
                               <div className="card-time">{booking.bookingTime}</div>
                               <div className="card-table-pill">Table {booking.restaurantTable?.tableNumber || 'N/A'} ({booking.partySize} Guests)</div>
                               <span className={`status-pill status-pill--${st.visualTone}`}>
-                                {st.visualTone === 'late' ? '!' : st.visualTone === 'seated' ? '✓' : '•'} {st.statusLabel}
+                                {st.visualTone === 'late' ? '⚠' : st.visualTone === 'seated' ? '✓' : '●'} {st.statusLabel}
                               </span>
                             </div>
 
@@ -1454,8 +1654,8 @@ function App() {
                                 </span>
                               </div>
                               <p>
-                                <span>{booking.customer?.phone || 'N/A'}</span>
-                                {booking.customer?.email && <span>{booking.customer.email}</span>}
+                                <span>📞 {booking.customer?.phone || 'N/A'}</span>
+                                {booking.customer?.email && <span>✉️ {booking.customer.email}</span>}
                               </p>
                               {(booking.specialRequests || booking.staffNotes) && (
                                 <div className="card-notes">
@@ -1466,7 +1666,7 @@ function App() {
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                              {booking.bookingDate === getLondonDateStr() && !['SEATED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(raw) && (
+                              {booking.bookingDate === londonTodayStr && !['SEATED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(raw) && (
                                 <>
                                   {raw !== 'ARRIVED' && (
                                     <button type="button" onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>Arrived</button>
@@ -1475,7 +1675,7 @@ function App() {
                                   <button type="button" onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>No Show</button>
                                 </>
                               )}
-                              <button type="button" onClick={() => handleOpenEdit(booking)} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>Edit</button>
+                              <button type="button" onClick={() => handleOpenEdit(booking)} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-gold)', color: 'var(--clr-charcoal)' }}>⚙️ Edit</button>
                             </div>
                           </div>
                         );
@@ -1484,8 +1684,9 @@ function App() {
                   );
                 })}
                 {displayedBookings.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', marginTop: '20px' }}>
-                    No reservations found for this selection.
+                  <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(27,26,23,0.2)', marginTop: '20px' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.5 }}>🍽️</div>
+                    <p style={{ fontSize: '1.1rem' }}>No reservations found for this selection.</p>
                   </div>
                 )}
               </div>
@@ -1601,8 +1802,8 @@ function App() {
                       <div style={{ marginTop: '14px', padding: '14px', borderRadius: '8px', background: 'rgba(179, 64, 47, 0.1)', border: '1px solid var(--clr-error)' }}>
                         <p style={{ fontSize: '0.88rem', color: 'var(--clr-error)', fontWeight: '600', marginBottom: '10px' }}>
                           {deleteCustomerStep === 1
-                            ? 'Step 1 of 2: Full deletion permanently removes customer name, phone, email, notes, and booking data (unlike anonymisation, which retains non-personal counts). Continue?'
-                            : 'Step 2 of 2 (Final Warning): This action is permanent and cannot be undone. Delete all customer data for this booking now?'}
+                            ? 'Step 1 of 2: Full deletion permanently removes customer name, phone, email, notes, and booking data. Continue?'
+                            : 'Step 2 of 2 (Final Warning): This cannot be undone. Permanently delete all customer data for this booking now?'}
                         </p>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                           <button type="button" onClick={() => setDeleteCustomerStep(0)} className="btn btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>Keep Data</button>
@@ -1674,11 +1875,11 @@ function App() {
               {showWalkInModal && (
                 <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
                   <div className="modal-content walkin-panel">
-                    <h3 id="walkin-modal-title" style={{ color: 'var(--clr-emerald)', marginBottom: '6px' }}>Seat Walk-In Guest</h3>
-                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.88rem', marginBottom: '18px' }}>Name, phone, and notes are optional.</p>
+                    <h3 id="walkin-modal-title" style={{ color: 'var(--clr-emerald)', marginBottom: '4px' }}>Seat Walk-In Guest</h3>
+                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.85rem', marginBottom: '14px' }}>Name, phone, and notes are optional.</p>
 
-                    <div style={{ marginBottom: '18px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: '600' }}>Party Size</label>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', fontWeight: '600' }}>Party Size</label>
                       <div className="party-stepper-row">
                         <button type="button" disabled={Number(walkInDetails.partySize) <= 1} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.max(1, Number(p.partySize) - 1) }))} className="party-step-btn">−</button>
                         <div className="party-count-display">{walkInDetails.partySize} {Number(walkInDetails.partySize) === 1 ? 'Guest' : 'Guests'}</div>
@@ -1698,9 +1899,9 @@ function App() {
                       </div>
                     </div>
 
-                    <div style={{ marginBottom: '14px' }}>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>Table *</label>
-                      <select value={walkInDetails.tableId} onChange={e => setWalkInDetails(p => ({ ...p, tableId: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '46px' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Table *</label>
+                      <select value={walkInDetails.tableId} onChange={e => setWalkInDetails(p => ({ ...p, tableId: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }}>
                         <option value="">-- Choose a Table --</option>
                         <option value="OTHER">Other / Custom Location</option>
                         {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
@@ -1708,36 +1909,36 @@ function App() {
                     </div>
 
                     {walkInDetails.tableId === 'OTHER' && (
-                      <div style={{ marginBottom: '14px' }}>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>Custom Location *</label>
-                        <input type="text" placeholder="e.g. Bar counter" value={walkInDetails.customLocation} onChange={e => setWalkInDetails(p => ({ ...p, customLocation: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '46px' }} />
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Custom Location *</label>
+                        <input type="text" placeholder="e.g. Bar counter" value={walkInDetails.customLocation} onChange={e => setWalkInDetails(p => ({ ...p, customLocation: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '12px' }}>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>Guest Name (Optional)</label>
-                        <input type="text" placeholder="Walk-In Guest" value={walkInDetails.guestName} onChange={e => setWalkInDetails(p => ({ ...p, guestName: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '46px' }} />
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Guest Name (Optional)</label>
+                        <input type="text" placeholder="Walk-In Guest" value={walkInDetails.guestName} onChange={e => setWalkInDetails(p => ({ ...p, guestName: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>Phone (Optional)</label>
-                        <input type="tel" placeholder="e.g. 07123456789" value={walkInDetails.phone} onChange={e => setWalkInDetails(p => ({ ...p, phone: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '46px' }} />
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Phone (Optional)</label>
+                        <input type="tel" placeholder="e.g. 07123456789" value={walkInDetails.phone} onChange={e => setWalkInDetails(p => ({ ...p, phone: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
                       </div>
                     </div>
 
-                    <div style={{ marginBottom: '20px' }}>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>Notes (Optional)</label>
-                      <input type="text" placeholder="High chair, allergy note..." value={walkInDetails.notes} onChange={e => setWalkInDetails(p => ({ ...p, notes: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '46px' }} />
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Notes (Optional)</label>
+                      <input type="text" placeholder="High chair, allergy note..." value={walkInDetails.notes} onChange={e => setWalkInDetails(p => ({ ...p, notes: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <button type="button" disabled={isProcessing} onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1, minHeight: '48px' }}>Seat Now</button>
+                      <button type="button" disabled={isProcessing} onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1, minHeight: '44px' }}>Seat Now</button>
                       <button
                         type="button"
                         disabled={isProcessing}
                         onClick={() => { setShowWalkInModal(false); setWalkInDetails({ guestName: '', phone: '', partySize: 2, tableId: '', customLocation: '', notes: '' }); }}
                         className="btn btn-secondary"
-                        style={{ flex: 1, minHeight: '48px' }}
+                        style={{ flex: 1, minHeight: '44px' }}
                       >
                         Cancel
                       </button>
