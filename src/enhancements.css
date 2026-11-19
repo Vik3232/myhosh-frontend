@@ -433,6 +433,42 @@ body {
     from { opacity: 0; }
     to { opacity: 1; }
   }
+
+  /* --- ITEM 9: RESPONSIVE MOBILE HEADER LOGO --- */
+@media (max-width: 640px) {
+    .site-header .brand-logo img {
+      height: 52px !important;
+      max-width: 195px;
+      width: auto;
+      object-fit: contain;
+    }
+  }
+  
+  /* --- ITEM 12: LEGAL MODALS & FOOTER LINKS --- */
+  .legal-inline-link {
+    color: var(--clr-emerald, #0F4D3A);
+    text-decoration: underline;
+    font-weight: 600;
+    padding: 0;
+    font-size: inherit;
+  }
+  
+  .legal-modal-body {
+    text-align: left;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: var(--clr-charcoal, #1B1A17);
+  }
+  
+  .legal-modal-body h4 {
+    color: var(--clr-emerald, #0F4D3A);
+    margin: 14px 0 4px;
+    font-size: 1rem;
+  }
+  
+  .legal-modal-body p {
+    margin-bottom: 8px;
+  }
   /* =========================================================
    MOBILE RESPONSIVENESS PASS (320px – 768px)
    ========================================================= */

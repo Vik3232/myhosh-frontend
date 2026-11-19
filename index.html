@@ -1,9 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- MyHosh Brand Favicons (Google Search, Chrome, Safari, Apple iOS & Android) -->
+
+    <title>MyHosh Salisbury | Authentic Turkish Restaurant &amp; Charcoal Grill</title>
+    <meta
+      name="description"
+      content="Reserve a table at MyHosh Salisbury (99 Fisherton Street, SP2 7SP). Authentic Turkish charcoal grill, fresh cold and hot meze, seafood, and warm hospitality."
+    />
+    <meta name="theme-color" content="#0F4D3A" />
+    <link rel="canonical" href="https://myhosh-salisbury.co.uk/" />
+
+    <!-- Favicons & App Icons -->
+
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/web-app-manifest-192x192.png" />
@@ -11,52 +21,72 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     
-    <!-- SEO & WhatsApp Link Previews -->
-    <title>MyHosh Salisbury | Best Authentic Turkish Food</title>
-    <meta name="description" content="Best Turkish food in Salisbury! Authentic Turkish charcoal grill, fresh meze, and a 5-star on Google dining experience. Reserve your table today." />
     
-    <meta property="og:title" content="MyHosh Salisbury | Best Authentic Turkish Food" />
-    <meta property="og:description" content="Best Turkish food in Salisbury! Authentic Turkish charcoal grill, fresh meze, and a 5-star on Google dining experience." />
-    <meta property="og:image" content="https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png" />
-    <meta property="og:url" content="https://myhosh-salisbury.co.uk" />
-    <meta property="og:type" content="website" />
+    <!-- Open Graph / WhatsApp / Facebook Link Preview -->
+    <meta property="og:type" content="restaurant.restaurant" />
+    <meta property="og:site_name" content="MyHosh Salisbury" />
+    <meta property="og:title" content="MyHosh Salisbury | Authentic Turkish Restaurant &amp; Charcoal Grill" />
+    <meta
+      property="og:description"
+      content="Charcoal grill, fresh meze, and warm Turkish hospitality at 99 Fisherton Street, Salisbury. Reserve your table online."
+    />
+    <meta property="og:url" content="https://myhosh-salisbury.co.uk/" />
+    <meta property="og:image" content="https://myhosh-salisbury.co.uk/images/meze-spread.webp" />
+    <meta property="og:locale" content="en_GB" />
 
-    <!-- GOOGLE "RESERVE A TABLE" & LOCAL SEO SCHEMA -->
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MyHosh Salisbury | Authentic Turkish Restaurant" />
+    <meta name="twitter:description" content="Authentic Turkish charcoal grill &amp; fresh meze in Salisbury. Book online." />
+    <meta name="twitter:image" content="https://myhosh-salisbury.co.uk/images/meze-spread.webp" />
+
+    <!-- Schema.org Local Restaurant Structured Data -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Restaurant",
-      "name": "MyHosh Salisbury",
-      "description": "Best authentic Turkish food in Salisbury. 5-star on Google.",
-      "image": "https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png",
-      "@id": "https://myhosh-salisbury.co.uk",
-      "url": "https://myhosh-salisbury.co.uk",
-      "telephone": "07853404534",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "99 Fisherton St",
-        "addressLocality": "Salisbury",
-        "postalCode": "SP2 7SP",
-        "addressCountry": "UK"
-      },
-      "servesCuisine": "Turkish",
-      "menu": "https://myhosh-salisbury.co.uk/#menu",
-      "potentialAction": {
-        "@type": "ReserveAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": "https://myhosh-salisbury.co.uk/#reserve",
-          "inLanguage": "en-GB",
-          "actionPlatform": [
-            "http://schema.org/DesktopWebPlatform",
-            "http://schema.org/MobileWebPlatform"
-          ]
+      {
+        "@context": "https://schema.org",
+        "@type": "Restaurant",
+        "name": "MyHosh Salisbury",
+        "url": "https://myhosh-salisbury.co.uk/",
+        "logo": "https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png",
+        "image": [
+          "https://myhosh-salisbury.co.uk/images/meze-spread.webp",
+          "https://myhosh-salisbury.co.uk/images/interior.webp",
+          "https://myhosh-salisbury.co.uk/images/storefront.webp"
+        ],
+        "telephone": "+44 7853404534",
+        "priceRange": "££",
+        "servesCuisine": ["Turkish", "Mediterranean", "Charcoal Grill"],
+        "acceptsReservations": "https://myhosh-salisbury.co.uk/#reserve",
+        "menu": "https://myhosh-salisbury.co.uk/#menu",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "99 Fisherton Street",
+          "addressLocality": "Salisbury",
+          "addressRegion": "Wiltshire",
+          "postalCode": "SP2 7SP",
+          "addressCountry": "GB"
         },
-        "result": {
-          "@type": "FoodEstablishmentReservation"
-        }
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Wednesday", "Thursday", "Friday"],
+            "opens": "16:00",
+            "closes": "22:30"
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Saturday",
+            "opens": "12:00",
+            "closes": "22:30"
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Sunday",
+            "opens": "12:00",
+            "closes": "22:00"
+          }
+        ]
       }
-    }
     </script>
   </head>
   <body>
