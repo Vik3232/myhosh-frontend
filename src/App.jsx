@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
+import { LegalModals } from './components/LegalModals';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
@@ -54,6 +55,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isTimeSheetOpen, setIsTimeSheetOpen] = useState(false);
+  const [legalModal, setLegalModal] = useState(null);
   const [timeGroupRanges] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('myhosh_time_groups'));
@@ -1131,7 +1133,11 @@ function App() {
                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
                           <input type="checkbox" required checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: '3px' }} />
                           <span>
-                            <strong>Terms & Conditions:</strong> I agree to the 2-hour table sitting (15-min hold) and 6-month UK GDPR data retention policy.
+                          I agree to the{' '}
+<button type="button" className="legal-inline-link" onClick={() => setLegalModal('terms')}>Terms &amp; Conditions</button>
+{' '}(2-hour sitting, 15-min hold) and have read the{' '}
+<button type="button" className="legal-inline-link" onClick={() => setLegalModal('privacy')}>Privacy Policy</button>
+{' '}(6-month UK GDPR auto-deletion; immediate erasure on request).
                           </span>
                         </label>
                       </div>
@@ -1179,9 +1185,11 @@ function App() {
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
             </div>
-            <div className="footer-bottom">
-              <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
-            </div>
+            <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+  <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
+  <button type="button" onClick={() => setLegalModal('privacy')} style={{ color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem' }}>Privacy Policy</button>
+  <button type="button" onClick={() => setLegalModal('terms')} style={{ color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem' }}>Terms &amp; Conditions</button>
+</div>
           </footer>
 
           {isTimeSheetOpen && (
@@ -1953,5 +1961,5 @@ function App() {
     </>
   );
 }
-
+<LegalModals activeModal={legalModal} onClose={() => setLegalModal(null)} />
 export default App;
