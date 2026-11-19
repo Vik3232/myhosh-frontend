@@ -416,3 +416,191 @@
     from { opacity: 0; }
     to { opacity: 1; }
   }
+  /* =========================================================
+   MOBILE RESPONSIVENESS PASS (320px – 768px)
+   ========================================================= */
+
+/* 1. Safe Modal Centering + iOS Dynamic Viewport Fix (Desktop & Mobile) */
+.modal-overlay {
+    align-items: flex-start;
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  
+  .modal-content {
+    margin: auto;
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 2. Prevent Long Emails, Notes, or Dish Names Causing Horizontal Overflow */
+  .admin-view,
+  .customer-view,
+  .admin-card,
+  .card-guest-info,
+  .menu-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  
+  /* 3. Tablet & Phone Layout (<= 768px) */
+  @media (max-width: 768px) {
+    /* Header & Mobile Logo */
+    .site-header {
+      padding: 10px 16px !important;
+    }
+  
+    .site-header .brand-logo {
+      margin: 0 !important;
+    }
+  
+    .site-header .brand-logo img {
+      height: 48px !important;
+      max-width: 190px;
+      width: auto;
+      object-fit: contain;
+    }
+  
+    /* Booking Section & Form */
+    .booking-container {
+      grid-template-columns: 1fr !important;
+    }
+  
+    .booking-image-side {
+      display: none;
+    }
+  
+    .booking-form-content {
+      padding: 22px 16px !important;
+    }
+  
+    .form-grid {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+    }
+  
+    /* Menu Section */
+    .menu-grid {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+    }
+  
+    .menu-card {
+      padding: 14px !important;
+    }
+  
+    /* Staff & Admin Dashboard */
+    .admin-view {
+      padding: 16px 12px 40px !important;
+    }
+  
+    .admin-header {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 12px !important;
+    }
+  
+    .admin-header h1 {
+      font-size: 1.55rem !important;
+    }
+  
+    .admin-header .btn {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  
+    .admin-toolbar {
+      padding: 14px !important;
+    }
+  
+    .admin-toolbar .btn,
+    .admin-toolbar .btn-admin-tab {
+      flex: 1 1 calc(50% - 8px);
+      min-height: 44px;
+      text-align: center;
+      justify-content: center;
+      font-size: 0.86rem;
+      padding: 10px 10px !important;
+    }
+  
+    .metric-grid {
+      gap: 10px !important;
+    }
+  
+    /* Booking Cards */
+    .admin-card {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 12px !important;
+      padding: 14px !important;
+    }
+  
+    .admin-card > div:last-child {
+      width: 100%;
+    }
+  
+    .admin-card > div:last-child .btn {
+      flex: 1 1 auto;
+      min-height: 42px;
+      text-align: center;
+      justify-content: center;
+    }
+  
+    .date-group-header {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: 4px;
+      font-size: 0.9rem;
+    }
+  
+    /* Modals on Phones */
+    .modal-overlay {
+      padding: 10px;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    }
+  
+    .modal-content,
+    .walkin-panel {
+      padding: 18px 16px !important;
+      border-radius: 14px;
+      max-height: 92dvh;
+    }
+  
+    .modal-actions {
+      flex-direction: column-reverse;
+      gap: 8px !important;
+    }
+  
+    /* Time Picker Bottom Sheet (iPhone Home Bar Clearance) */
+    .time-sheet-backdrop {
+      padding: 0;
+    }
+  
+    .time-sheet-card {
+      border-radius: 18px 18px 0 0;
+      max-height: 85dvh;
+      padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    }
+  }
+  
+  /* 4. Compact Phones (<= 420px — iPhone SE / Small Android) */
+  @media (max-width: 420px) {
+    .booking-summary-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .time-chips-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  
+    .quick-party-grid {
+      gap: 6px;
+    }
+  
+    .party-step-btn {
+      width: 44px;
+      height: 44px;
+    }
+  }
