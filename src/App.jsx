@@ -148,7 +148,14 @@ function App() {
   }, [view, isSuccess, viewMode, currentUser]);
 
   const [showWalkInModal, setShowWalkInModal] = useState(false);
-  const [walkInDetails, setWalkInDetails] = useState({ partySize: 2, tableId: '', customLocation: '' });
+  const [walkInDetails, setWalkInDetails] = useState({
+    guestName: "",
+    phone: "",
+    partySize: 2,
+    tableId: "",
+    customLocation: "",
+    notes: ""
+  });
   
   const [showStaffBookingModal, setShowStaffBookingModal] = useState(false);
   const [staffBookingData, setStaffBookingData] = useState({
@@ -195,29 +202,45 @@ function App() {
     }
     
     let finalTableId = walkInDetails.tableId;
-    let guestName = "Walk-In Guest";
+    const baseName = walkInDetails.guestName?.trim() || "Walk-In Guest";
+    let guestName = baseName;
+
     if (finalTableId === 'OTHER') {
       if (tables.length === 0) return;
-      finalTableId = tables[0].id; 
-      guestName = `Walk-In Guest (Location: ${walkInDetails.customLocation || 'Other'})`;
+      finalTableId = tables[0].id;
+      guestName = `${baseName} (Location: ${walkInDetails.customLocation?.trim() || 'Other'})`;
     }
-    
+
     const newBooking = {
-      customer: { fullName: guestName, email: "walkin@myhosh.local", phone: "N/A" },
+      customer: {
+        fullName: guestName,
+        email: "walkin@myhosh.local",
+        phone: walkInDetails.phone?.trim() || "N/A"
+      },
       restaurantTable: { id: parseInt(finalTableId) },
       bookingDate: now.toISOString().split('T')[0],
-      bookingTime: currentTimeStr + ":00", 
+      bookingTime: currentTimeStr + ":00",
       partySize: parseInt(walkInDetails.partySize),
+      specialRequests: walkInDetails.notes?.trim() || null,
       status: "ARRIVED"
     };
 
+    setLoadingLabel("Seating walk-in guest...");
+    setIsProcessing(true);
     try {
       const response = await fetch('https://myhosh-backend.onrender.com/api/bookings', {
         method: 'POST', headers: getStaffHeaders(), body: JSON.stringify(newBooking)
       });
       if (response.ok) {
-        setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); fetchBookings();
-      } else { alert("That table is currently occupied! Please select another."); }
+        setShowWalkInModal(false);
+        setWalkInDetails({ guestName: "", phone: "", partySize: 2, tableId: "", customLocation: "", notes: "" });
+        setMessage("Walk-in guest seated.");
+        await fetchBookings();
+      } else {
+        const errMsg = await response.text();
+        alert(errMsg || "That table is currently occupied! Please select another.");
+      }
+
     } catch (error) { console.error("Walk-in error", error); }
   };
 
@@ -572,7 +595,7 @@ function App() {
 
   const displayedBookings = allBookings.filter(b => {
     const matchesDate = (adminDateFilter === "ALL" || b.bookingDate === adminDateFilter);
-    
+
     if (!searchQuery.trim()) return matchesDate;
 
     const query = searchQuery.toLowerCase().trim();
@@ -1362,19 +1385,65 @@ function App() {
                 </div>
               )}
 
-              {showWalkInModal && (
-                <div className="modal-overlay">
-                  <div className="modal-content" style={{ maxWidth: '400px' }}>
-                    <h3 style={{ color: 'var(--clr-emerald)' }}>Seat Walk-In Guest</h3>
-                    
-                    <div style={{ marginBottom: '15px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: 'bold' }}>Party Size:</label>
-                      <input type="number" min="1" max="20" value={walkInDetails.partySize} onChange={(e) => setWalkInDetails({...walkInDetails, partySize: e.target.value})} className="admin-input" style={{ width: '100%' }} />
+{showWalkInModal && (
+                <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
+                  <div className="modal-content walkin-panel">
+                    <h3 id="walkin-modal-title" style={{ color: 'var(--clr-emerald)', marginBottom: '6px' }}>Seat Walk-In Guest</h3>
+                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.88rem', marginBottom: '18px' }}>
+                      Fast floor check-in. Name, phone, and notes are optional.
+                    </p>
+
+                    <div style={{ marginBottom: '18px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: '600' }}>
+                        Party Size
+                      </label>
+                      <div className="party-stepper-row">
+                        <button
+                          type="button"
+                          aria-label="Decrease party size"
+                          disabled={Number(walkInDetails.partySize) <= 1}
+                          onClick={() => setWalkInDetails(prev => ({ ...prev, partySize: Math.max(1, Number(prev.partySize) - 1) }))}
+                          className="party-step-btn"
+                        >
+                          −
+                        </button>
+                        <div className="party-count-display" aria-live="polite">
+                          {walkInDetails.partySize} {Number(walkInDetails.partySize) === 1 ? 'Guest' : 'Guests'}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Increase party size"
+                          disabled={Number(walkInDetails.partySize) >= 20}
+                          onClick={() => setWalkInDetails(prev => ({ ...prev, partySize: Math.min(20, Number(prev.partySize) + 1) }))}
+                          className="party-step-btn"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="quick-party-grid">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setWalkInDetails(prev => ({ ...prev, partySize: n }))}
+                            className={`quick-party-chip ${Number(walkInDetails.partySize) === n ? 'active' : ''}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    
-                    <div style={{ marginBottom: walkInDetails.tableId === 'OTHER' ? '15px' : '25px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: 'bold' }}>Select Table:</label>
-                      <select value={walkInDetails.tableId} onChange={(e) => setWalkInDetails({...walkInDetails, tableId: e.target.value})} className="admin-input" style={{ width: '100%' }}>
+
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: '600' }}>
+                        Table *
+                      </label>
+                      <select
+                        value={walkInDetails.tableId}
+                        onChange={(e) => setWalkInDetails(prev => ({ ...prev, tableId: e.target.value }))}
+                        className="admin-input"
+                        style={{ width: '100%', minHeight: '46px' }}
+                      >
                         <option value="">-- Choose a Table --</option>
                         <option value="OTHER" style={{ fontWeight: 'bold' }}>Other / Custom Location</option>
                         {activeStaffTables.map(t => (
@@ -1384,15 +1453,86 @@ function App() {
                     </div>
 
                     {walkInDetails.tableId === 'OTHER' && (
-                      <div style={{ marginBottom: '25px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: 'bold' }}>Specify Location (e.g. Bar):</label>
-                        <input type="text" placeholder="Where are they seated?" value={walkInDetails.customLocation} onChange={(e) => setWalkInDetails({...walkInDetails, customLocation: e.target.value})} className="admin-input" style={{ width: '100%', borderColor: 'var(--clr-gold)' }} />
+                      <div style={{ marginBottom: '14px' }}>
+                        <label style={{ display: 'block', marginBottom: '6px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Custom Location *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Bar counter or terrace"
+                          value={walkInDetails.customLocation}
+                          onChange={(e) => setWalkInDetails(prev => ({ ...prev, customLocation: e.target.value }))}
+                          className="admin-input"
+                          style={{ width: '100%', minHeight: '46px', borderColor: 'var(--clr-gold)' }}
+                        />
                       </div>
                     )}
 
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '6px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Guest Name (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Walk-In Guest"
+                          value={walkInDetails.guestName}
+                          onChange={(e) => setWalkInDetails(prev => ({ ...prev, guestName: e.target.value }))}
+                          className="admin-input"
+                          style={{ width: '100%', minHeight: '46px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '6px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: '600' }}>
+                          Phone (Optional)
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="e.g. 07123456789"
+                          value={walkInDetails.phone}
+                          onChange={(e) => setWalkInDetails(prev => ({ ...prev, phone: e.target.value }))}
+                          className="admin-input"
+                          style={{ width: '100%', minHeight: '46px' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', color: 'var(--clr-emerald-dark)', fontSize: '0.85rem', fontWeight: '600' }}>
+                        Notes (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="High chair, quick bite, allergy note..."
+                        value={walkInDetails.notes}
+                        onChange={(e) => setWalkInDetails(prev => ({ ...prev, notes: e.target.value }))}
+                        className="admin-input"
+                        style={{ width: '100%', minHeight: '46px' }}
+                      />
+                    </div>
+
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={handleSeatWalkIn} className="btn btn-emerald" style={{ flex: 1 }}>Seat Now</button>
-                      <button onClick={() => { setShowWalkInModal(false); setWalkInDetails({ partySize: 2, tableId: '', customLocation: '' }); }} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={handleSeatWalkIn}
+                        className="btn btn-emerald"
+                        style={{ flex: 1, minHeight: '48px' }}
+                      >
+                        Seat Now
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isProcessing}
+                        onClick={() => {
+                          setShowWalkInModal(false);
+                          setWalkInDetails({ guestName: "", phone: "", partySize: 2, tableId: "", customLocation: "", notes: "" });
+                        }}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, minHeight: '48px' }}
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 </div>
