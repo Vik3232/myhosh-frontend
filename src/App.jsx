@@ -24,6 +24,13 @@ const shiftDateStr = (dateStr, deltaDays) => {
   return dt.toISOString().split('T')[0];
 };
 
+const formatMinsToHHMM = (totalMins) => {
+  const wrapped = ((totalMins % 1440) + 1440) % 1440;
+  const h = String(Math.floor(wrapped / 60)).padStart(2, '0');
+  const m = String(wrapped % 60).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
 function App() {
   const [view, setView] = useState(() => sessionStorage.getItem('myhosh_session') || 'customer');
   useEffect(() => {
@@ -63,6 +70,7 @@ function App() {
   });
 
   const clientPhoneNumber = '+44 7853404534';
+  const clientTelHref = `tel:${clientPhoneNumber.replace(/\s+/g, '')}`;
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('myhosh_auth') === 'true');
   useEffect(() => {
@@ -109,6 +117,9 @@ function App() {
   const [adminDateFilter, setAdminDateFilter] = useState(() => getLondonDateStr());
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Clickable Floor Table Popup State
+  const [selectedFloorTable, setSelectedFloorTable] = useState(null);
+
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [deleteCustomerStep, setDeleteCustomerStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -119,6 +130,7 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewMode, setViewMode] = useState('today');
 
+  // Tick every 15s so tables auto-return to green after their 2-hour window
   useEffect(() => {
     const timer = setInterval(() => setLondonNow(new Date()), 15000);
     return () => clearInterval(timer);
@@ -139,9 +151,24 @@ function App() {
     return h * 60 + min;
   };
 
+  const toMinutes = (hhmm) => {
+    const [h = 0, m = 0] = (hhmm || '00:00').split(':').map(Number);
+    return h * 60 + m;
+  };
+
   const normalizeRawStatus = (rawStatus) => {
     const s = (rawStatus || 'BOOKED').toUpperCase();
     return s === 'CONFIRMED' ? 'BOOKED' : s;
+  };
+
+  const getBookingTableLabel = (booking) => {
+    if (booking.restaurantTable?.tableNumber) {
+      return `Table ${booking.restaurantTable.tableNumber}`;
+    }
+    const notes = booking.staffNotes || '';
+    const customMatch = notes.match(/Custom Table:\s*([^|\n]+)/i);
+    if (customMatch) return `Custom: ${customMatch[1].trim()}`;
+    return 'Table Not Sure Yet';
   };
 
   const getEffectiveBookingState = (booking) => {
@@ -160,6 +187,9 @@ function App() {
 
     // 2. Today's bookings: Green if seated/arrived, Red if past booking time
     if (booking.bookingDate === londonTodayStr) {
+      if (raw === 'COMPLETED') {
+        return { effectiveStatus: 'COMPLETED', visualTone: 'completed', cardClass: '', statusLabel: 'Finished' };
+      }
       if (raw === 'SEATED' || raw === 'ARRIVED') {
         return {
           effectiveStatus: raw,
@@ -171,15 +201,15 @@ function App() {
       if (raw === 'NO_SHOW') {
         return { effectiveStatus: 'NO_SHOW', visualTone: 'did-not-show', cardClass: '', statusLabel: 'Did Not Show Up' };
       }
-      if (!['CANCELLED', 'COMPLETED'].includes(raw)) {
+      if (raw !== 'CANCELLED') {
         const nowMins = getLondonMinutesOfDay();
-        const [bh = 0, bm = 0] = (booking.bookingTime || '00:00').split(':').map(Number);
-        if (nowMins > bh * 60 + bm) {
+        const bookingMins = toMinutes(booking.bookingTime);
+        if (nowMins > bookingMins) {
           return {
             effectiveStatus: 'LATE',
             visualTone: 'late',
             cardClass: 'is-late',
-            statusLabel: `Late (${nowMins - (bh * 60 + bm)}m)`
+            statusLabel: `Late (${nowMins - bookingMins}m)`
           };
         }
       }
@@ -232,36 +262,44 @@ function App() {
     idempotencyKeyRef.current = null;
   }, [fullName, phone, email, date, time, partySize, selectedTable, requests]);
 
-  const toMinutes = (hhmm) => {
-    const [h, m] = (hhmm || '00:00').split(':').map(Number);
-    return h * 60 + m;
+  // --- TABLE 4 AS LAST OPTION FOR ONLINE CUSTOMERS ---
+  const getEligibleCustomerTables = (numGuests, checkDate, checkTime) => {
+    if (numGuests < 1 || numGuests > 20) return [];
+
+    const matchingTables = tables.filter(table => {
+      if (numGuests >= 11) return table.tableNumber === 5;
+      if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
+      if (numGuests >= 7) return [1, 2, 4, 5, 7].includes(table.tableNumber) && table.capacity >= numGuests;
+      if (numGuests < 4 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
+      if (numGuests === 1 && ![8, 9, 10, 4].includes(table.tableNumber)) return false;
+      return table.capacity >= numGuests;
+    });
+
+    const freeTables = matchingTables.filter(table => {
+      if (!checkDate || !checkTime) return true;
+      const selectedStart = new Date(`${checkDate}T${checkTime}`);
+      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000);
+
+      for (const booking of allBookings) {
+        if (booking.bookingDate !== checkDate || booking.restaurantTable?.id !== table.id) continue;
+        if (['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(booking.status))) continue;
+        const parts = (booking.bookingTime || '00:00').split(':');
+        const existingStart = new Date(`${checkDate}T${parts[0]}:${parts[1]}`);
+        const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
+        if (selectedStart < existingEnd && selectedEnd > existingStart) return false;
+      }
+      return true;
+    });
+
+    // Only expose Table 4 when ALL other eligible tables are already booked
+    const primaryTables = freeTables.filter(t => t.tableNumber !== 4);
+    return primaryTables.length > 0 ? primaryTables : freeTables;
   };
 
   const isSlotAvailableForParty = (slotStr) => {
     const numGuests = parseInt(partySize, 10) || 2;
-    if (numGuests > 20 || !date) return false;
-    const eligibleTables = tables.filter(table => {
-      if (numGuests >= 11) return table.tableNumber === 5;
-      if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
-      if (numGuests >= 7) return [1, 2, 5, 7].includes(table.tableNumber);
-      if (numGuests < 4 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
-      if (numGuests === 1 && ![8, 9, 10].includes(table.tableNumber)) return false;
-      if (table.tableNumber === 4) return false;
-      return table.capacity >= numGuests;
-    });
-    if (eligibleTables.length === 0) return false;
-
-    const slotStart = new Date(`${date}T${slotStr}`);
-    const slotEnd = new Date(slotStart.getTime() + 120 * 60000);
-
-    return eligibleTables.some(table => !allBookings.some(b => {
-      if (b.bookingDate !== date || b.restaurantTable?.id !== table.id) return false;
-      if (['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(b.status))) return false;
-      const [bh, bm] = (b.bookingTime || '00:00').split(':').map(Number);
-      const bStart = new Date(`${date}T${String(bh).padStart(2, '0')}:${String(bm).padStart(2, '0')}`);
-      const bEnd = new Date(bStart.getTime() + 120 * 60000);
-      return slotStart < bEnd && slotEnd > bStart;
-    }));
+    if (!date) return false;
+    return getEligibleCustomerTables(numGuests, date, slotStr).length > 0;
   };
 
   const groupedCustomerSlots = (() => {
@@ -291,6 +329,14 @@ function App() {
       }))
       .filter(g => g.slots.length > 0);
   })();
+
+  const allSlotsBookedForDate = Boolean(
+    date &&
+    customerDayOfWeek !== 2 &&
+    tables.length > 0 &&
+    groupedCustomerSlots.length > 0 &&
+    groupedCustomerSlots.every(g => g.slots.every(s => !s.available))
+  );
 
   const getStaffHeaders = (includeJson = true) => {
     const headers = {};
@@ -369,7 +415,9 @@ function App() {
         headers: getStaffHeaders(),
         body: JSON.stringify({ status: newStatus })
       });
-      if (response.ok) fetchBookings();
+      if (response.ok) {
+        await fetchBookings();
+      }
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -398,27 +446,31 @@ function App() {
       return;
     }
     if (!walkInDetails.tableId) {
-      alert("Please select a table or 'Other' to seat the walk-in.");
+      alert("Please select a table, 'Custom Table', or 'Table Not Sure Yet'.");
       return;
     }
 
-    let finalTableId = walkInDetails.tableId;
     const baseName = walkInDetails.guestName?.trim() || 'Walk-In Guest';
-    let guestName = baseName;
+    let restaurantTablePayload = null;
+    let staffNoteParts = [];
 
-    if (finalTableId === 'OTHER') {
-      if (tables.length === 0) return;
-      finalTableId = tables[0].id;
-      guestName = `${baseName} (Location: ${walkInDetails.customLocation?.trim() || 'Other'})`;
+    if (walkInDetails.tableId === 'OTHER') {
+      const loc = walkInDetails.customLocation?.trim() || 'Other';
+      staffNoteParts.push(`Custom Table: ${loc}`);
+    } else if (walkInDetails.tableId === 'UNASSIGNED') {
+      staffNoteParts.push('Table Not Sure Yet');
+    } else {
+      restaurantTablePayload = { id: parseInt(walkInDetails.tableId, 10) };
     }
 
     const newBooking = {
-      customer: { fullName: guestName, email: 'walkin@myhosh.local', phone: walkInDetails.phone?.trim() || 'N/A' },
-      restaurantTable: { id: parseInt(finalTableId, 10) },
+      customer: { fullName: baseName, email: 'walkin@myhosh.local', phone: walkInDetails.phone?.trim() || 'N/A' },
+      restaurantTable: restaurantTablePayload,
       bookingDate: londonDate,
       bookingTime: `${currentTimeStr}:00`,
       partySize: parseInt(walkInDetails.partySize, 10),
       specialRequests: walkInDetails.notes?.trim() || null,
+      staffNotes: staffNoteParts.length > 0 ? staffNoteParts.join(' | ') : null,
       status: 'SEATED'
     };
 
@@ -458,30 +510,37 @@ function App() {
       return;
     }
 
-    let finalTableId = staffBookingData.tableId;
-    let guestName = staffBookingData.fullName;
-    if (finalTableId === 'OTHER') {
-      if (tables.length === 0) return;
-      finalTableId = tables[0].id;
-      guestName = `${staffBookingData.fullName} (Loc: ${staffBookingData.customLocation || 'Other'})`;
-    } else if (!finalTableId) {
-      alert('Please select a table to assign this booking.');
+    if (!staffBookingData.tableId) {
+      alert("Please select a table, 'Custom Table', or 'Table Not Sure Yet'.");
       return;
+    }
+
+    let restaurantTablePayload = null;
+    let staffNoteText = null;
+
+    if (staffBookingData.tableId === 'OTHER') {
+      const loc = staffBookingData.customLocation?.trim() || 'Other';
+      staffNoteText = `Custom Table: ${loc}`;
+    } else if (staffBookingData.tableId === 'UNASSIGNED') {
+      staffNoteText = 'Table Not Sure Yet';
+    } else {
+      restaurantTablePayload = { id: parseInt(staffBookingData.tableId, 10) };
     }
 
     setLoadingLabel('Saving reservation...');
     setIsProcessing(true);
     const newBooking = {
       customer: {
-        fullName: guestName,
+        fullName: staffBookingData.fullName,
         email: staffBookingData.email || 'staff-booking@myhosh.local',
         phone: staffBookingData.phone || 'N/A'
       },
-      restaurantTable: { id: parseInt(finalTableId, 10) },
+      restaurantTable: restaurantTablePayload,
       bookingDate: staffBookingData.date,
       bookingTime: `${staffBookingData.time}:00`,
       partySize: parseInt(staffBookingData.partySize, 10),
-      specialRequests: staffBookingData.requests
+      specialRequests: staffBookingData.requests,
+      staffNotes: staffNoteText
     };
 
     try {
@@ -524,7 +583,7 @@ function App() {
       sanitizeCSVCell(b.bookingDate),
       sanitizeCSVCell(b.bookingTime),
       sanitizeCSVCell(b.partySize),
-      sanitizeCSVCell(b.restaurantTable?.tableNumber || 'Other'),
+      sanitizeCSVCell(getBookingTableLabel(b)),
       sanitizeCSVCell(b.status)
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
@@ -536,32 +595,8 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const availableTables = tables.filter(table => {
-    const numGuests = parseInt(partySize, 10) || 2;
-    if (numGuests > 20) return false;
-    if (numGuests >= 11) return table.tableNumber === 5;
-    if (numGuests >= 9) return table.tableNumber === 2 || table.tableNumber === 5;
-    if (numGuests >= 7) return [1, 2, 5, 7].includes(table.tableNumber);
-    if (numGuests < 4 && (table.tableNumber === 1 || table.tableNumber === 5)) return false;
-    if (numGuests === 1 && ![8, 9, 10].includes(table.tableNumber)) return false;
-    if (table.tableNumber === 4) return false;
-    if (table.capacity < numGuests) return false;
-
-    if (date && time) {
-      const selectedStart = new Date(`${date}T${time}`);
-      const selectedEnd = new Date(selectedStart.getTime() + 120 * 60000);
-      for (const booking of allBookings) {
-        if (booking.bookingDate === date && booking.restaurantTable?.id === table.id) {
-          if (['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(booking.status))) continue;
-          const parts = (booking.bookingTime || '00:00').split(':');
-          const existingStart = new Date(`${date}T${parts[0]}:${parts[1]}`);
-          const existingEnd = new Date(existingStart.getTime() + 120 * 60000);
-          if (selectedStart < existingEnd && selectedEnd > existingStart) return false;
-        }
-      }
-    }
-    return true;
-  });
+  const numGuestsParsed = parseInt(partySize, 10) || 2;
+  const availableTables = getEligibleCustomerTables(numGuestsParsed, date, time);
 
   useEffect(() => {
     if (availableTables.length > 0) {
@@ -571,6 +606,11 @@ function App() {
   }, [date, time, partySize, allBookings, tables]);
 
   const selectedTableObj = availableTables.find(t => String(t.id) === String(selectedTable));
+  const showFullyBookedCallBanner = Boolean(
+    customerDayOfWeek !== 2 &&
+    tables.length > 0 &&
+    (numGuestsParsed > 20 || allSlotsBookedForDate || (date && time && availableTables.length === 0))
+  );
 
   const handleBookingSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -607,7 +647,7 @@ function App() {
     }
     if (availableTables.length === 0) {
       setIsSuccess(false);
-      setMessage('We are currently fully booked for this time and party size. Please select another time or call us directly.');
+      setMessage('All tables are currently booked online for this time. Please call the restaurant directly for bookings or assistance on busy days.');
       return;
     }
 
@@ -621,7 +661,12 @@ function App() {
         : `mh-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
 
-    const sortedTables = [...availableTables].sort((a, b) => a.capacity - b.capacity);
+    // Sort smallest fitting capacity first, always keeping Table 4 last
+    const sortedTables = [...availableTables].sort((a, b) => {
+      if (a.tableNumber === 4 && b.tableNumber !== 4) return 1;
+      if (b.tableNumber === 4 && a.tableNumber !== 4) return -1;
+      return a.capacity - b.capacity;
+    });
     let optimalTable = sortedTables[0];
     if (!isWeekendAutoSeating && selectedTable) {
       const manualChoice = availableTables.find(t => String(t.id) === String(selectedTable));
@@ -782,7 +827,7 @@ function App() {
   };
 
   const handleModalTableChange = async (newTableId) => {
-    if (!newTableId || !editModalBooking) return;
+    if (newTableId === '' || !editModalBooking) return;
     try {
       const response = await fetch(`${API_BASE}/api/bookings/${editModalBooking.id}/table/${newTableId}`, {
         method: 'PUT', headers: getStaffHeaders(false)
@@ -807,6 +852,7 @@ function App() {
     }
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setSelectedFloorTable(null);
     setView('customer');
     sessionStorage.clear();
   };
@@ -822,8 +868,97 @@ function App() {
   });
 
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
-  const activeStaffTables = tables.filter(t => t.tableNumber !== 4);
+  // All tables 1–13 (including Table 4) sorted numerically for Staff
+  const activeStaffTables = [...tables].sort((a, b) => a.tableNumber - b.tableNumber);
   const floorPlanDate = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
+
+  // --- LIVE FLOOR TILE STATUS (Auto-returns to Green after 2-hour window) ---
+  const getTableFloorInfo = (table) => {
+    const allForTableDate = allBookings
+      .filter(b => b.bookingDate === floorPlanDate && Number(b.restaurantTable?.id) === Number(table.id))
+      .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
+
+    const activeForTableDate = allForTableDate.filter(
+      b => !['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(b.status))
+    );
+
+    const isViewingToday = floorPlanDate === londonTodayStr;
+    const nowMins = getLondonMinutesOfDay();
+
+    if (isViewingToday) {
+      // Only bookings still INSIDE their 2-hour window occupy the table right now
+      const inWindow = activeForTableDate.filter(b => {
+        const startMins = toMinutes(b.bookingTime);
+        const endMins = startMins + 120;
+        const raw = normalizeRawStatus(b.status);
+        if (nowMins >= endMins) return false; // 2-hour window ended -> auto-free!
+        return raw === 'SEATED' || raw === 'ARRIVED' || nowMins >= startMins;
+      });
+
+      const upcomingToday = activeForTableDate.filter(b => {
+        const startMins = toMinutes(b.bookingTime);
+        const raw = normalizeRawStatus(b.status);
+        return startMins > nowMins && raw !== 'SEATED' && raw !== 'ARRIVED';
+      });
+
+      const currentSeated = inWindow.find(b => ['SEATED', 'ARRIVED'].includes(normalizeRawStatus(b.status)));
+      const currentLate = !currentSeated ? inWindow.find(b => nowMins > toMinutes(b.bookingTime)) : null;
+
+      if (currentSeated) {
+        const endStr = formatMinsToHHMM(toMinutes(currentSeated.bookingTime) + 120);
+        return {
+          allForTableDate,
+          activeNowBooking: currentSeated,
+          bg: 'rgba(179, 64, 47, 0.14)',
+          border: '1px solid var(--clr-error)',
+          badge: `🔴 Seated (until ${endStr})`
+        };
+      }
+      if (currentLate) {
+        return {
+          allForTableDate,
+          activeNowBooking: currentLate,
+          bg: 'rgba(179, 64, 47, 0.18)',
+          border: '1px solid var(--clr-error)',
+          badge: `⚠️ Late (${(currentLate.bookingTime || '').slice(0, 5)})`
+        };
+      }
+      if (upcomingToday.length > 0) {
+        return {
+          allForTableDate,
+          activeNowBooking: null,
+          bg: 'rgba(200, 157, 84, 0.18)',
+          border: '1px solid var(--clr-gold)',
+          badge: `🟡 Next: ${(upcomingToday[0].bookingTime || '').slice(0, 5)}`
+        };
+      }
+      return {
+        allForTableDate,
+        activeNowBooking: null,
+        bg: 'rgba(15, 77, 58, 0.1)',
+        border: '1px solid var(--clr-emerald)',
+        badge: '🟢 Free'
+      };
+    }
+
+    // Future or Past selected date
+    if (activeForTableDate.length > 0) {
+      return {
+        allForTableDate,
+        activeNowBooking: null,
+        bg: 'rgba(200, 157, 84, 0.18)',
+        border: '1px solid var(--clr-gold)',
+        badge: `🟡 ${activeForTableDate.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')}`
+      };
+    }
+    return {
+      allForTableDate,
+      activeNowBooking: null,
+      bg: 'rgba(15, 77, 58, 0.1)',
+      border: '1px solid var(--clr-emerald)',
+      badge: '🟢 Free'
+    };
+  };
 
   const publicMenuCategories = Array.from(new Set(menuItems.filter(m => m.available !== false).map(m => m.category)));
   const currentPublicCat = publicMenuCategories.includes(activeMenuCategory) ? activeMenuCategory : (publicMenuCategories[0] || '');
@@ -832,6 +967,8 @@ function App() {
   const adminMenuCategories = Array.from(new Set(menuItems.map(m => m.category)));
   const currentAdminCat = adminMenuCategories.includes(adminMenuCategory) ? adminMenuCategory : (adminMenuCategories[0] || '');
   const visibleAdminDishes = menuItems.filter(m => m.category === currentAdminCat);
+
+  const selectedFloorInfo = selectedFloorTable ? getTableFloorInfo(selectedFloorTable) : null;
 
   return (
     <>
@@ -1105,6 +1242,20 @@ function App() {
                         <input type="number" className="form-input" min="1" max="25" required value={partySize} onChange={e => setPartySize(e.target.value)} />
                       </div>
 
+                      {showFullyBookedCallBanner && (
+                        <div className="form-group full-width">
+                          <div className="fully-booked-call-box" role="status">
+                            <p>
+                              <strong>All online tables are currently booked for this selection.</strong><br />
+                              Please call the restaurant directly for bookings or assistance on busy days—we often have extra tables available.
+                            </p>
+                            <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              📞 Call Restaurant ({clientPhoneNumber})
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
                       {date && customerDayOfWeek !== 2 && !isWeekendAutoSeating && availableTables.length > 0 && (
                         <div className="form-group full-width">
                           <label>Select Table</label>
@@ -1166,7 +1317,7 @@ function App() {
               <h2>Visit Us</h2>
               <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '15px 0' }}><span></span></div>
               <p><strong>Address:</strong><br />99 Fisherton Street<br />SP2 7SP Salisbury, UK</p>
-              <p><strong>Phone:</strong><br /><a href={`tel:${clientPhoneNumber.replace(/\s+/g, '')}`} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a></p>
+              <p><strong>Phone:</strong><br /><a href={clientTelHref} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a></p>
               <p style={{ marginTop: '30px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
                 No online availability or booking a large event?<br />
                 Please call the restaurant directly and we will do our best to accommodate you.
@@ -1197,25 +1348,38 @@ function App() {
                 {groupedCustomerSlots.length === 0 ? (
                   <p style={{ color: 'var(--clr-error)' }}>No time slots available for this date.</p>
                 ) : (
-                  groupedCustomerSlots.map(group => (
-                    <div key={group.key} className="time-group-section">
-                      <div className="time-group-title">{group.label}</div>
-                      <div className="time-chips-grid">
-                        {group.slots.map(({ slot, available }) => (
-                          <button
-                            key={slot}
-                            type="button"
-                            disabled={!available}
-                            aria-pressed={time === slot}
-                            onClick={() => { setTime(slot); setIsTimeSheetOpen(false); }}
-                            className={`time-slot-chip ${time === slot ? 'selected' : ''}`}
-                          >
-                            {slot}
-                          </button>
-                        ))}
+                  <>
+                    {groupedCustomerSlots.map(group => (
+                      <div key={group.key} className="time-group-section">
+                        <div className="time-group-title">{group.label}</div>
+                        <div className="time-chips-grid">
+                          {group.slots.map(({ slot, available }) => (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={!available}
+                              aria-pressed={time === slot}
+                              onClick={() => { setTime(slot); setIsTimeSheetOpen(false); }}
+                              className={`time-slot-chip ${time === slot ? 'selected' : ''}`}
+                            >
+                              {slot}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    {allSlotsBookedForDate && (
+                      <div className="fully-booked-call-box">
+                        <p>
+                          <strong>All online tables are booked for this day.</strong><br />
+                          Call the restaurant for bookings or assistance on busy days.
+                        </p>
+                        <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          📞 Call {clientPhoneNumber}
+                        </a>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1536,58 +1700,39 @@ function App() {
                 </div>
               </div>
 
-              {tables.length > 0 && (
+              {/* CLICKABLE LIVE FLOOR STATUS SQUARES (Tables 1–13, auto-green after 2h) */}
+              {activeStaffTables.length > 0 && (
                 <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
                     <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--clr-emerald)' }}>
-                      Live Floor Status ({floorPlanDate})
+                      Live Floor Status ({floorPlanDate}) — Tap any table to manage
                     </h3>
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
                       <span>🟢 Free</span>
-                      <span>🟡 Reserved</span>
+                      <span>🟡 Reserved Later</span>
                       <span>🔴 Seated / Late</span>
-                      <span>⚪ Offline</span>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))', gap: '10px' }}>
-                    {[...tables].sort((a, b) => a.tableNumber - b.tableNumber).map(t => {
-                      const isOffline = t.tableNumber === 4;
-                      const tableBookings = allBookings.filter(
-                        b => b.bookingDate === floorPlanDate
-                          && Number(b.restaurantTable?.id) === Number(t.id)
-                          && !['NO_SHOW', 'CANCELLED', 'COMPLETED'].includes(normalizeRawStatus(b.status))
-                      );
-                      const isSeated = tableBookings.some(b => ['SEATED', 'ARRIVED'].includes(normalizeRawStatus(b.status)));
-                      const isLate = !isSeated && tableBookings.some(b => getEffectiveBookingState(b).effectiveStatus === 'LATE');
-                      const isReserved = tableBookings.length > 0;
-
-                      let bg = 'rgba(15, 77, 58, 0.08)';
-                      let border = '1px solid var(--clr-emerald)';
-                      let badge = '🟢 Free';
-                      if (isOffline) {
-                        bg = 'rgba(0,0,0,0.05)';
-                        border = '1px dashed rgba(27,26,23,0.25)';
-                        badge = '⚪ Offline';
-                      } else if (isLate) {
-                        bg = 'rgba(179, 64, 47, 0.16)';
-                        border = '1px solid var(--clr-error)';
-                        badge = `⚠️ Late (${tableBookings.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')})`;
-                      } else if (isSeated) {
-                        bg = 'rgba(179, 64, 47, 0.12)';
-                        border = '1px solid var(--clr-error)';
-                        badge = '🔴 Seated';
-                      } else if (isReserved) {
-                        bg = 'rgba(200, 157, 84, 0.18)';
-                        border = '1px solid var(--clr-gold)';
-                        badge = `🟡 ${tableBookings.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')}`;
-                      }
-
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
+                    {activeStaffTables.map(t => {
+                      const info = getTableFloorInfo(t);
                       return (
-                        <div key={t.id} style={{ padding: '10px', borderRadius: '8px', background: bg, border, textAlign: 'center' }}>
-                          <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--clr-charcoal)' }}>Table {t.tableNumber}</div>
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setSelectedFloorTable(t)}
+                          className="floor-table-tile"
+                          style={{ background: info.bg, border: info.border }}
+                        >
+                          <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--clr-charcoal)' }}>
+                            Table {t.tableNumber}{t.tableNumber === 4 ? ' ★' : ''}
+                          </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--clr-grey)', marginBottom: '4px' }}>Seats {t.capacity}</div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>{badge}</div>
-                        </div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>{info.badge}</div>
+                          <div className="floor-table-hint">
+                            {info.allForTableDate.length === 0 ? 'Tap for walk-in' : `${info.allForTableDate.length} booking${info.allForTableDate.length > 1 ? 's' : ''} • Tap`}
+                          </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -1622,7 +1767,7 @@ function App() {
                           <div key={booking.id} className={`admin-card ${st.cardClass}`}>
                             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
                               <div className="card-time">{booking.bookingTime}</div>
-                              <div className="card-table-pill">Table {booking.restaurantTable?.tableNumber || 'N/A'} ({booking.partySize} Guests)</div>
+                              <div className="card-table-pill">{getBookingTableLabel(booking)} ({booking.partySize} Guests)</div>
                               <span className={`status-pill status-pill--${st.visualTone}`}>
                                 {st.visualTone === 'late' ? '⚠' : st.visualTone === 'seated' ? '✓' : '●'} {st.statusLabel}
                               </span>
@@ -1657,6 +1802,9 @@ function App() {
                                   <button type="button" onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>No Show</button>
                                 </>
                               )}
+                              {booking.bookingDate === londonTodayStr && ['SEATED', 'ARRIVED'].includes(raw) && (
+                                <button type="button" onClick={() => handleUpdateStatus(booking.id, 'COMPLETED')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>✓ Make Available</button>
+                              )}
                               <button type="button" onClick={() => handleOpenEdit(booking)} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-gold)', color: 'var(--clr-charcoal)' }}>⚙️ Edit</button>
                             </div>
                           </div>
@@ -1677,7 +1825,139 @@ function App() {
         </div>
       )}
 
-      {/* ALL 4 STAFF MODALS (Outside .fade-in so they center cleanly across the full screen) */}
+      {/* --- POPUP 1: CLICKABLE TABLE FLOOR DETAILS MODAL --- */}
+      {view === 'admin' && isAuthenticated && selectedFloorTable && selectedFloorInfo && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedFloorTable(null)}>
+          <div className="modal-content" style={{ maxWidth: '540px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <h3 style={{ margin: 0, color: 'var(--clr-emerald)' }}>
+                Table {selectedFloorTable.tableNumber} (Seats {selectedFloorTable.capacity})
+              </h3>
+              <button type="button" onClick={() => setSelectedFloorTable(null)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>✕</button>
+            </div>
+            <p style={{ color: 'var(--clr-grey)', fontSize: '0.88rem', marginBottom: '14px' }}>
+              Date: <strong>{floorPlanDate}</strong> • Status: <strong>{selectedFloorInfo.badge}</strong>
+            </p>
+
+            {selectedFloorInfo.activeNowBooking && (
+              <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '10px', background: 'rgba(15, 77, 58, 0.08)', border: '1px solid var(--clr-emerald)' }}>
+                <p style={{ margin: '0 0 10px', fontSize: '0.88rem' }}>
+                  Currently occupied by <strong>{selectedFloorInfo.activeNowBooking.customer?.fullName || 'Guest'}</strong> ({(selectedFloorInfo.activeNowBooking.bookingTime || '').slice(0, 5)}). Finished early?
+                </p>
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={async () => {
+                    setLoadingLabel('Freeing table...');
+                    setIsProcessing(true);
+                    await handleUpdateStatus(selectedFloorInfo.activeNowBooking.id, 'COMPLETED');
+                    setIsProcessing(false);
+                  }}
+                  className="btn btn-emerald"
+                  style={{ width: '100%', minHeight: '42px' }}
+                >
+                  ✓ Finish Sitting &amp; Make Table {selectedFloorTable.tableNumber} Available Now
+                </button>
+              </div>
+            )}
+
+            <h4 style={{ margin: '0 0 10px', fontSize: '0.92rem', color: 'var(--clr-charcoal)' }}>
+              All Bookings on Table {selectedFloorTable.tableNumber} ({selectedFloorInfo.allForTableDate.length})
+            </h4>
+
+            {selectedFloorInfo.allForTableDate.length === 0 ? (
+              <p style={{ color: 'var(--clr-grey)', fontSize: '0.9rem', padding: '16px', background: 'var(--clr-marble)', borderRadius: '8px', textAlign: 'center' }}>
+                No bookings on Table {selectedFloorTable.tableNumber} for {floorPlanDate}.
+              </p>
+            ) : (
+              selectedFloorInfo.allForTableDate.map(b => {
+                const st = getEffectiveBookingState(b);
+                const raw = normalizeRawStatus(b.status);
+                const startStr = (b.bookingTime || '00:00').slice(0, 5);
+                const endStr = formatMinsToHHMM(toMinutes(b.bookingTime) + 120);
+                return (
+                  <div key={b.id} className="table-popup-booking-row">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <strong>{startStr} – {endStr} • {b.customer?.fullName || 'Guest'} ({b.partySize}p)</strong>
+                      <span className={`status-pill status-pill--${st.visualTone}`}>{st.statusLabel}</span>
+                    </div>
+                    {(b.specialRequests || b.staffNotes) && (
+                      <div style={{ fontSize: '0.82rem', color: 'var(--clr-grey)' }}>
+                        {b.specialRequests && <div>Guest: {b.specialRequests}</div>}
+                        {b.staffNotes && <div>Staff: {b.staffNotes}</div>}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {!['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(raw) && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setLoadingLabel('Making table available...');
+                            setIsProcessing(true);
+                            await handleUpdateStatus(b.id, 'COMPLETED');
+                            setIsProcessing(false);
+                          }}
+                          className="btn btn-emerald"
+                          style={{ padding: '7px 12px', fontSize: '0.8rem' }}
+                        >
+                          ✓ Make Available
+                        </button>
+                      )}
+                      {floorPlanDate === londonTodayStr && raw === 'BOOKED' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setLoadingLabel('Seating guest...');
+                            setIsProcessing(true);
+                            await handleUpdateStatus(b.id, 'SEATED');
+                            setIsProcessing(false);
+                          }}
+                          className="btn btn-secondary"
+                          style={{ padding: '7px 12px', fontSize: '0.8rem' }}
+                        >
+                          Seat Now
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedFloorTable(null);
+                          handleOpenEdit(b);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ padding: '7px 12px', fontSize: '0.8rem' }}
+                      >
+                        ⚙️ Edit
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const tableIdStr = String(selectedFloorTable.id);
+                  setSelectedFloorTable(null);
+                  setWalkInDetails(p => ({ ...p, tableId: tableIdStr }));
+                  setShowWalkInModal(true);
+                }}
+                className="btn btn-secondary"
+                style={{ flex: 1, borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}
+              >
+                + Walk-In Here
+              </button>
+              <button type="button" onClick={() => setSelectedFloorTable(null)} className="btn btn-primary" style={{ flex: 1 }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- POPUP 2: ADD RESERVATION (STAFF) --- */}
       {view === 'admin' && isAuthenticated && showStaffBookingModal && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -1712,7 +1992,8 @@ function App() {
                   <label>Assign Table *</label>
                   <select required value={staffBookingData.tableId} onChange={e => setStaffBookingData({ ...staffBookingData, tableId: e.target.value })} className="admin-input">
                     <option value="">-- Choose --</option>
-                    <option value="OTHER">Other / Custom Location</option>
+                    <option value="UNASSIGNED">⏳ Table Not Sure Yet (Unlimited)</option>
+                    <option value="OTHER">✨ Custom Table / Other (Unlimited)</option>
                     {activeStaffTables.map(t => (
                       <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                     ))}
@@ -1720,8 +2001,8 @@ function App() {
                 </div>
                 {staffBookingData.tableId === 'OTHER' && (
                   <div className="form-group full-width">
-                    <label>Custom Location Details *</label>
-                    <input type="text" required value={staffBookingData.customLocation} onChange={e => setStaffBookingData({ ...staffBookingData, customLocation: e.target.value })} className="admin-input" />
+                    <label>Custom Table / Location Name *</label>
+                    <input type="text" required placeholder="e.g. Extra Table A, Bar, Patio" value={staffBookingData.customLocation} onChange={e => setStaffBookingData({ ...staffBookingData, customLocation: e.target.value })} className="admin-input" />
                   </div>
                 )}
                 <div className="form-group full-width">
@@ -1738,6 +2019,7 @@ function App() {
         </div>
       )}
 
+      {/* --- POPUP 3: EDIT RESERVATION --- */}
       {view === 'admin' && isAuthenticated && editModalBooking && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -1753,7 +2035,8 @@ function App() {
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Reassign Table:</label>
-              <select value={editModalBooking.restaurantTable?.id || ''} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+              <select value={editModalBooking.restaurantTable?.id ?? '0'} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+                <option value="0">⏳ Custom / Table Not Sure Yet</option>
                 {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
               </select>
             </div>
@@ -1834,6 +2117,7 @@ function App() {
         </div>
       )}
 
+      {/* --- POPUP 4: CANCEL RESERVATION --- */}
       {view === 'admin' && isAuthenticated && cancelModalBooking && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -1859,6 +2143,7 @@ function App() {
         </div>
       )}
 
+      {/* --- POPUP 5: SEAT WALK-IN GUEST --- */}
       {view === 'admin' && isAuthenticated && showWalkInModal && (
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
           <div className="modal-content walkin-panel">
@@ -1890,15 +2175,16 @@ function App() {
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Table *</label>
               <select value={walkInDetails.tableId} onChange={e => setWalkInDetails(p => ({ ...p, tableId: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }}>
                 <option value="">-- Choose a Table --</option>
-                <option value="OTHER">Other / Custom Location</option>
+                <option value="UNASSIGNED">⏳ Table Not Sure Yet (Unlimited)</option>
+                <option value="OTHER">✨ Custom Table / Other (Unlimited)</option>
                 {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
               </select>
             </div>
 
             {walkInDetails.tableId === 'OTHER' && (
               <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Custom Location *</label>
-                <input type="text" placeholder="e.g. Bar counter" value={walkInDetails.customLocation} onChange={e => setWalkInDetails(p => ({ ...p, customLocation: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Custom Table / Location *</label>
+                <input type="text" placeholder="e.g. Bar counter, Extra Table A" value={walkInDetails.customLocation} onChange={e => setWalkInDetails(p => ({ ...p, customLocation: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }} />
               </div>
             )}
 
