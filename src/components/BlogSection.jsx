@@ -100,7 +100,10 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.secure_url) added.push(data.secure_url);
+          if (data.secure_url) {
+            const optimizedUrl = data.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_1400/');
+            added.push(optimizedUrl);
+          }
         }
       }
       setUploadedUrls(prev => [...prev, ...added]);
