@@ -3,8 +3,13 @@ import './App.css';
 import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
+import { BlogPage, AdminBlogManager } from './components/BlogSection';
+import { ReviewsPage } from './components/ReviewsSection';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
+
+// Secret staff login link: https://myhosh-salisbury.co.uk/#staff-portal-99
+const STAFF_SECRET_HASH = '#staff-portal-99';
 
 const getLondonDateStr = (d = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -33,10 +38,41 @@ const formatMinsToHHMM = (totalMins) => {
 };
 
 function App() {
-  const [view, setView] = useState(() => sessionStorage.getItem('myhosh_session') || 'customer');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('myhosh_auth') === 'true');
+  useEffect(() => {
+    sessionStorage.setItem('myhosh_auth', String(isAuthenticated));
+  }, [isAuthenticated]);
+
+  const [view, setView] = useState(() => {
+    const hash = window.location.hash;
+    if (hash === STAFF_SECRET_HASH) return 'admin';
+    if (hash === '#blog') return 'blog';
+    if (hash === '#reviews') return 'reviews';
+    const saved = sessionStorage.getItem('myhosh_session');
+    if (saved === 'admin' && sessionStorage.getItem('myhosh_auth') === 'true') return 'admin';
+    if (saved === 'blog' || saved === 'reviews') return saved;
+    return 'customer';
+  });
+
   useEffect(() => {
     sessionStorage.setItem('myhosh_session', view);
   }, [view]);
+
+  // Open Staff Gateway via secret URL (#staff-portal-99) and handle #blog / #reviews
+  useEffect(() => {
+    const syncFromHash = () => {
+      if (window.location.hash === STAFF_SECRET_HASH) {
+        setView('admin');
+      } else if (window.location.hash === '#blog') {
+        setView('blog');
+      } else if (window.location.hash === '#reviews') {
+        setView('reviews');
+      }
+    };
+    syncFromHash();
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, []);
 
   const [tables, setTables] = useState([]);
   const [allBookings, setAllBookings] = useState([]);
@@ -74,11 +110,6 @@ function App() {
   const clientPhoneNumber = '+44 7853404534';
   const clientTelHref = `tel:${clientPhoneNumber.replace(/\s+/g, '')}`;
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('myhosh_auth') === 'true');
-  useEffect(() => {
-    sessionStorage.setItem('myhosh_auth', String(isAuthenticated));
-  }, [isAuthenticated]);
-
   const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = sessionStorage.getItem('myhosh_currentUser');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -91,6 +122,7 @@ function App() {
     }
   }, [currentUser]);
 
+  const [loginGatePin, setLoginGatePin] = useState('');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -112,6 +144,11 @@ function App() {
     name: '', category: '', description: '', dietaryTags: '', price: '', available: true
   });
 
+  // Blog & Reviews State
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [showAdminBlogManager, setShowAdminBlogManager] = useState(false);
+  const [reviewData, setReviewData] = useState(null);
+
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
   const londonYesterdayStr = shiftDateStr(londonTodayStr, -1);
@@ -127,6 +164,7 @@ function App() {
   const [deleteCustomerStep, setDeleteCustomerStep] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
+  const [modalPartySize, setModalPartySize] = useState(2);
   const [modalNoteText, setModalNoteText] = useState('');
   const [cancelReason, setCancelReason] = useState('Guest requested cancellation');
   const [customReasonText, setCustomReasonText] = useState('');
@@ -179,6 +217,20 @@ function App() {
     if (targetDate !== 'ALL') {
       setViewMode(targetDate < londonTodayStr ? 'history' : 'today');
     }
+  };
+
+  const navigateHome = () => {
+    setIsMobileMenuOpen(false);
+    window.location.hash = '';
+    setView('customer');
+    window.scrollTo(0, 0);
+  };
+
+  const navigateSubpage = (target) => {
+    setIsMobileMenuOpen(false);
+    window.location.hash = `#${target}`;
+    setView(target);
+    window.scrollTo(0, 0);
   };
 
   const getEffectiveBookingState = (booking) => {
@@ -377,6 +429,27 @@ function App() {
     }
   };
 
+  const loadBlogPosts = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/blog`);
+      if (res.ok) {
+        const data = await res.json();
+        setBlogPosts(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Error loading blog posts:', err);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/reviews`);
+      if (res.ok) setReviewData(await res.json());
+    } catch (err) {
+      console.error('Error loading reviews:', err);
+    }
+  };
+
   useEffect(() => {
     fetch(`${API_BASE}/api/tables`)
       .then(r => r.json())
@@ -384,6 +457,8 @@ function App() {
       .catch(err => console.error('Error fetching tables:', err));
 
     loadMenuData(false);
+    loadBlogPosts();
+    loadReviews();
   }, []);
 
   // --- MERGED FETCH: Staff gets Past + Today + Future so Yesterday / Tomorrow / Arrows always work ---
@@ -479,7 +554,7 @@ function App() {
 
     const baseName = walkInDetails.guestName?.trim() || 'Walk-In Guest';
     let restaurantTablePayload = null;
-    let staffNoteParts = [];
+    const staffNoteParts = [];
 
     if (walkInDetails.tableId === 'OTHER') {
       const loc = walkInDetails.customLocation?.trim() || 'Other';
@@ -750,15 +825,19 @@ function App() {
     setIsLoggingIn(true);
     try {
       const response = await fetch(`${API_BASE}/api/staff/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword, gatePin: loginGatePin })
       });
       if (response.ok) {
         const staffData = await response.json();
         setCurrentUser(staffData);
         setIsAuthenticated(true);
+        setLoginPassword('');
+        setLoginGatePin('');
       } else {
-        setLoginError('Invalid staff username or password.');
+        const errText = await response.text();
+        setLoginError(errText || 'Invalid Staff Access PIN or credentials.');
       }
     } catch (_) {
       setLoginError('Network error: Server may be waking up. Please try again.');
@@ -817,6 +896,7 @@ function App() {
   const handleOpenEdit = (booking) => {
     setDeleteCustomerStep(0);
     setEditModalBooking(booking);
+    setModalPartySize(booking.partySize || 2);
     setModalNoteText(booking.staffNotes || '');
   };
 
@@ -833,6 +913,31 @@ function App() {
       }
     } catch (err) {
       console.error('Error saving note:', err);
+    }
+  };
+
+  const handleModalPartySizeChange = async () => {
+    if (!editModalBooking) return;
+    const parsed = parseInt(modalPartySize, 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 50) {
+      alert('Enter a guest count between 1 and 50.');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/bookings/${editModalBooking.id}/party-size`, {
+        method: 'PUT',
+        headers: getStaffHeaders(),
+        body: JSON.stringify({ partySize: parsed })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setAllBookings(prev => prev.map(b => (b.id === editModalBooking.id ? updated : b)));
+        setEditModalBooking(updated);
+      } else {
+        alert((await response.text()) || 'Could not update guest count.');
+      }
+    } catch (_) {
+      alert('Network error updating guest count.');
     }
   };
 
@@ -879,6 +984,9 @@ function App() {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setSelectedFloorTable(null);
+    setLoginPassword('');
+    setLoginGatePin('');
+    window.location.hash = '';
     setView('customer');
     sessionStorage.clear();
   };
@@ -1010,7 +1118,7 @@ function App() {
   return (
     <>
       <header className="site-header">
-        <div className="brand-logo" onClick={() => setView('customer')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', margin: '-12px 0' }}>
+        <div className="brand-logo" onClick={navigateHome} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', margin: '-12px 0' }}>
           <img
             src="/images/myhosh-salisbury-logo-horizontal-transparent.png"
             alt="MyHosh Salisbury"
@@ -1019,27 +1127,42 @@ function App() {
         </div>
 
         <nav className="nav-links">
-          {view === 'customer' && (
+          {view === 'customer' ? (
             <>
               <a href="#menu" className="nav-link">Menu</a>
               <a href="#space" className="nav-link">Our Space</a>
               <a href="#visit" className="nav-link">Visit Us</a>
+              <button
+                type="button"
+                onClick={() => navigateSubpage('blog')}
+                className="nav-link"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
+              >
+                Gallery &amp; Blog
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateSubpage('reviews')}
+                className="nav-link"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
+              >
+                Reviews
+              </button>
+              <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
             </>
-          )}
-          <button
-            type="button"
-            onClick={() => setView(view === 'customer' ? 'admin' : 'customer')}
-            className="nav-link"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
-          >
-            {view === 'customer' ? 'Staff Login' : 'Return to Site'}
-          </button>
-          {view === 'customer' && (
-            <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
+          ) : (
+            <button
+              type="button"
+              onClick={navigateHome}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
+            >
+              Return to Site
+            </button>
           )}
         </nav>
 
-        <button type="button" className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        <button type="button" className="mobile-menu-btn" aria-label="Toggle navigation menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
@@ -1048,22 +1171,35 @@ function App() {
 
       {isMobileMenuOpen && (
         <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
-          {view === 'customer' && (
+          {view === 'customer' ? (
             <>
               <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Menu</a>
               <a href="#space" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Our Space</a>
               <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Visit Us</a>
+              <button
+                type="button"
+                onClick={() => navigateSubpage('blog')}
+                style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
+              >
+                Gallery &amp; Blog
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateSubpage('reviews')}
+                style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
+              >
+                Reviews
+              </button>
+              <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
             </>
-          )}
-          <button
-            type="button"
-            onClick={() => { setIsMobileMenuOpen(false); setView(view === 'customer' ? 'admin' : 'customer'); }}
-            style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
-          >
-            {view === 'customer' ? 'Staff Login' : 'Return to Site'}
-          </button>
-          {view === 'customer' && (
-            <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
+          ) : (
+            <button
+              type="button"
+              onClick={navigateHome}
+              style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
+            >
+              Return to Site
+            </button>
           )}
         </div>
       )}
@@ -1363,7 +1499,24 @@ function App() {
               <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '15px 0' }}><span></span></div>
               <p><strong>Address:</strong><br />99 Fisherton Street<br />SP2 7SP Salisbury, UK</p>
               <p><strong>Phone:</strong><br /><a href={clientTelHref} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a></p>
-              <p style={{ marginTop: '30px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-emerald"
+                >
+                  📍 Open in Google Maps
+                </a>
+                <button
+                  type="button"
+                  onClick={() => navigateSubpage('reviews')}
+                  className="btn btn-secondary"
+                >
+                  ⭐ Give Us a Review
+                </button>
+              </div>
+              <p style={{ marginTop: '20px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
                 No online availability or booking a large event?<br />
                 Please call the restaurant directly and we will do our best to accommodate you.
               </p>
@@ -1377,6 +1530,8 @@ function App() {
               <a href="#menu">Menu</a>
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
+              <button type="button" onClick={() => navigateSubpage('blog')} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Gallery &amp; Blog</button>
+              <button type="button" onClick={() => navigateSubpage('reviews')} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Reviews</button>
             </div>
             <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
               <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
@@ -1447,6 +1602,17 @@ function App() {
             </div>
           )}
         </div>
+      ) : view === 'blog' ? (
+        <BlogPage posts={blogPosts} onBackHome={navigateHome} />
+      ) : view === 'reviews' ? (
+        <ReviewsPage
+          apiBase={API_BASE}
+          reviewData={reviewData}
+          isAdmin={isAuthenticated && currentUser?.role === 'ADMIN'}
+          getStaffHeaders={getStaffHeaders}
+          onRefresh={loadReviews}
+          onBackHome={navigateHome}
+        />
       ) : (
         <div className="admin-view">
           <LoadingOverlay show={isProcessing || isLoggingIn} label={isLoggingIn ? 'Signing into Staff Gateway...' : loadingLabel} fullscreen />
@@ -1454,13 +1620,42 @@ function App() {
           {!isAuthenticated ? (
             <div className="fade-in" style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 30px', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.1)', textAlign: 'center', boxShadow: 'var(--shadow-soft)' }}>
               <h2 style={{ color: 'var(--clr-emerald)', margin: '0 0 10px 0' }}>Staff Gateway</h2>
-              <p style={{ color: 'var(--clr-grey)', marginBottom: '30px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
+              <p style={{ color: 'var(--clr-grey)', marginBottom: '26px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
               <form onSubmit={handleAdminLogin}>
                 <div style={{ marginBottom: '15px' }}>
-                  <input type="text" placeholder="Staff Username" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required autoComplete="off" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
+                  <input
+                    type="password"
+                    placeholder="Staff Access PIN"
+                    value={loginGatePin}
+                    onChange={e => setLoginGatePin(e.target.value)}
+                    autoComplete="off"
+                    className="admin-input"
+                    style={{ width: '100%', textAlign: 'center' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <input
+                    type="text"
+                    placeholder="Staff Username"
+                    value={loginUsername}
+                    onChange={e => setLoginUsername(e.target.value)}
+                    required
+                    autoComplete="off"
+                    className="admin-input"
+                    style={{ width: '100%', textAlign: 'center' }}
+                  />
                 </div>
                 <div style={{ marginBottom: '25px' }}>
-                  <input type="password" placeholder="Staff Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required autoComplete="new-password" className="admin-input" style={{ width: '100%', textAlign: 'center' }} />
+                  <input
+                    type="password"
+                    placeholder="Staff Password"
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    className="admin-input"
+                    style={{ width: '100%', textAlign: 'center' }}
+                  />
                 </div>
                 {loginError && <div style={{ color: 'var(--clr-error)', marginBottom: '15px', fontSize: '0.9rem' }}>{loginError}</div>}
                 <button type="submit" disabled={isLoggingIn} className="btn btn-primary" style={{ width: '100%' }}>Access System</button>
@@ -1477,17 +1672,26 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {currentUser?.role === 'ADMIN' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = !showAdminMenuEditor;
-                        setShowAdminMenuEditor(next);
-                        if (next) loadMenuData(true);
-                      }}
-                      className="btn btn-emerald"
-                    >
-                      {showAdminMenuEditor ? 'Close Menu Editor' : 'Edit Menu & Prices'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !showAdminMenuEditor;
+                          setShowAdminMenuEditor(next);
+                          if (next) loadMenuData(true);
+                        }}
+                        className="btn btn-emerald"
+                      >
+                        {showAdminMenuEditor ? 'Close Menu Editor' : 'Edit Menu & Prices'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminBlogManager(prev => !prev)}
+                        className="btn btn-secondary"
+                      >
+                        {showAdminBlogManager ? 'Close Blog Manager' : 'Blog & Photos'}
+                      </button>
+                    </>
                   )}
                   <button type="button" onClick={handleLogout} className="btn btn-secondary">Secure Logout</button>
                 </div>
@@ -1610,6 +1814,15 @@ function App() {
                     <p style={{ color: 'var(--clr-grey)', margin: 0 }}>No menu items loaded yet. Click Refresh Menu once the backend is live.</p>
                   )}
                 </div>
+              )}
+
+              {currentUser?.role === 'ADMIN' && showAdminBlogManager && (
+                <AdminBlogManager
+                  apiBase={API_BASE}
+                  posts={blogPosts}
+                  getStaffHeaders={getStaffHeaders}
+                  onRefresh={loadBlogPosts}
+                />
               )}
 
               {currentUser?.role === 'ADMIN' && (
@@ -2071,7 +2284,7 @@ function App() {
         </div>
       )}
 
-      {/* --- POPUP 3: EDIT RESERVATION --- */}
+      {/* --- POPUP 3: EDIT RESERVATION (Includes Guest Count Edit) --- */}
       {view === 'admin' && isAuthenticated && editModalBooking && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -2080,6 +2293,23 @@ function App() {
               Guest: <strong>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})
             </p>
             <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Number of Guests:</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={modalPartySize}
+                  onChange={e => setModalPartySize(e.target.value)}
+                  className="admin-input"
+                  style={{ flex: 1 }}
+                />
+                <button type="button" onClick={handleModalPartySizeChange} className="btn btn-emerald" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+                  Update Guests
+                </button>
+              </div>
+            </div>
+            <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Change Sitting Time:</label>
               <select value={(editModalBooking.bookingTime || '').slice(0, 5)} onChange={e => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                 {generate15MinSlots('12:00', '22:00').map(slot => <option key={slot} value={slot}>{slot}</option>)}
@@ -2087,7 +2317,7 @@ function App() {
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Reassign Table:</label>
-              <select value={editModalBooking.restaurantTable?.id ?? '0'} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+              <select value={editModalBooking.restaurantTable?.id ? String(editModalBooking.restaurantTable.id) : '0'} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
                 <option value="0">⏳ Custom / Table Not Sure Yet</option>
                 {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
               </select>
