@@ -760,3 +760,32 @@ body {
     flex-direction: column;
     gap: 8px;
   }
+  /* --- LEGAL LINKS & MODAL READABILITY --- */
+.legal-inline-link {
+    background: none;
+    border: none;
+    color: var(--clr-emerald, #0F4D3A);
+    text-decoration: underline;
+    font-weight: 600;
+    padding: 0;
+    font-size: inherit;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  
+  .legal-modal-body {
+    text-align: left;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: var(--clr-charcoal, #1B1A17);
+  }
+  
+  .legal-modal-body h4 {
+    color: var(--clr-emerald, #0F4D3A);
+    margin: 14px 0 4px;
+    font-size: 1rem;
+  }
+  
+  .legal-modal-body p {
+    margin-bottom: 8px;
+  }

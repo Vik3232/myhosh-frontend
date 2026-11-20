@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
+import { LegalModals } from './components/LegalModals';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
@@ -61,6 +62,7 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isTimeSheetOpen, setIsTimeSheetOpen] = useState(false);
+  const [legalModal, setLegalModal] = useState(null);
   const [timeGroupRanges] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('myhosh_time_groups'));
@@ -112,6 +114,7 @@ function App() {
 
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
+  const londonYesterdayStr = shiftDateStr(londonTodayStr, -1);
   const londonTomorrowStr = shiftDateStr(londonTodayStr, 1);
 
   const [adminDateFilter, setAdminDateFilter] = useState(() => getLondonDateStr());
@@ -169,6 +172,13 @@ function App() {
     const customMatch = notes.match(/Custom Table:\s*([^|\n]+)/i);
     if (customMatch) return `Custom: ${customMatch[1].trim()}`;
     return 'Table Not Sure Yet';
+  };
+
+  const selectAdminDate = (targetDate) => {
+    setAdminDateFilter(targetDate);
+    if (targetDate !== 'ALL') {
+      setViewMode(targetDate < londonTodayStr ? 'history' : 'today');
+    }
   };
 
   const getEffectiveBookingState = (booking) => {
@@ -291,7 +301,6 @@ function App() {
       return true;
     });
 
-    // Only expose Table 4 when ALL other eligible tables are already booked
     const primaryTables = freeTables.filter(t => t.tableNumber !== 4);
     return primaryTables.length > 0 ? primaryTables : freeTables;
   };
@@ -377,17 +386,35 @@ function App() {
     loadMenuData(false);
   }, []);
 
+  // --- MERGED FETCH: Staff gets Past + Today + Future so Yesterday / Tomorrow / Arrows always work ---
   const fetchBookings = async () => {
     try {
-      const endpoint = viewMode === 'history' ? '/api/bookings/history' : '/api/bookings';
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        headers: currentUser?.token ? { 'X-Staff-Token': currentUser.token } : {}
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAllBookings(Array.isArray(data) ? data : []);
-      } else if (response.status === 401 && isAuthenticated) {
-        handleLogout();
+      if (isAuthenticated && currentUser?.token) {
+        const headers = { 'X-Staff-Token': currentUser.token };
+        const [upcomingRes, historyRes] = await Promise.all([
+          fetch(`${API_BASE}/api/bookings`, { headers }),
+          fetch(`${API_BASE}/api/bookings/history`, { headers })
+        ]);
+
+        if (upcomingRes.status === 401 || historyRes.status === 401) {
+          handleLogout();
+          return;
+        }
+
+        const upcoming = upcomingRes.ok ? await upcomingRes.json() : [];
+        const history = historyRes.ok ? await historyRes.json() : [];
+
+        const merged = new Map();
+        [...(Array.isArray(history) ? history : []), ...(Array.isArray(upcoming) ? upcoming : [])].forEach(b => {
+          if (b && b.id != null) merged.set(b.id, b);
+        });
+        setAllBookings(Array.from(merged.values()));
+      } else {
+        const response = await fetch(`${API_BASE}/api/bookings`);
+        if (response.ok) {
+          const data = await response.json();
+          setAllBookings(Array.isArray(data) ? data : []);
+        }
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -396,7 +423,7 @@ function App() {
 
   useEffect(() => {
     fetchBookings();
-  }, [view, isSuccess, viewMode, currentUser]);
+  }, [view, isSuccess, isAuthenticated, currentUser]);
 
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInDetails, setWalkInDetails] = useState({
@@ -661,7 +688,6 @@ function App() {
         : `mh-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     }
 
-    // Sort smallest fitting capacity first, always keeping Table 4 last
     const sortedTables = [...availableTables].sort((a, b) => {
       if (a.tableNumber === 4 && b.tableNumber !== 4) return 1;
       if (b.tableNumber === 4 && a.tableNumber !== 4) return -1;
@@ -857,18 +883,31 @@ function App() {
     sessionStorage.clear();
   };
 
-  const displayedBookings = allBookings.filter(b => {
-    const matchesDate = adminDateFilter === 'ALL' || b.bookingDate === adminDateFilter;
-    if (!searchQuery.trim()) return matchesDate;
-    const query = searchQuery.toLowerCase().trim();
-    const guestName = (b.customer?.fullName || '').toLowerCase();
-    const guestPhone = (b.customer?.phone || '').toLowerCase();
-    const refCode = `mh-${String(b.id || '').padStart(4, '0')}`.toLowerCase();
-    return matchesDate && (guestName.includes(query) || guestPhone.includes(query) || refCode.includes(query));
-  });
+  // --- DATE FILTERING ACROSS PAST, TODAY, AND FUTURE ---
+  const displayedBookings = allBookings
+    .filter(b => {
+      let matchesDate = false;
+      if (adminDateFilter === 'ALL') {
+        matchesDate = viewMode === 'history'
+          ? Boolean(b.bookingDate && b.bookingDate < londonTodayStr)
+          : Boolean(b.bookingDate && b.bookingDate >= londonTodayStr);
+      } else {
+        matchesDate = b.bookingDate === adminDateFilter;
+      }
+      if (!searchQuery.trim()) return matchesDate;
+      const query = searchQuery.toLowerCase().trim();
+      const guestName = (b.customer?.fullName || '').toLowerCase();
+      const guestPhone = (b.customer?.phone || '').toLowerCase();
+      const refCode = `mh-${String(b.id || '').padStart(4, '0')}`.toLowerCase();
+      return matchesDate && (guestName.includes(query) || guestPhone.includes(query) || refCode.includes(query));
+    })
+    .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
+
+  const sortedDisplayDates = Array.from(new Set(displayedBookings.map(b => b.bookingDate))).sort((a, b) =>
+    viewMode === 'history' && adminDateFilter === 'ALL' ? b.localeCompare(a) : a.localeCompare(b)
+  );
 
   const totalGuests = displayedBookings.reduce((sum, b) => sum + (b.partySize || 0), 0);
-  // All tables 1–13 (including Table 4) sorted numerically for Staff
   const activeStaffTables = [...tables].sort((a, b) => a.tableNumber - b.tableNumber);
   const floorPlanDate = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
 
@@ -886,12 +925,11 @@ function App() {
     const nowMins = getLondonMinutesOfDay();
 
     if (isViewingToday) {
-      // Only bookings still INSIDE their 2-hour window occupy the table right now
       const inWindow = activeForTableDate.filter(b => {
         const startMins = toMinutes(b.bookingTime);
         const endMins = startMins + 120;
         const raw = normalizeRawStatus(b.status);
-        if (nowMins >= endMins) return false; // 2-hour window ended -> auto-free!
+        if (nowMins >= endMins) return false;
         return raw === 'SEATED' || raw === 'ARRIVED' || nowMins >= startMins;
       });
 
@@ -941,7 +979,6 @@ function App() {
       };
     }
 
-    // Future or Past selected date
     if (activeForTableDate.length > 0) {
       return {
         allForTableDate,
@@ -1285,7 +1322,15 @@ function App() {
                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
                           <input type="checkbox" required checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: '3px' }} />
                           <span>
-                            <strong>Terms &amp; Conditions:</strong> I agree to the 2-hour table sitting (15-min hold) and 6-month UK GDPR data retention policy.
+                            I agree to the{' '}
+                            <button type="button" className="legal-inline-link" onClick={() => setLegalModal('terms')}>
+                              Terms &amp; Conditions
+                            </button>
+                            {' '}(2-hour sitting, 15-min hold) and have read the{' '}
+                            <button type="button" className="legal-inline-link" onClick={() => setLegalModal('privacy')}>
+                              Privacy Policy
+                            </button>
+                            {' '}(6-month UK GDPR auto-deletion; click to view or save as PDF).
                           </span>
                         </label>
                       </div>
@@ -1333,8 +1378,14 @@ function App() {
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
             </div>
-            <div className="footer-bottom">
+            <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
               <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
+              <button type="button" onClick={() => setLegalModal('privacy')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
+                Privacy Policy
+              </button>
+              <button type="button" onClick={() => setLegalModal('terms')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
+                Terms &amp; Conditions
+              </button>
             </div>
           </footer>
 
@@ -1636,7 +1687,7 @@ function App() {
               <div className="admin-toolbar">
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
-                    <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Today's Bookings</button>
+                    <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Upcoming &amp; Today</button>
                     <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
                   </div>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
@@ -1649,8 +1700,9 @@ function App() {
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
                     <button type="button" onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
-                    <button type="button" onClick={() => setAdminDateFilter(londonTodayStr)} className={`btn-admin-tab ${adminDateFilter === londonTodayStr ? 'active' : ''}`}>Today</button>
-                    <button type="button" onClick={() => setAdminDateFilter(londonTomorrowStr)} className={`btn-admin-tab ${adminDateFilter === londonTomorrowStr ? 'active' : ''}`}>Tomorrow</button>
+                    <button type="button" onClick={() => selectAdminDate(londonYesterdayStr)} className={`btn-admin-tab ${adminDateFilter === londonYesterdayStr ? 'active' : ''}`}>Yesterday</button>
+                    <button type="button" onClick={() => selectAdminDate(londonTodayStr)} className={`btn-admin-tab ${adminDateFilter === londonTodayStr ? 'active' : ''}`}>Today</button>
+                    <button type="button" onClick={() => selectAdminDate(londonTomorrowStr)} className={`btn-admin-tab ${adminDateFilter === londonTomorrowStr ? 'active' : ''}`}>Tomorrow</button>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px', justifyContent: 'center' }}>
@@ -1659,7 +1711,7 @@ function App() {
                       aria-label="Previous day"
                       onClick={() => {
                         const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
-                        setAdminDateFilter(shiftDateStr(base, -1));
+                        selectAdminDate(shiftDateStr(base, -1));
                       }}
                       className="admin-input"
                       style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -1669,7 +1721,7 @@ function App() {
                     <input
                       type="date"
                       value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
-                      onChange={e => setAdminDateFilter(e.target.value || 'ALL')}
+                      onChange={e => selectAdminDate(e.target.value || 'ALL')}
                       className="admin-input"
                       style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }}
                     />
@@ -1678,7 +1730,7 @@ function App() {
                       aria-label="Next day"
                       onClick={() => {
                         const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
-                        setAdminDateFilter(shiftDateStr(base, 1));
+                        selectAdminDate(shiftDateStr(base, 1));
                       }}
                       className="admin-input"
                       style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
@@ -1751,7 +1803,7 @@ function App() {
               </div>
 
               <div>
-                {Array.from(new Set(displayedBookings.map(b => b.bookingDate))).sort().map(bookingDate => {
+                {sortedDisplayDates.map(bookingDate => {
                   const dateBookings = displayedBookings.filter(b => b.bookingDate === bookingDate);
                   return (
                     <div key={bookingDate}>
@@ -2219,6 +2271,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* --- POPUP 6: TERMS & CONDITIONS / PRIVACY POLICY (WITH PDF EXPORT) --- */}
+      <LegalModals activeModal={legalModal} onClose={() => setLegalModal(null)} />
     </>
   );
 }
