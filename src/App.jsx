@@ -4,13 +4,15 @@ import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
 import { BlogPage, AdminBlogManager } from './components/BlogSection';
-// Swap to https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID once you copy your ChIJ Place ID
-const GOOGLE_REVIEW_URL = 'https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
 // Secret staff link: https://myhosh-salisbury.co.uk/#staff-portal-99
 const STAFF_SECRET_HASH = '#staff-portal-99';
+
+// Swap GOOGLE_REVIEW_URL to https://search.google.com/local/writereview?placeid=YOUR_CHIJ_PLACE_ID once ready
+const GOOGLE_MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP';
+const GOOGLE_REVIEW_URL = 'https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP';
 
 const getLondonDateStr = (d = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -56,11 +58,11 @@ function App() {
     }
   }, [staffLinkUnlocked, isAuthenticated]);
 
+  // Only allow valid views: 'customer' | 'blog' | 'admin'
   const [view, setView] = useState(() => {
     const hash = window.location.hash;
     if (hash === STAFF_SECRET_HASH) return 'admin';
     if (hash === '#blog') return 'blog';
-   
     const saved = sessionStorage.getItem('myhosh_session');
     if (saved === 'admin' && sessionStorage.getItem('myhosh_auth') === 'true') return 'admin';
     if (saved === 'blog') return 'blog';
@@ -78,7 +80,6 @@ function App() {
         setView('admin');
       } else if (window.location.hash === '#blog') {
         setView('blog');
-      
       }
     };
     syncFromHash();
@@ -139,7 +140,7 @@ function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // 3 Clean Admin Views + Staff Tab (never stacked on top of each other)
+  // Separate Admin Views (never stacked on top of each other)
   const [activeAdminTab, setActiveAdminTab] = useState('reservations');
 
   const [newStaffUsername, setNewStaffUsername] = useState('');
@@ -158,9 +159,8 @@ function App() {
     name: '', category: '', description: '', dietaryTags: '', price: '', available: true
   });
 
-  // Blog & Reviews State
+  // Blog State
   const [blogPosts, setBlogPosts] = useState([]);
- 
 
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
@@ -177,15 +177,44 @@ function App() {
   const [editModalBooking, setEditModalBooking] = useState(null);
   const [modalPartySize, setModalPartySize] = useState(2);
   const [modalNoteText, setModalNoteText] = useState('');
+  const [modalSaveFeedback, setModalSaveFeedback] = useState('');
   const [cancelReason, setCancelReason] = useState('Guest requested cancellation');
   const [customReasonText, setCustomReasonText] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewMode, setViewMode] = useState('today');
 
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInDetails, setWalkInDetails] = useState({
+    guestName: '', phone: '', partySize: 2, tableId: '', customLocation: '', notes: ''
+  });
+
+  const [showStaffBookingModal, setShowStaffBookingModal] = useState(false);
+  const [staffBookingData, setStaffBookingData] = useState({
+    fullName: '', email: '', phone: '', date: londonTodayStr, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: ''
+  });
+
+  // Tick every 15s so tables auto-return to green after their 2-hour window
   useEffect(() => {
     const timer = setInterval(() => setLondonNow(new Date()), 15000);
     return () => clearInterval(timer);
   }, []);
+
+  // Close open popups with Escape key
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      if (legalModal) setLegalModal(null);
+      else if (isTimeSheetOpen) setIsTimeSheetOpen(false);
+      else if (isLightboxOpen) setIsLightboxOpen(false);
+      else if (cancelModalBooking) setCancelModalBooking(null);
+      else if (editModalBooking) { setDeleteCustomerStep(0); setEditModalBooking(null); }
+      else if (showWalkInModal) setShowWalkInModal(false);
+      else if (showStaffBookingModal) setShowStaffBookingModal(false);
+      else if (selectedFloorTable) setSelectedFloorTable(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [legalModal, isTimeSheetOpen, isLightboxOpen, cancelModalBooking, editModalBooking, showWalkInModal, showStaffBookingModal, selectedFloorTable]);
 
   const minDate = londonTodayStr;
   const maxDate = shiftDateStr(londonTodayStr, 92);
@@ -238,10 +267,10 @@ function App() {
     window.scrollTo(0, 0);
   };
 
-  const navigateSubpage = (target) => {
+  const navigateBlog = () => {
     setIsMobileMenuOpen(false);
-    window.location.hash = `#${target}`;
-    setView(target);
+    window.location.hash = '#blog';
+    setView('blog');
     window.scrollTo(0, 0);
   };
 
@@ -341,6 +370,7 @@ function App() {
     idempotencyKeyRef.current = null;
   }, [fullName, phone, email, date, time, partySize, selectedTable, requests]);
 
+  // --- TABLE 4 AS LAST OPTION FOR ONLINE CUSTOMERS ---
   const getEligibleCustomerTables = (numGuests, checkDate, checkTime) => {
     if (numGuests < 1 || numGuests > 20) return [];
 
@@ -457,8 +487,6 @@ function App() {
     }
   };
 
- 
-
   useEffect(() => {
     fetch(`${API_BASE}/api/tables`)
       .then(r => r.json())
@@ -467,9 +495,9 @@ function App() {
 
     loadMenuData(false);
     loadBlogPosts();
-    
   }, []);
 
+  // --- MERGED FETCH: Staff gets Past + Today + Future so Yesterday / Tomorrow / Arrows always work ---
   const fetchBookings = async () => {
     try {
       if (isAuthenticated && currentUser?.token) {
@@ -507,16 +535,6 @@ function App() {
   useEffect(() => {
     fetchBookings();
   }, [view, isSuccess, isAuthenticated, currentUser]);
-
-  const [showWalkInModal, setShowWalkInModal] = useState(false);
-  const [walkInDetails, setWalkInDetails] = useState({
-    guestName: '', phone: '', partySize: 2, tableId: '', customLocation: '', notes: ''
-  });
-
-  const [showStaffBookingModal, setShowStaffBookingModal] = useState(false);
-  const [staffBookingData, setStaffBookingData] = useState({
-    fullName: '', email: '', phone: '', date: londonTodayStr, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: ''
-  });
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
@@ -660,7 +678,7 @@ function App() {
       if (response.ok) {
         setShowStaffBookingModal(false);
         setStaffBookingData({ fullName: '', email: '', phone: '', date: londonTodayStr, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: '' });
-        fetchBookings();
+        await fetchBookings();
         alert('Reservation manually added to the system.');
       } else {
         alert(`Failed to add booking: ${await response.text()}`);
@@ -904,6 +922,7 @@ function App() {
 
   const handleOpenEdit = (booking) => {
     setDeleteCustomerStep(0);
+    setModalSaveFeedback('');
     setEditModalBooking(booking);
     setModalPartySize(booking.partySize || 2);
     setModalNoteText(booking.staffNotes || '');
@@ -919,6 +938,7 @@ function App() {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => (b.id === editModalBooking.id ? updated : b)));
         setEditModalBooking(updated);
+        setModalSaveFeedback('Staff note saved.');
       }
     } catch (err) {
       console.error('Error saving note:', err);
@@ -942,6 +962,7 @@ function App() {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => (b.id === editModalBooking.id ? updated : b)));
         setEditModalBooking(updated);
+        setModalSaveFeedback(`Guest count updated to ${parsed}.`);
       } else {
         alert((await response.text()) || 'Could not update guest count.');
       }
@@ -960,6 +981,7 @@ function App() {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => (b.id === editModalBooking.id ? updated : b)));
         setEditModalBooking(updated);
+        setModalSaveFeedback(`Time updated to ${newTime}.`);
       }
     } catch (err) {
       console.error('Error updating time:', err);
@@ -976,6 +998,7 @@ function App() {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => (b.id === editModalBooking.id ? updated : b)));
         setEditModalBooking(updated);
+        setModalSaveFeedback('Table updated.');
       } else {
         alert(`Could not reassign table: ${await response.text()}`);
       }
@@ -984,6 +1007,7 @@ function App() {
     }
   };
 
+  // Secure Logout: revokes backend token and stays on Staff Gateway login screen
   const handleLogout = () => {
     if (currentUser?.token) {
       fetch(`${API_BASE}/api/staff/logout`, {
@@ -993,6 +1017,10 @@ function App() {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setSelectedFloorTable(null);
+    setShowWalkInModal(false);
+    setShowStaffBookingModal(false);
+    setEditModalBooking(null);
+    setCancelModalBooking(null);
     setActiveAdminTab('reservations');
     setLoginUsername('');
     setLoginPassword('');
@@ -1005,7 +1033,6 @@ function App() {
     window.location.hash = STAFF_SECRET_HASH;
     setView('admin');
   };
-  
 
   const displayedBookings = allBookings
     .filter(b => {
@@ -1128,6 +1155,7 @@ function App() {
   const visibleAdminDishes = menuItems.filter(m => m.category === currentAdminCat);
 
   const selectedFloorInfo = selectedFloorTable ? getTableFloorInfo(selectedFloorTable) : null;
+  const isOnCustomerHome = view !== 'blog' && view !== 'admin';
 
   return (
     <>
@@ -1141,20 +1169,29 @@ function App() {
         </div>
 
         <nav className="nav-links">
-          {view === 'customer' ? (
+          {isOnCustomerHome ? (
             <>
               <a href="#menu" className="nav-link">Menu</a>
               <a href="#space" className="nav-link">Our Space</a>
               <a href="#visit" className="nav-link">Visit Us</a>
               <button
                 type="button"
-                onClick={() => navigateSubpage('blog')}
+                onClick={navigateBlog}
                 className="nav-link"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
               >
                 Gallery &amp; Blog
               </button>
-              
+              {staffLinkUnlocked && (
+                <button
+                  type="button"
+                  onClick={openStaffPortal}
+                  className="nav-link"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0, color: 'var(--clr-emerald)', fontWeight: 600 }}
+                >
+                  {isAuthenticated ? 'Staff Dashboard' : 'Staff Login'}
+                </button>
+              )}
               <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
             </>
           ) : (
@@ -1178,19 +1215,18 @@ function App() {
 
       {isMobileMenuOpen && (
         <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
-          {view === 'customer' ? (
+          {isOnCustomerHome ? (
             <>
               <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Menu</a>
               <a href="#space" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Our Space</a>
               <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Visit Us</a>
               <button
                 type="button"
-                onClick={() => navigateSubpage('blog')}
+                onClick={navigateBlog}
                 style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
               >
                 Gallery &amp; Blog
               </button>
-            
               {staffLinkUnlocked && (
                 <button
                   type="button"
@@ -1214,406 +1250,10 @@ function App() {
         </div>
       )}
 
-      {view === 'customer' ? (
-        <div className="customer-view">
-          <section id="hero" className="hero-section">
-            <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
-            <div className="hero-overlay"></div>
-            <div className="hero-content fade-in">
-              <h1>Authentic Turkish Hospitality</h1>
-              <p>Charcoal grill, fresh meze, and a warm dining experience in the heart of Salisbury.</p>
-              <div className="hero-actions">
-                <a href="#reserve" className="btn btn-primary">Reserve a Table</a>
-                <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-secondary" style={{ color: '#FBF6EA', borderColor: '#FBF6EA' }}>View Menu</button>
-              </div>
-            </div>
-          </section>
-
-          <section className="feature-strip">
-            <div className="feature-item">
-              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path><path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path></svg>
-              <h3>Charcoal Grill</h3>
-              <p>Authentic fire-roasted meats and skewers.</p>
-            </div>
-            <div className="feature-item">
-              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path><path d="M12 7V3M8 5v2M16 5v2"></path><path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path></svg>
-              <h3>Fresh Meze</h3>
-              <p>Traditional cold and hot starters prepared daily.</p>
-            </div>
-            <div className="feature-item">
-              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-              <h3>Warm Welcome</h3>
-              <p>A beautifully designed space to relax and dine.</p>
-            </div>
-          </section>
-
-          <section id="menu" className="menu-section">
-            <div className="menu-section-header">
-              <h2>Our Menu</h2>
-              <div className="gold-divider"><span></span></div>
-              <p className="text-muted">Tap a category to explore our dishes. Please inform staff of any food allergies or intolerances.</p>
-            </div>
-
-            {publicMenuCategories.length > 0 ? (
-              <>
-                <div className="menu-category-tabs" role="tablist" aria-label="Menu categories">
-                  {publicMenuCategories.map(cat => (
-                    <button
-                      key={cat}
-                      type="button"
-                      role="tab"
-                      aria-selected={currentPublicCat === cat}
-                      onClick={() => setActiveMenuCategory(cat)}
-                      className={`menu-cat-tab ${currentPublicCat === cat ? 'active' : ''}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="menu-grid">
-                  {visiblePublicDishes.map(dish => (
-                    <div key={dish.id} className="menu-card">
-                      <div className="menu-item-info">
-                        <h4>
-                          {dish.name}{' '}
-                          {dish.dietaryTags && (
-                            <span style={{ fontSize: '0.78rem', color: 'var(--clr-emerald)', fontWeight: 600 }}>({dish.dietaryTags})</span>
-                          )}
-                        </h4>
-                        {dish.description && <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>{dish.description}</p>}
-                      </div>
-                      <div className="menu-item-price">£{Number(dish.price).toFixed(2)}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="menu-grid">
-                <div className="menu-card">
-                  <div className="menu-item-info">
-                    <h4>Cold Meze Platter</h4>
-                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Humus, Cacik, Kisir, Stuffed Vine Leaves, Beetroot Yoghurt, Aubergine Napolitana</p>
-                  </div>
-                  <div className="menu-item-price">£16.95</div>
-                </div>
-                <div className="menu-card">
-                  <div className="menu-item-info">
-                    <h4>Hot Meze Platter</h4>
-                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Borek, Calamari, Whitebait, Halloumi Cheese, Falafel, Sucuk</p>
-                  </div>
-                  <div className="menu-item-price">£17.95</div>
-                </div>
-                <div className="menu-card">
-                  <div className="menu-item-info">
-                    <h4>Grill Sharing Platter (For 3-4 People)</h4>
-                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Selection of charcoal grill meats, meze, rice, bulgur, salad, and chips</p>
-                  </div>
-                  <div className="menu-item-price">£79.95</div>
-                </div>
-              </div>
-            )}
-
-            <div className="text-center" style={{ marginTop: '24px' }}>
-              <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-emerald">View Full Menu Image</button>
-            </div>
-          </section>
-
-          <section id="space" className="space-section">
-            <div className="arch-image-container">
-              <img src="/images/interior.webp" alt="MyHosh Interior" className="arch-mask" loading="lazy" />
-            </div>
-            <div className="space-content">
-              <h2>An Elegant Atmosphere</h2>
-              <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '20px 0' }}><span></span></div>
-              <p>Settle into our emerald velvet chairs, dine on white marble tables, and let our warm, candle-lit ambience transport you to the heart of Turkey.</p>
-            </div>
-          </section>
-
-          <section className="image-band">
-            <img src="/images/charcoal-grill.webp" alt="Charcoal Grill" loading="lazy" />
-            <div className="overlay"></div>
-            <h2>From the Charcoal Grill</h2>
-          </section>
-
-          <section id="reserve" className="booking-section">
-            <div className="text-center" style={{ marginBottom: '40px' }}>
-              <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
-              <div className="gold-divider"><span></span></div>
-              <div style={{ color: 'var(--clr-gold-pale)', fontSize: '0.95rem', background: 'rgba(0,0,0,0.3)', display: 'inline-block', padding: '15px 25px', borderRadius: '8px' }}>
-                <strong>Opening Hours</strong><br />
-                Tuesday: Closed<br />
-                Mon, Wed, Thu, Fri: 16:00 - 22:30<br />
-                Sat: 12:00 - 22:30 | Sun: 12:00 - 22:00
-              </div>
-            </div>
-
-            <div className="booking-container">
-              <img src="/images/interior.webp" className="booking-image-side" alt="Interior Setting" loading="lazy" />
-
-              <div className="booking-form-content">
-                <LoadingOverlay show={isProcessing} label={loadingLabel} />
-                {isSuccess ? (
-                  <div className="success-screen fade-in" role="status" aria-live="polite">
-                    <div className="success-icon" style={{ fontSize: '3rem' }}>✓</div>
-                    <h2>Reservation Confirmed</h2>
-                    <div style={{ background: 'rgba(15, 77, 58, 0.08)', border: '2px dashed var(--clr-emerald)', padding: '18px', margin: '18px 0', borderRadius: '10px' }}>
-                      <p style={{ margin: '0 0 5px 0', color: 'var(--clr-grey)', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Your Booking Reference</p>
-                      <h3 style={{ color: 'var(--clr-emerald)', margin: 0, fontSize: '2rem', letterSpacing: '2px' }}>{confirmedBooking?.ref || bookingRef}</h3>
-                    </div>
-
-                    {confirmedBooking && (
-                      <div className="booking-summary-grid">
-                        <div className="booking-summary-item"><span>Guest</span><strong>{confirmedBooking.fullName}</strong></div>
-                        <div className="booking-summary-item"><span>Guests</span><strong>{confirmedBooking.partySize}</strong></div>
-                        <div className="booking-summary-item"><span>Date</span><strong>{confirmedBooking.date}</strong></div>
-                        <div className="booking-summary-item"><span>Time</span><strong>{confirmedBooking.time}</strong></div>
-                      </div>
-                    )}
-
-                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.95rem', marginBottom: '24px' }}>
-                      {confirmedBooking?.email
-                        ? <>A confirmation email has been sent to <strong>{confirmedBooking.email}</strong>.</>
-                        : <>Please keep or screenshot your reference code and show it on arrival.</>}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => { setIsSuccess(false); setBookingRef(''); setConfirmedBooking(null); setMessage(''); }}
-                      className="btn btn-primary"
-                    >
-                      Book Another Table
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleBookingSubmit} className="fade-in">
-                    <div className="form-grid">
-                      <div className="form-group full-width">
-                        <label>Full Name</label>
-                        <input type="text" className="form-input" required value={fullName} placeholder="Enter your Booking Name" onChange={e => setFullName(e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label>Email (Optional)</label>
-                        <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email confirmation" />
-                      </div>
-                      <div className="form-group">
-                        <label>UK Mobile Number *</label>
-                        <input type="tel" className="form-input" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 07123456789" />
-                      </div>
-                      <div className="form-group">
-                        <label>Date</label>
-                        <input type="date" className="form-input" required min={minDate} max={maxDate} value={date} onChange={e => setDate(e.target.value)} />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="customer-time-picker-btn">Time</label>
-                        <button
-                          id="customer-time-picker-btn"
-                          type="button"
-                          className="time-trigger-btn"
-                          disabled={customerDayOfWeek === 2}
-                          onClick={() => {
-                            if (!date) setDate(minDate);
-                            setIsTimeSheetOpen(true);
-                          }}
-                        >
-                          <span>{customerDayOfWeek === 2 ? 'Closed on Tuesdays' : (time || 'Select Time')}</span>
-                          <span aria-hidden="true">▾</span>
-                        </button>
-                      </div>
-                      <div className="form-group full-width">
-                        <label>Guests</label>
-                        <input type="number" className="form-input" min="1" max="25" required value={partySize} onChange={e => setPartySize(e.target.value)} />
-                      </div>
-
-                      {showFullyBookedCallBanner && (
-                        <div className="form-group full-width">
-                          <div className="fully-booked-call-box" role="status">
-                            <p>
-                              <strong>All online tables are currently booked for this selection.</strong><br />
-                              Please call the restaurant directly for bookings or assistance on busy days.
-                            </p>
-                            <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                              Call Restaurant ({clientPhoneNumber})
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {date && customerDayOfWeek !== 2 && !isWeekendAutoSeating && availableTables.length > 0 && (
-                        <div className="form-group full-width">
-                          <label>Select Table</label>
-                          <select className="form-input" value={selectedTable} onChange={e => setSelectedTable(e.target.value)} required>
-                            {availableTables.map(t => (
-                              <option key={t.id} value={t.id}>
-                                Table {t.tableNumber} (Seats up to {t.capacity})
-                                {t.tableNumber === 1 || t.tableNumber === 5 ? ' — Window Table (4+ Guests)' : ''}
-                                {t.tableNumber === 13 ? " — Next to Chef's Grill" : ''}
-                              </option>
-                            ))}
-                          </select>
-                          {selectedTableObj?.tableNumber === 13 && (
-                            <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'rgba(200, 157, 84, 0.15)', border: '1px solid var(--clr-gold)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
-                              <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill and may be warmer during busy service.
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="form-group full-width">
-                        <label>Special Requests</label>
-                        <textarea className="form-input" rows="2" value={requests} onChange={e => setRequests(e.target.value)} placeholder="Anniversary, allergies, high chair..." />
-                      </div>
-
-                      <div className="form-group full-width" style={{ marginTop: '5px' }}>
-                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
-                          <input type="checkbox" required checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: '3px' }} />
-                          <span>
-                            I agree to the{' '}
-                            <button type="button" className="legal-inline-link" onClick={() => setLegalModal('terms')}>
-                              Terms &amp; Conditions
-                            </button>
-                            {' '}(2-hour sitting, 15-min hold) and have read the{' '}
-                            <button type="button" className="legal-inline-link" onClick={() => setLegalModal('privacy')}>
-                              Privacy Policy
-                            </button>
-                            {' '}(6-month UK GDPR auto-deletion; click to view or save as PDF).
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '20px' }} disabled={isProcessing}>
-                      Reserve a Table
-                    </button>
-                  </form>
-                )}
-
-                {!isSuccess && !isProcessing && message && (
-                  <div className="error-banner-retry" role="alert">
-                    <span>{message}</span>
-                    {canRetryBooking && (
-                      <button type="button" onClick={handleBookingSubmit} className="btn btn-secondary" style={{ padding: '8px 18px', fontSize: '0.85rem' }}>
-                        Try Again
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section id="visit" className="visit-section">
-            <img src="/images/storefront.webp" alt="MyHosh Storefront" className="visit-image" loading="lazy" />
-            <div className="visit-details">
-              <h2>Visit Us</h2>
-              <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '15px 0' }}><span></span></div>
-              <p><strong>Address:</strong><br />99 Fisherton Street<br />SP2 7SP Salisbury, UK</p>
-              <p><strong>Phone:</strong><br /><a href={clientTelHref} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a></p>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
-                <a
-                  href="https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-emerald"
-                >
-                  Open in Google Maps
-                </a>
-                <button
-                  type="button"
-                  onClick={() => navigateSubpage('reviews')}
-                  className="btn btn-secondary"
-                >
-                  Give Us a Review
-                </button>
-              </div>
-              <p style={{ marginTop: '20px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
-                No online availability or booking a large event?<br />
-                Please call the restaurant directly and we will do our best to accommodate you.
-              </p>
-            </div>
-          </section>
-
-          <footer className="site-footer">
-            <div className="footer-logo">MYHOSH</div>
-            <div className="footer-links">
-              <a href="#hero">Home</a>
-              <a href="#menu">Menu</a>
-              <a href="#reserve">Reserve</a>
-              <a href="#visit">Contact</a>
-              <button type="button" onClick={() => navigateSubpage('blog')} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Gallery &amp; Blog</button>
-              </div>
-            <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
-              <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
-              <button type="button" onClick={() => setLegalModal('privacy')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
-                Privacy Policy
-              </button>
-              <button type="button" onClick={() => setLegalModal('terms')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
-                Terms &amp; Conditions
-              </button>
-            </div>
-          </footer>
-
-          {isTimeSheetOpen && (
-            <div className="time-sheet-backdrop" role="dialog" aria-modal="true" aria-label="Choose reservation time" onClick={() => setIsTimeSheetOpen(false)}>
-              <div className="time-sheet-card" onClick={e => e.stopPropagation()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, color: 'var(--clr-emerald)', fontSize: '1.25rem' }}>Choose a Time ({date || minDate})</h3>
-                  <button type="button" onClick={() => setIsTimeSheetOpen(false)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>X</button>
-                </div>
-                {groupedCustomerSlots.length === 0 ? (
-                  <p style={{ color: 'var(--clr-error)' }}>No time slots available for this date.</p>
-                ) : (
-                  <>
-                    {groupedCustomerSlots.map(group => (
-                      <div key={group.key} className="time-group-section">
-                        <div className="time-group-title">{group.label}</div>
-                        <div className="time-chips-grid">
-                          {group.slots.map(({ slot, available }) => (
-                            <button
-                              key={slot}
-                              type="button"
-                              disabled={!available}
-                              aria-pressed={time === slot}
-                              onClick={() => { setTime(slot); setIsTimeSheetOpen(false); }}
-                              className={`time-slot-chip ${time === slot ? 'selected' : ''}`}
-                            >
-                              {slot}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {allSlotsBookedForDate && (
-                      <div className="fully-booked-call-box">
-                        <p>
-                          <strong>All online tables are booked for this day.</strong><br />
-                          Call the restaurant for bookings or assistance on busy days.
-                        </p>
-                        <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          Call {clientPhoneNumber}
-                        </a>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {isLightboxOpen && (
-            <div className="lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
-              <div className="lightbox-header">
-                <button type="button" className="lightbox-close" onClick={() => setIsLightboxOpen(false)}>X</button>
-              </div>
-              <div className="lightbox-content" onClick={e => e.stopPropagation()}>
-                <img src="/images/menu.webp" alt="Full MyHosh Menu" loading="lazy" />
-              </div>
-            </div>
-          )}
-        </div>
-      ) : view === 'blog' ? (
+      {/* EXPLICIT 3-WAY VIEW SWITCH: Blog | Admin | Customer Home (Safe Default) */}
+      {view === 'blog' ? (
         <BlogPage posts={blogPosts} onBackHome={navigateHome} />
-      ) : (
+      ) : view === 'admin' ? (
         <div className="admin-view">
           <LoadingOverlay show={isProcessing || isLoggingIn} label={isLoggingIn ? 'Signing into Staff Gateway...' : loadingLabel} fullscreen />
 
@@ -1675,7 +1315,7 @@ function App() {
                 </div>
               </header>
 
-              {/* 3 SEPARATE ADMIN TABS (Reservations | Menu & Prices | Blog & Photos + Staff) */}
+              {/* SEPARATE ADMIN TABS (Reservations | Menu & Prices | Blog & Photos | Staff) */}
               <div className="admin-section-tabs" role="tablist" aria-label="Admin sections">
                 <button
                   type="button"
@@ -1736,8 +1376,28 @@ function App() {
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={handleExportCSV} className="btn btn-secondary">Export CSV</button>
-                        <button type="button" onClick={() => setShowWalkInModal(true)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>+ Walk-In</button>
-                        <button type="button" onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Add Reservation</button>
+                        <button
+                          type="button"
+                          onClick={() => setShowWalkInModal(true)}
+                          className="btn btn-secondary"
+                          style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}
+                        >
+                          + Walk-In
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStaffBookingData(prev => ({
+                              ...prev,
+                              date: adminDateFilter !== 'ALL' && adminDateFilter >= londonTodayStr ? adminDateFilter : londonTodayStr
+                            }));
+                            setShowStaffBookingModal(true);
+                          }}
+                          className="btn btn-emerald"
+                          style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}
+                        >
+                          + Add Reservation
+                        </button>
                       </div>
                     </div>
 
@@ -1803,9 +1463,9 @@ function App() {
                           Live Floor Status ({floorPlanDate}) — Tap any table to manage
                         </h3>
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
-                          <span>Free</span>
-                          <span>Reserved Later</span>
-                          <span>Seated / Late</span>
+                          <span>🟢 Free</span>
+                          <span>🟡 Reserved Later</span>
+                          <span>🔴 Seated / Late</span>
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
@@ -2122,6 +1782,404 @@ function App() {
             </div>
           )}
         </div>
+      ) : (
+        <div className="customer-view">
+          <section id="hero" className="hero-section">
+            <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
+            <div className="hero-overlay"></div>
+            <div className="hero-content fade-in">
+              <h1>Authentic Turkish Hospitality</h1>
+              <p>Charcoal grill, fresh meze, and a warm dining experience in the heart of Salisbury.</p>
+              <div className="hero-actions">
+                <a href="#reserve" className="btn btn-primary">Reserve a Table</a>
+                <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-secondary" style={{ color: '#FBF6EA', borderColor: '#FBF6EA' }}>View Menu</button>
+              </div>
+            </div>
+          </section>
+
+          <section className="feature-strip">
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path><path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path></svg>
+              <h3>Charcoal Grill</h3>
+              <p>Authentic fire-roasted meats and skewers.</p>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path><path d="M12 7V3M8 5v2M16 5v2"></path><path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path></svg>
+              <h3>Fresh Meze</h3>
+              <p>Traditional cold and hot starters prepared daily.</p>
+            </div>
+            <div className="feature-item">
+              <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+              <h3>Warm Welcome</h3>
+              <p>A beautifully designed space to relax and dine.</p>
+            </div>
+          </section>
+
+          <section id="menu" className="menu-section">
+            <div className="menu-section-header">
+              <h2>Our Menu</h2>
+              <div className="gold-divider"><span></span></div>
+              <p className="text-muted">Tap a category to explore our dishes. Please inform staff of any food allergies or intolerances.</p>
+            </div>
+
+            {publicMenuCategories.length > 0 ? (
+              <>
+                <div className="menu-category-tabs" role="tablist" aria-label="Menu categories">
+                  {publicMenuCategories.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      role="tab"
+                      aria-selected={currentPublicCat === cat}
+                      onClick={() => setActiveMenuCategory(cat)}
+                      className={`menu-cat-tab ${currentPublicCat === cat ? 'active' : ''}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="menu-grid">
+                  {visiblePublicDishes.map(dish => (
+                    <div key={dish.id} className="menu-card">
+                      <div className="menu-item-info">
+                        <h4>
+                          {dish.name}{' '}
+                          {dish.dietaryTags && (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--clr-emerald)', fontWeight: 600 }}>({dish.dietaryTags})</span>
+                          )}
+                        </h4>
+                        {dish.description && <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>{dish.description}</p>}
+                      </div>
+                      <div className="menu-item-price">£{Number(dish.price).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="menu-grid">
+                <div className="menu-card">
+                  <div className="menu-item-info">
+                    <h4>Cold Meze Platter</h4>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Humus, Cacik, Kisir, Stuffed Vine Leaves, Beetroot Yoghurt, Aubergine Napolitana</p>
+                  </div>
+                  <div className="menu-item-price">£16.95</div>
+                </div>
+                <div className="menu-card">
+                  <div className="menu-item-info">
+                    <h4>Hot Meze Platter</h4>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Borek, Calamari, Whitebait, Halloumi Cheese, Falafel, Sucuk</p>
+                  </div>
+                  <div className="menu-item-price">£17.95</div>
+                </div>
+                <div className="menu-card">
+                  <div className="menu-item-info">
+                    <h4>Grill Sharing Platter (For 3-4 People)</h4>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>Selection of charcoal grill meats, meze, rice, bulgur, salad, and chips</p>
+                  </div>
+                  <div className="menu-item-price">£79.95</div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-center" style={{ marginTop: '24px' }}>
+              <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-emerald">View Full Menu Image</button>
+            </div>
+          </section>
+
+          <section id="space" className="space-section">
+            <div className="arch-image-container">
+              <img src="/images/interior.webp" alt="MyHosh Interior" className="arch-mask" loading="lazy" />
+            </div>
+            <div className="space-content">
+              <h2>An Elegant Atmosphere</h2>
+              <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '20px 0' }}><span></span></div>
+              <p>Settle into our emerald velvet chairs, dine on white marble tables, and let our warm, candle-lit ambience transport you to the heart of Turkey.</p>
+            </div>
+          </section>
+
+          <section className="image-band">
+            <img src="/images/charcoal-grill.webp" alt="Charcoal Grill" loading="lazy" />
+            <div className="overlay"></div>
+            <h2>From the Charcoal Grill</h2>
+          </section>
+
+          <section id="reserve" className="booking-section">
+            <div className="text-center" style={{ marginBottom: '40px' }}>
+              <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
+              <div className="gold-divider"><span></span></div>
+              <div style={{ color: 'var(--clr-gold-pale)', fontSize: '0.95rem', background: 'rgba(0,0,0,0.3)', display: 'inline-block', padding: '15px 25px', borderRadius: '8px' }}>
+                <strong>Opening Hours</strong><br />
+                Tuesday: Closed<br />
+                Mon, Wed, Thu, Fri: 16:00 - 22:30<br />
+                Sat: 12:00 - 22:30 | Sun: 12:00 - 22:00
+              </div>
+            </div>
+
+            <div className="booking-container">
+              <img src="/images/interior.webp" className="booking-image-side" alt="Interior Setting" loading="lazy" />
+
+              <div className="booking-form-content">
+                <LoadingOverlay show={isProcessing} label={loadingLabel} />
+                {isSuccess ? (
+                  <div className="success-screen fade-in" role="status" aria-live="polite">
+                    <div className="success-icon" style={{ fontSize: '3rem' }}>✓</div>
+                    <h2>Reservation Confirmed</h2>
+                    <div style={{ background: 'rgba(15, 77, 58, 0.08)', border: '2px dashed var(--clr-emerald)', padding: '18px', margin: '18px 0', borderRadius: '10px' }}>
+                      <p style={{ margin: '0 0 5px 0', color: 'var(--clr-grey)', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Your Booking Reference</p>
+                      <h3 style={{ color: 'var(--clr-emerald)', margin: 0, fontSize: '2rem', letterSpacing: '2px' }}>{confirmedBooking?.ref || bookingRef}</h3>
+                    </div>
+
+                    {confirmedBooking && (
+                      <div className="booking-summary-grid">
+                        <div className="booking-summary-item"><span>Guest</span><strong>{confirmedBooking.fullName}</strong></div>
+                        <div className="booking-summary-item"><span>Guests</span><strong>{confirmedBooking.partySize}</strong></div>
+                        <div className="booking-summary-item"><span>Date</span><strong>{confirmedBooking.date}</strong></div>
+                        <div className="booking-summary-item"><span>Time</span><strong>{confirmedBooking.time}</strong></div>
+                      </div>
+                    )}
+
+                    <p style={{ color: 'var(--clr-grey)', fontSize: '0.95rem', marginBottom: '24px' }}>
+                      {confirmedBooking?.email
+                        ? <>A confirmation email has been sent to <strong>{confirmedBooking.email}</strong>.</>
+                        : <>Please keep or screenshot your reference code and show it on arrival.</>}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => { setIsSuccess(false); setBookingRef(''); setConfirmedBooking(null); setMessage(''); }}
+                      className="btn btn-primary"
+                    >
+                      Book Another Table
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleBookingSubmit} className="fade-in">
+                    <div className="form-grid">
+                      <div className="form-group full-width">
+                        <label>Full Name</label>
+                        <input type="text" className="form-input" required value={fullName} placeholder="Enter your Booking Name" onChange={e => setFullName(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label>Email (Optional)</label>
+                        <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email confirmation" />
+                      </div>
+                      <div className="form-group">
+                        <label>UK Mobile Number *</label>
+                        <input type="tel" className="form-input" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 07123456789" />
+                      </div>
+                      <div className="form-group">
+                        <label>Date</label>
+                        <input type="date" className="form-input" required min={minDate} max={maxDate} value={date} onChange={e => setDate(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="customer-time-picker-btn">Time</label>
+                        <button
+                          id="customer-time-picker-btn"
+                          type="button"
+                          className="time-trigger-btn"
+                          disabled={customerDayOfWeek === 2}
+                          onClick={() => {
+                            if (!date) setDate(minDate);
+                            setIsTimeSheetOpen(true);
+                          }}
+                        >
+                          <span>{customerDayOfWeek === 2 ? 'Closed on Tuesdays' : (time || 'Select Time')}</span>
+                          <span aria-hidden="true">▾</span>
+                        </button>
+                      </div>
+                      <div className="form-group full-width">
+                        <label>Guests</label>
+                        <input type="number" className="form-input" min="1" max="25" required value={partySize} onChange={e => setPartySize(e.target.value)} />
+                      </div>
+
+                      {showFullyBookedCallBanner && (
+                        <div className="form-group full-width">
+                          <div className="fully-booked-call-box" role="status">
+                            <p>
+                              <strong>All online tables are currently booked for this selection.</strong><br />
+                              Please call the restaurant directly for bookings or assistance on busy days.
+                            </p>
+                            <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              Call Restaurant ({clientPhoneNumber})
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {date && customerDayOfWeek !== 2 && !isWeekendAutoSeating && availableTables.length > 0 && (
+                        <div className="form-group full-width">
+                          <label>Select Table</label>
+                          <select className="form-input" value={selectedTable} onChange={e => setSelectedTable(e.target.value)} required>
+                            {availableTables.map(t => (
+                              <option key={t.id} value={t.id}>
+                                Table {t.tableNumber} (Seats up to {t.capacity})
+                                {t.tableNumber === 1 || t.tableNumber === 5 ? ' — Window Table (4+ Guests)' : ''}
+                                {t.tableNumber === 13 ? " — Next to Chef's Grill" : ''}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedTableObj?.tableNumber === 13 && (
+                            <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'rgba(200, 157, 84, 0.15)', border: '1px solid var(--clr-gold)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
+                              <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill and may be warmer during busy service.
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="form-group full-width">
+                        <label>Special Requests</label>
+                        <textarea className="form-input" rows="2" value={requests} onChange={e => setRequests(e.target.value)} placeholder="Anniversary, allergies, high chair..." />
+                      </div>
+
+                      <div className="form-group full-width" style={{ marginTop: '5px' }}>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                          <input type="checkbox" required checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} style={{ marginTop: '3px' }} />
+                          <span>
+                            I agree to the{' '}
+                            <button type="button" className="legal-inline-link" onClick={() => setLegalModal('terms')}>
+                              Terms &amp; Conditions
+                            </button>
+                            {' '}(2-hour sitting, 15-min hold) and have read the{' '}
+                            <button type="button" className="legal-inline-link" onClick={() => setLegalModal('privacy')}>
+                              Privacy Policy
+                            </button>
+                            {' '}(6-month UK GDPR auto-deletion; click to view or save as PDF).
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '20px' }} disabled={isProcessing}>
+                      Reserve a Table
+                    </button>
+                  </form>
+                )}
+
+                {!isSuccess && !isProcessing && message && (
+                  <div className="error-banner-retry" role="alert">
+                    <span>{message}</span>
+                    {canRetryBooking && (
+                      <button type="button" onClick={handleBookingSubmit} className="btn btn-secondary" style={{ padding: '8px 18px', fontSize: '0.85rem' }}>
+                        Try Again
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section id="visit" className="visit-section">
+            <img src="/images/storefront.webp" alt="MyHosh Storefront" className="visit-image" loading="lazy" />
+            <div className="visit-details">
+              <h2>Visit Us</h2>
+              <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '15px 0' }}><span></span></div>
+              <p><strong>Address:</strong><br />99 Fisherton Street<br />SP2 7SP Salisbury, UK</p>
+              <p><strong>Phone:</strong><br /><a href={clientTelHref} className="text-emerald" style={{ fontWeight: 'bold' }}>{clientPhoneNumber}</a></p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px' }}>
+                <a
+                  href={GOOGLE_MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-emerald"
+                >
+                  Open in Google Maps
+                </a>
+                <a
+                  href={GOOGLE_REVIEW_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                >
+                  Give Us a Review on Google
+                </a>
+              </div>
+              <p style={{ marginTop: '20px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
+                No online availability or booking a large event?<br />
+                Please call the restaurant directly and we will do our best to accommodate you.
+              </p>
+            </div>
+          </section>
+
+          <footer className="site-footer">
+            <div className="footer-logo">MYHOSH</div>
+            <div className="footer-links">
+              <a href="#hero">Home</a>
+              <a href="#menu">Menu</a>
+              <a href="#reserve">Reserve</a>
+              <a href="#visit">Contact</a>
+              <button type="button" onClick={navigateBlog} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Gallery &amp; Blog</button>
+            </div>
+            <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+              <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
+              <button type="button" onClick={() => setLegalModal('privacy')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
+                Privacy Policy
+              </button>
+              <button type="button" onClick={() => setLegalModal('terms')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
+                Terms &amp; Conditions
+              </button>
+            </div>
+          </footer>
+
+          {isTimeSheetOpen && (
+            <div className="time-sheet-backdrop" role="dialog" aria-modal="true" aria-label="Choose reservation time" onClick={() => setIsTimeSheetOpen(false)}>
+              <div className="time-sheet-card" onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, color: 'var(--clr-emerald)', fontSize: '1.25rem' }}>Choose a Time ({date || minDate})</h3>
+                  <button type="button" onClick={() => setIsTimeSheetOpen(false)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>X</button>
+                </div>
+                {groupedCustomerSlots.length === 0 ? (
+                  <p style={{ color: 'var(--clr-error)' }}>No time slots available for this date.</p>
+                ) : (
+                  <>
+                    {groupedCustomerSlots.map(group => (
+                      <div key={group.key} className="time-group-section">
+                        <div className="time-group-title">{group.label}</div>
+                        <div className="time-chips-grid">
+                          {group.slots.map(({ slot, available }) => (
+                            <button
+                              key={slot}
+                              type="button"
+                              disabled={!available}
+                              aria-pressed={time === slot}
+                              onClick={() => { setTime(slot); setIsTimeSheetOpen(false); }}
+                              className={`time-slot-chip ${time === slot ? 'selected' : ''}`}
+                            >
+                              {slot}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {allSlotsBookedForDate && (
+                      <div className="fully-booked-call-box">
+                        <p>
+                          <strong>All online tables are booked for this day.</strong><br />
+                          Call the restaurant for bookings or assistance on busy days.
+                        </p>
+                        <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          Call {clientPhoneNumber}
+                        </a>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {isLightboxOpen && (
+            <div className="lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
+              <div className="lightbox-header">
+                <button type="button" className="lightbox-close" onClick={() => setIsLightboxOpen(false)}>X</button>
+              </div>
+              <div className="lightbox-content" onClick={e => e.stopPropagation()}>
+                <img src="/images/menu.webp" alt="Full MyHosh Menu" loading="lazy" />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* --- POPUP 1: CLICKABLE TABLE FLOOR DETAILS MODAL --- */}
@@ -2258,8 +2316,8 @@ function App() {
 
       {/* --- POPUP 2: ADD RESERVATION (STAFF) --- */}
       {view === 'admin' && isAuthenticated && showStaffBookingModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setShowStaffBookingModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ color: 'var(--clr-emerald)' }}>+ Add Reservation (Staff)</h3>
             <form onSubmit={handleStaffAddBooking}>
               <div className="form-grid">
@@ -2320,12 +2378,17 @@ function App() {
 
       {/* --- POPUP 3: EDIT RESERVATION --- */}
       {view === 'admin' && isAuthenticated && editModalBooking && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => { setDeleteCustomerStep(0); setEditModalBooking(null); }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Edit Reservation</h3>
-            <p style={{ marginBottom: '16px', color: 'var(--clr-grey)' }}>
+            <p style={{ marginBottom: '14px', color: 'var(--clr-grey)' }}>
               Guest: <strong>{editModalBooking.customer?.fullName}</strong> ({editModalBooking.bookingDate})
             </p>
+            {modalSaveFeedback && (
+              <div style={{ marginBottom: '12px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(15, 77, 58, 0.1)', color: 'var(--clr-emerald)', fontSize: '0.86rem', fontWeight: 600 }}>
+                {modalSaveFeedback}
+              </div>
+            )}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Number of Guests:</label>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -2435,8 +2498,8 @@ function App() {
 
       {/* --- POPUP 4: CANCEL RESERVATION --- */}
       {view === 'admin' && isAuthenticated && cancelModalBooking && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setCancelModalBooking(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3 style={{ color: 'var(--clr-error)' }}>Cancel Reservation</h3>
             <p style={{ marginBottom: '16px', color: 'var(--clr-grey)' }}>
               Cancel booking for <strong>{cancelModalBooking.customer?.fullName}</strong> on <strong>{cancelModalBooking.bookingDate}</strong> at <strong>{cancelModalBooking.bookingTime}</strong>?
@@ -2461,8 +2524,8 @@ function App() {
 
       {/* --- POPUP 5: SEAT WALK-IN GUEST --- */}
       {view === 'admin' && isAuthenticated && showWalkInModal && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
-          <div className="modal-content walkin-panel">
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title" onClick={() => setShowWalkInModal(false)}>
+          <div className="modal-content walkin-panel" onClick={e => e.stopPropagation()}>
             <h3 id="walkin-modal-title" style={{ color: 'var(--clr-emerald)', marginBottom: '4px' }}>Seat Walk-In Guest</h3>
             <p style={{ color: 'var(--clr-grey)', fontSize: '0.85rem', marginBottom: '14px' }}>Name, phone, and notes are optional.</p>
 
