@@ -4,7 +4,8 @@ import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
 import { BlogPage, AdminBlogManager } from './components/BlogSection';
-import { ReviewsPage } from './components/ReviewsSection';
+// Swap to https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID once you copy your ChIJ Place ID
+const GOOGLE_REVIEW_URL = 'https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
@@ -59,10 +60,10 @@ function App() {
     const hash = window.location.hash;
     if (hash === STAFF_SECRET_HASH) return 'admin';
     if (hash === '#blog') return 'blog';
-    if (hash === '#reviews') return 'reviews';
+   
     const saved = sessionStorage.getItem('myhosh_session');
     if (saved === 'admin' && sessionStorage.getItem('myhosh_auth') === 'true') return 'admin';
-    if (saved === 'blog' || saved === 'reviews') return saved;
+    if (saved === 'blog') return 'blog';
     return 'customer';
   });
 
@@ -77,8 +78,7 @@ function App() {
         setView('admin');
       } else if (window.location.hash === '#blog') {
         setView('blog');
-      } else if (window.location.hash === '#reviews') {
-        setView('reviews');
+      
       }
     };
     syncFromHash();
@@ -160,7 +160,7 @@ function App() {
 
   // Blog & Reviews State
   const [blogPosts, setBlogPosts] = useState([]);
-  const [reviewData, setReviewData] = useState(null);
+ 
 
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
@@ -457,14 +457,7 @@ function App() {
     }
   };
 
-  const loadReviews = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/reviews`);
-      if (res.ok) setReviewData(await res.json());
-    } catch (err) {
-      console.error('Error loading reviews:', err);
-    }
-  };
+ 
 
   useEffect(() => {
     fetch(`${API_BASE}/api/tables`)
@@ -474,7 +467,7 @@ function App() {
 
     loadMenuData(false);
     loadBlogPosts();
-    loadReviews();
+    
   }, []);
 
   const fetchBookings = async () => {
@@ -1161,24 +1154,7 @@ function App() {
               >
                 Gallery &amp; Blog
               </button>
-              <button
-                type="button"
-                onClick={() => navigateSubpage('reviews')}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
-              >
-                Reviews
-              </button>
-              {staffLinkUnlocked && (
-                <button
-                  type="button"
-                  onClick={openStaffPortal}
-                  className="nav-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0, color: 'var(--clr-emerald)', fontWeight: 600 }}
-                >
-                  {isAuthenticated ? 'Staff Dashboard' : 'Staff Login'}
-                </button>
-              )}
+              
               <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
             </>
           ) : (
@@ -1214,13 +1190,7 @@ function App() {
               >
                 Gallery &amp; Blog
               </button>
-              <button
-                type="button"
-                onClick={() => navigateSubpage('reviews')}
-                style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
-              >
-                Reviews
-              </button>
+            
               {staffLinkUnlocked && (
                 <button
                   type="button"
@@ -1571,8 +1541,7 @@ function App() {
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
               <button type="button" onClick={() => navigateSubpage('blog')} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Gallery &amp; Blog</button>
-              <button type="button" onClick={() => navigateSubpage('reviews')} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Reviews</button>
-            </div>
+              </div>
             <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
               <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
               <button type="button" onClick={() => setLegalModal('privacy')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
@@ -1644,15 +1613,6 @@ function App() {
         </div>
       ) : view === 'blog' ? (
         <BlogPage posts={blogPosts} onBackHome={navigateHome} />
-      ) : view === 'reviews' ? (
-        <ReviewsPage
-          apiBase={API_BASE}
-          reviewData={reviewData}
-          isAdmin={isAuthenticated && currentUser?.role === 'ADMIN'}
-          getStaffHeaders={getStaffHeaders}
-          onRefresh={loadReviews}
-          onBackHome={navigateHome}
-        />
       ) : (
         <div className="admin-view">
           <LoadingOverlay show={isProcessing || isLoggingIn} label={isLoggingIn ? 'Signing into Staff Gateway...' : loadingLabel} fullscreen />
