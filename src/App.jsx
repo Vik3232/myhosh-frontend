@@ -1000,13 +1000,19 @@ function App() {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setSelectedFloorTable(null);
+    setActiveAdminTab('reservations');
+    setLoginUsername('');
     setLoginPassword('');
     setLoginGatePin('');
-    setStaffLinkUnlocked(false);
-    window.location.hash = '';
-    setView('customer');
-    sessionStorage.clear();
+    setLoginError('');
+    sessionStorage.removeItem('myhosh_auth');
+    sessionStorage.removeItem('myhosh_currentUser');
+    setStaffLinkUnlocked(true);
+    sessionStorage.setItem('myhosh_staff_unlocked', 'true');
+    window.location.hash = STAFF_SECRET_HASH;
+    setView('admin');
   };
+  
 
   const displayedBookings = allBookings
     .filter(b => {
