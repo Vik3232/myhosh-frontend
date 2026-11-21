@@ -1106,3 +1106,96 @@ body {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+  /* --- BENTO MOSAIC GALLERY GRID (12-Column Asymmetric Layout) --- */
+.bento-showcase {
+    margin-bottom: 36px;
+  }
+  
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: 130px;
+    gap: 10px;
+    background: #2f2e2c;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  
+  .bento-tile {
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    background: #e7e2d8;
+  }
+  
+  .bento-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  
+  .bento-tile:hover img {
+    transform: scale(1.04);
+  }
+  
+  .bento-tile--tall-coral { grid-column: span 3; grid-row: span 2; }
+  .bento-tile--wide-cyan  { grid-column: span 4; grid-row: span 1; }
+  .bento-tile--wide-gold  { grid-column: span 5; grid-row: span 1; }
+  .bento-tile--tall-cream { grid-column: span 3; grid-row: span 2; }
+  .bento-tile--sq-gold    { grid-column: span 3; grid-row: span 1; }
+  .bento-tile--wide-white { grid-column: span 4; grid-row: span 1; }
+  .bento-tile--tall-red   { grid-column: span 3; grid-row: span 2; }
+  .bento-tile--wide-coral { grid-column: span 4; grid-row: span 1; }
+  .bento-tile--sq-cyan    { grid-column: span 3; grid-row: span 1; }
+  
+  @media (max-width: 768px) {
+    .bento-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: 135px;
+      gap: 8px;
+      padding: 8px;
+    }
+  
+    .bento-tile--tall-coral,
+    .bento-tile--wide-cyan,
+    .bento-tile--wide-gold,
+    .bento-tile--tall-cream,
+    .bento-tile--sq-gold,
+    .bento-tile--wide-white,
+    .bento-tile--tall-red,
+    .bento-tile--wide-coral,
+    .bento-tile--sq-cyan {
+      grid-column: span 1;
+      grid-row: span 1;
+    }
+  
+    .bento-tile--tall-coral,
+    .bento-tile--tall-red {
+      grid-row: span 2;
+      min-height: 278px;
+    }
+  }
+  
+  /* --- CLEAN TYPOGRAPHY & ADMIN TAB BAR (SKILL.md Alignment) --- */
+  body {
+    font-family: 'Manrope', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+    text-wrap: pretty;
+  }
+  
+  h1, h2, h3, h4 {
+    font-style: normal;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  
+  .admin-section-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }

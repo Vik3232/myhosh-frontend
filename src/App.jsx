@@ -8,7 +8,7 @@ import { ReviewsPage } from './components/ReviewsSection';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
-// Secret staff login link: https://myhosh-salisbury.co.uk/#staff-portal-99
+// Secret staff link: https://myhosh-salisbury.co.uk/#staff-portal-99
 const STAFF_SECRET_HASH = '#staff-portal-99';
 
 const getLondonDateStr = (d = new Date()) => {
@@ -43,6 +43,18 @@ function App() {
     sessionStorage.setItem('myhosh_auth', String(isAuthenticated));
   }, [isAuthenticated]);
 
+  // Only true when visiting #staff-portal-99 (or already logged in)
+  const [staffLinkUnlocked, setStaffLinkUnlocked] = useState(() =>
+    window.location.hash === STAFF_SECRET_HASH ||
+    sessionStorage.getItem('myhosh_staff_unlocked') === 'true' ||
+    sessionStorage.getItem('myhosh_auth') === 'true'
+  );
+  useEffect(() => {
+    if (staffLinkUnlocked || isAuthenticated) {
+      sessionStorage.setItem('myhosh_staff_unlocked', 'true');
+    }
+  }, [staffLinkUnlocked, isAuthenticated]);
+
   const [view, setView] = useState(() => {
     const hash = window.location.hash;
     if (hash === STAFF_SECRET_HASH) return 'admin';
@@ -58,10 +70,10 @@ function App() {
     sessionStorage.setItem('myhosh_session', view);
   }, [view]);
 
-  // Open Staff Gateway via secret URL (#staff-portal-99) and handle #blog / #reviews
   useEffect(() => {
     const syncFromHash = () => {
       if (window.location.hash === STAFF_SECRET_HASH) {
+        setStaffLinkUnlocked(true);
         setView('admin');
       } else if (window.location.hash === '#blog') {
         setView('blog');
@@ -127,16 +139,18 @@ function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // 3 Clean Admin Views + Staff Tab (never stacked on top of each other)
+  const [activeAdminTab, setActiveAdminTab] = useState('reservations');
+
   const [newStaffUsername, setNewStaffUsername] = useState('');
   const [newStaffPassword, setNewStaffPassword] = useState('');
   const [newStaffRole, setNewStaffRole] = useState('STAFF');
   const [staffRegMessage, setStaffRegMessage] = useState('');
   const [staffList, setStaffList] = useState([]);
 
-  // Menu & Category Tabs (Public + Admin)
+  // Menu & Category Tabs
   const [menuItems, setMenuItems] = useState([]);
   const [activeMenuCategory, setActiveMenuCategory] = useState('Cold Meze');
-  const [showAdminMenuEditor, setShowAdminMenuEditor] = useState(false);
   const [adminMenuCategory, setAdminMenuCategory] = useState('Cold Meze');
   const [priceHistory, setPriceHistory] = useState([]);
   const [editingMenuId, setEditingMenuId] = useState(null);
@@ -146,7 +160,6 @@ function App() {
 
   // Blog & Reviews State
   const [blogPosts, setBlogPosts] = useState([]);
-  const [showAdminBlogManager, setShowAdminBlogManager] = useState(false);
   const [reviewData, setReviewData] = useState(null);
 
   const [londonNow, setLondonNow] = useState(() => new Date());
@@ -156,8 +169,6 @@ function App() {
 
   const [adminDateFilter, setAdminDateFilter] = useState(() => getLondonDateStr());
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Clickable Floor Table Popup State
   const [selectedFloorTable, setSelectedFloorTable] = useState(null);
 
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
@@ -171,7 +182,6 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewMode, setViewMode] = useState('today');
 
-  // Tick every 15s so tables auto-return to green after their 2-hour window
   useEffect(() => {
     const timer = setInterval(() => setLondonNow(new Date()), 15000);
     return () => clearInterval(timer);
@@ -221,7 +231,9 @@ function App() {
 
   const navigateHome = () => {
     setIsMobileMenuOpen(false);
-    window.location.hash = '';
+    if (window.location.hash !== STAFF_SECRET_HASH) {
+      window.location.hash = '';
+    }
     setView('customer');
     window.scrollTo(0, 0);
   };
@@ -233,10 +245,17 @@ function App() {
     window.scrollTo(0, 0);
   };
 
+  const openStaffPortal = () => {
+    setIsMobileMenuOpen(false);
+    setStaffLinkUnlocked(true);
+    window.location.hash = STAFF_SECRET_HASH;
+    setView('admin');
+    window.scrollTo(0, 0);
+  };
+
   const getEffectiveBookingState = (booking) => {
     const raw = normalizeRawStatus(booking.status);
 
-    // 1. Past dates (before today): normal card colour; Attended vs Did Not Show Up
     if (booking.bookingDate && booking.bookingDate < londonTodayStr) {
       if (['SEATED', 'ARRIVED', 'COMPLETED'].includes(raw)) {
         return { effectiveStatus: 'ATTENDED', visualTone: 'attended', cardClass: '', statusLabel: 'Attended' };
@@ -247,7 +266,6 @@ function App() {
       return { effectiveStatus: 'NO_SHOW', visualTone: 'did-not-show', cardClass: '', statusLabel: 'Did Not Show Up' };
     }
 
-    // 2. Today's bookings: Green if seated/arrived, Red if past booking time
     if (booking.bookingDate === londonTodayStr) {
       if (raw === 'COMPLETED') {
         return { effectiveStatus: 'COMPLETED', visualTone: 'completed', cardClass: '', statusLabel: 'Finished' };
@@ -277,7 +295,6 @@ function App() {
       }
     }
 
-    // 3. Upcoming today or future dates: normal card colour
     return {
       effectiveStatus: raw,
       visualTone: raw === 'CANCELLED' ? 'cancelled' : 'booked',
@@ -324,7 +341,6 @@ function App() {
     idempotencyKeyRef.current = null;
   }, [fullName, phone, email, date, time, partySize, selectedTable, requests]);
 
-  // --- TABLE 4 AS LAST OPTION FOR ONLINE CUSTOMERS ---
   const getEligibleCustomerTables = (numGuests, checkDate, checkTime) => {
     if (numGuests < 1 || numGuests > 20) return [];
 
@@ -461,7 +477,6 @@ function App() {
     loadReviews();
   }, []);
 
-  // --- MERGED FETCH: Staff gets Past + Today + Future so Yesterday / Tomorrow / Arrows always work ---
   const fetchBookings = async () => {
     try {
       if (isAuthenticated && currentUser?.token) {
@@ -833,6 +848,7 @@ function App() {
         const staffData = await response.json();
         setCurrentUser(staffData);
         setIsAuthenticated(true);
+        setActiveAdminTab('reservations');
         setLoginPassword('');
         setLoginGatePin('');
       } else {
@@ -858,7 +874,7 @@ function App() {
         body: JSON.stringify({ username: newStaffUsername.trim(), password: newStaffPassword, role: newStaffRole })
       });
       if (response.ok) {
-        setStaffRegMessage(`Account created successfully for ${newStaffUsername} (${newStaffRole}).`);
+        setStaffRegMessage(`Account created for ${newStaffUsername} (${newStaffRole}).`);
         setNewStaffUsername(''); setNewStaffPassword(''); setNewStaffRole('STAFF');
       } else {
         setStaffRegMessage(`Error: ${(await response.text()) || 'Could not create user.'}`);
@@ -986,12 +1002,12 @@ function App() {
     setSelectedFloorTable(null);
     setLoginPassword('');
     setLoginGatePin('');
+    setStaffLinkUnlocked(false);
     window.location.hash = '';
     setView('customer');
     sessionStorage.clear();
   };
 
-  // --- DATE FILTERING ACROSS PAST, TODAY, AND FUTURE ---
   const displayedBookings = allBookings
     .filter(b => {
       let matchesDate = false;
@@ -1019,7 +1035,6 @@ function App() {
   const activeStaffTables = [...tables].sort((a, b) => a.tableNumber - b.tableNumber);
   const floorPlanDate = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
 
-  // --- LIVE FLOOR TILE STATUS (Auto-returns to Green after 2-hour window) ---
   const getTableFloorInfo = (table) => {
     const allForTableDate = allBookings
       .filter(b => b.bookingDate === floorPlanDate && Number(b.restaurantTable?.id) === Number(table.id))
@@ -1057,7 +1072,7 @@ function App() {
           activeNowBooking: currentSeated,
           bg: 'rgba(179, 64, 47, 0.14)',
           border: '1px solid var(--clr-error)',
-          badge: `🔴 Seated (until ${endStr})`
+          badge: `Seated (until ${endStr})`
         };
       }
       if (currentLate) {
@@ -1066,7 +1081,7 @@ function App() {
           activeNowBooking: currentLate,
           bg: 'rgba(179, 64, 47, 0.18)',
           border: '1px solid var(--clr-error)',
-          badge: `⚠️ Late (${(currentLate.bookingTime || '').slice(0, 5)})`
+          badge: `Late (${(currentLate.bookingTime || '').slice(0, 5)})`
         };
       }
       if (upcomingToday.length > 0) {
@@ -1075,7 +1090,7 @@ function App() {
           activeNowBooking: null,
           bg: 'rgba(200, 157, 84, 0.18)',
           border: '1px solid var(--clr-gold)',
-          badge: `🟡 Next: ${(upcomingToday[0].bookingTime || '').slice(0, 5)}`
+          badge: `Next: ${(upcomingToday[0].bookingTime || '').slice(0, 5)}`
         };
       }
       return {
@@ -1083,7 +1098,7 @@ function App() {
         activeNowBooking: null,
         bg: 'rgba(15, 77, 58, 0.1)',
         border: '1px solid var(--clr-emerald)',
-        badge: '🟢 Free'
+        badge: 'Free'
       };
     }
 
@@ -1093,7 +1108,7 @@ function App() {
         activeNowBooking: null,
         bg: 'rgba(200, 157, 84, 0.18)',
         border: '1px solid var(--clr-gold)',
-        badge: `🟡 ${activeForTableDate.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')}`
+        badge: activeForTableDate.map(b => (b.bookingTime || '').slice(0, 5)).join(', ')
       };
     }
     return {
@@ -1101,7 +1116,7 @@ function App() {
       activeNowBooking: null,
       bg: 'rgba(15, 77, 58, 0.1)',
       border: '1px solid var(--clr-emerald)',
-      badge: '🟢 Free'
+      badge: 'Free'
     };
   };
 
@@ -1148,6 +1163,16 @@ function App() {
               >
                 Reviews
               </button>
+              {staffLinkUnlocked && (
+                <button
+                  type="button"
+                  onClick={openStaffPortal}
+                  className="nav-link"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0, color: 'var(--clr-emerald)', fontWeight: 600 }}
+                >
+                  {isAuthenticated ? 'Staff Dashboard' : 'Staff Login'}
+                </button>
+              )}
               <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
             </>
           ) : (
@@ -1190,6 +1215,15 @@ function App() {
               >
                 Reviews
               </button>
+              {staffLinkUnlocked && (
+                <button
+                  type="button"
+                  onClick={openStaffPortal}
+                  style={{ fontSize: '1.1rem', fontWeight: 600, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-emerald)' }}
+                >
+                  {isAuthenticated ? 'Staff Dashboard' : 'Staff Login'}
+                </button>
+              )}
               <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
             </>
           ) : (
@@ -1420,10 +1454,10 @@ function App() {
                           <div className="fully-booked-call-box" role="status">
                             <p>
                               <strong>All online tables are currently booked for this selection.</strong><br />
-                              Please call the restaurant directly for bookings or assistance on busy days—we often have extra tables available.
+                              Please call the restaurant directly for bookings or assistance on busy days.
                             </p>
                             <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                              📞 Call Restaurant ({clientPhoneNumber})
+                              Call Restaurant ({clientPhoneNumber})
                             </a>
                           </div>
                         </div>
@@ -1443,7 +1477,7 @@ function App() {
                           </select>
                           {selectedTableObj?.tableNumber === 13 && (
                             <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: 'rgba(200, 157, 84, 0.15)', border: '1px solid var(--clr-gold)', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem' }}>
-                              🔥 <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill and may be warmer during busy service.
+                              <strong>Chef's Grill Table:</strong> Table 13 is right next to our open charcoal grill and may be warmer during busy service.
                             </div>
                           )}
                         </div>
@@ -1506,14 +1540,14 @@ function App() {
                   rel="noopener noreferrer"
                   className="btn btn-emerald"
                 >
-                  📍 Open in Google Maps
+                  Open in Google Maps
                 </a>
                 <button
                   type="button"
                   onClick={() => navigateSubpage('reviews')}
                   className="btn btn-secondary"
                 >
-                  ⭐ Give Us a Review
+                  Give Us a Review
                 </button>
               </div>
               <p style={{ marginTop: '20px', fontSize: '0.95rem', color: 'var(--clr-grey)' }}>
@@ -1549,7 +1583,7 @@ function App() {
               <div className="time-sheet-card" onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h3 style={{ margin: 0, color: 'var(--clr-emerald)', fontSize: '1.25rem' }}>Choose a Time ({date || minDate})</h3>
-                  <button type="button" onClick={() => setIsTimeSheetOpen(false)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>✕</button>
+                  <button type="button" onClick={() => setIsTimeSheetOpen(false)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>X</button>
                 </div>
                 {groupedCustomerSlots.length === 0 ? (
                   <p style={{ color: 'var(--clr-error)' }}>No time slots available for this date.</p>
@@ -1581,7 +1615,7 @@ function App() {
                           Call the restaurant for bookings or assistance on busy days.
                         </p>
                         <a href={clientTelHref} className="btn btn-emerald" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          📞 Call {clientPhoneNumber}
+                          Call {clientPhoneNumber}
                         </a>
                       </div>
                     )}
@@ -1594,7 +1628,7 @@ function App() {
           {isLightboxOpen && (
             <div className="lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
               <div className="lightbox-header">
-                <button type="button" className="lightbox-close" onClick={() => setIsLightboxOpen(false)}>✕</button>
+                <button type="button" className="lightbox-close" onClick={() => setIsLightboxOpen(false)}>X</button>
               </div>
               <div className="lightbox-content" onClick={e => e.stopPropagation()}>
                 <img src="/images/menu.webp" alt="Full MyHosh Menu" loading="lazy" />
@@ -1671,34 +1705,255 @@ function App() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {currentUser?.role === 'ADMIN' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = !showAdminMenuEditor;
-                          setShowAdminMenuEditor(next);
-                          if (next) loadMenuData(true);
-                        }}
-                        className="btn btn-emerald"
-                      >
-                        {showAdminMenuEditor ? 'Close Menu Editor' : 'Edit Menu & Prices'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowAdminBlogManager(prev => !prev)}
-                        className="btn btn-secondary"
-                      >
-                        {showAdminBlogManager ? 'Close Blog Manager' : 'Blog & Photos'}
-                      </button>
-                    </>
-                  )}
                   <button type="button" onClick={handleLogout} className="btn btn-secondary">Secure Logout</button>
                 </div>
               </header>
 
-              {currentUser?.role === 'ADMIN' && showAdminMenuEditor && (
-                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
+              {/* 3 SEPARATE ADMIN TABS (Reservations | Menu & Prices | Blog & Photos + Staff) */}
+              <div className="admin-section-tabs" role="tablist" aria-label="Admin sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAdminTab === 'reservations'}
+                  onClick={() => setActiveAdminTab('reservations')}
+                  className={`btn-admin-tab ${activeAdminTab === 'reservations' ? 'active' : ''}`}
+                >
+                  1. Reservations
+                </button>
+                {currentUser?.role === 'ADMIN' && (
+                  <>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeAdminTab === 'menu'}
+                      onClick={() => {
+                        setActiveAdminTab('menu');
+                        loadMenuData(true);
+                      }}
+                      className={`btn-admin-tab ${activeAdminTab === 'menu' ? 'active' : ''}`}
+                    >
+                      2. Menu &amp; Prices
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeAdminTab === 'blog'}
+                      onClick={() => {
+                        setActiveAdminTab('blog');
+                        loadBlogPosts();
+                      }}
+                      className={`btn-admin-tab ${activeAdminTab === 'blog' ? 'active' : ''}`}
+                    >
+                      3. Blog &amp; Photos
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeAdminTab === 'staff'}
+                      onClick={() => setActiveAdminTab('staff')}
+                      className={`btn-admin-tab ${activeAdminTab === 'staff' ? 'active' : ''}`}
+                    >
+                      Staff Accounts
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* TAB 1: RESERVATIONS DASHBOARD */}
+              {activeAdminTab === 'reservations' && (
+                <>
+                  <div className="admin-toolbar">
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+                        <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Upcoming &amp; Today</button>
+                        <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={handleExportCSV} className="btn btn-secondary">Export CSV</button>
+                        <button type="button" onClick={() => setShowWalkInModal(true)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>+ Walk-In</button>
+                        <button type="button" onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Add Reservation</button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+                        <button type="button" onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
+                        <button type="button" onClick={() => selectAdminDate(londonYesterdayStr)} className={`btn-admin-tab ${adminDateFilter === londonYesterdayStr ? 'active' : ''}`}>Yesterday</button>
+                        <button type="button" onClick={() => selectAdminDate(londonTodayStr)} className={`btn-admin-tab ${adminDateFilter === londonTodayStr ? 'active' : ''}`}>Today</button>
+                        <button type="button" onClick={() => selectAdminDate(londonTomorrowStr)} className={`btn-admin-tab ${adminDateFilter === londonTomorrowStr ? 'active' : ''}`}>Tomorrow</button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px', justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          aria-label="Previous day"
+                          onClick={() => {
+                            const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
+                            selectAdminDate(shiftDateStr(base, -1));
+                          }}
+                          className="admin-input"
+                          style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          &larr;
+                        </button>
+                        <input
+                          type="date"
+                          value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
+                          onChange={e => selectAdminDate(e.target.value || 'ALL')}
+                          className="admin-input"
+                          style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Next day"
+                          onClick={() => {
+                            const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
+                            selectAdminDate(shiftDateStr(base, 1));
+                          }}
+                          className="admin-input"
+                          style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                          &rarr;
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="metric-grid" style={{ display: 'flex', gap: '15px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px', marginTop: '15px' }}>
+                      <div className="metric-tile" style={{ flex: 1 }}>
+                        <span className="metric-label">Reservations</span>
+                        <span className="metric-value">{displayedBookings.length}</span>
+                      </div>
+                      <div className="metric-tile" style={{ flex: 1 }}>
+                        <span className="metric-label">Covers</span>
+                        <span className="metric-value">{totalGuests}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {activeStaffTables.length > 0 && (
+                    <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--clr-emerald)' }}>
+                          Live Floor Status ({floorPlanDate}) — Tap any table to manage
+                        </h3>
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
+                          <span>Free</span>
+                          <span>Reserved Later</span>
+                          <span>Seated / Late</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
+                        {activeStaffTables.map(t => {
+                          const info = getTableFloorInfo(t);
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setSelectedFloorTable(t)}
+                              className="floor-table-tile"
+                              style={{ background: info.bg, border: info.border }}
+                            >
+                              <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--clr-charcoal)' }}>
+                                Table {t.tableNumber}{t.tableNumber === 4 ? ' *' : ''}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--clr-grey)', marginBottom: '4px' }}>Seats {t.capacity}</div>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>{info.badge}</div>
+                              <div className="floor-table-hint">
+                                {info.allForTableDate.length === 0 ? 'Tap for walk-in' : `${info.allForTableDate.length} booking${info.allForTableDate.length > 1 ? 's' : ''} - Tap`}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search by guest name, phone, or reference code (e.g. MH-0012)..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="admin-input"
+                      style={{ width: '100%', padding: '12px 16px', fontSize: '0.95rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    {sortedDisplayDates.map(bookingDate => {
+                      const dateBookings = displayedBookings.filter(b => b.bookingDate === bookingDate);
+                      return (
+                        <div key={bookingDate}>
+                          <div className="date-group-header">
+                            <span style={{ color: 'var(--clr-cream)' }}>{new Date(`${bookingDate}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            <span style={{ color: 'var(--clr-gold-pale)', fontWeight: 'normal' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
+                          </div>
+
+                          {dateBookings.map(booking => {
+                            const st = getEffectiveBookingState(booking);
+                            const raw = normalizeRawStatus(booking.status);
+                            return (
+                              <div key={booking.id} className={`admin-card ${st.cardClass}`}>
+                                <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <div className="card-time">{booking.bookingTime}</div>
+                                  <div className="card-table-pill">{getBookingTableLabel(booking)} ({booking.partySize} Guests)</div>
+                                  <span className={`status-pill status-pill--${st.visualTone}`}>
+                                    {st.statusLabel}
+                                  </span>
+                                </div>
+
+                                <div className="card-guest-info" style={{ flex: '1 1 auto' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <h3>{booking.customer?.fullName || 'No Name'}</h3>
+                                    <span style={{ fontSize: '0.8rem', backgroundColor: 'var(--clr-marble)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--clr-gold)' }}>
+                                      Ref: MH-{String(booking.id).padStart(4, '0')}
+                                    </span>
+                                  </div>
+                                  <p>
+                                    <span>Tel: {booking.customer?.phone || 'N/A'}</span>
+                                    {booking.customer?.email && <span>Email: {booking.customer.email}</span>}
+                                  </p>
+                                  {(booking.specialRequests || booking.staffNotes) && (
+                                    <div className="card-notes">
+                                      {booking.specialRequests && <div className="guest-note"><strong>Guest:</strong> {booking.specialRequests}</div>}
+                                      {booking.staffNotes && <div className="staff-note"><strong>Staff:</strong> {booking.staffNotes}</div>}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                  {booking.bookingDate === londonTodayStr && !['SEATED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(raw) && (
+                                    <>
+                                      {raw !== 'ARRIVED' && (
+                                        <button type="button" onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>Arrived</button>
+                                      )}
+                                      <button type="button" onClick={() => handleUpdateStatus(booking.id, 'SEATED')} className="btn btn-emerald" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>Seat Guest</button>
+                                      <button type="button" onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>No Show</button>
+                                    </>
+                                  )}
+                                  {booking.bookingDate === londonTodayStr && ['SEATED', 'ARRIVED'].includes(raw) && (
+                                    <button type="button" onClick={() => handleUpdateStatus(booking.id, 'COMPLETED')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>Make Available</button>
+                                  )}
+                                  <button type="button" onClick={() => handleOpenEdit(booking)} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-gold)', color: 'var(--clr-charcoal)' }}>Edit</button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                    {displayedBookings.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(27,26,23,0.2)', marginTop: '20px' }}>
+                        <p style={{ fontSize: '1.1rem', margin: 0 }}>No reservations found for this selection.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* TAB 2: MENU & PRICES (Standalone view) */}
+              {activeAdminTab === 'menu' && currentUser?.role === 'ADMIN' && (
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
                     <h3 style={{ margin: 0, color: 'var(--clr-emerald)' }}>Menu &amp; Price Editor (By Category)</h3>
                     <button type="button" onClick={() => loadMenuData(true)} className="btn btn-secondary" style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
@@ -1804,7 +2059,7 @@ function App() {
                           <strong>Recent Price Changes:</strong>
                           {priceHistory.slice(0, 6).map(h => (
                             <div key={h.id} style={{ padding: '3px 0' }}>
-                              {h.dishName}: £{Number(h.oldPrice).toFixed(2)} → £{Number(h.newPrice).toFixed(2)} by <strong>{h.changedBy}</strong>
+                              {h.dishName}: £{Number(h.oldPrice).toFixed(2)} to £{Number(h.newPrice).toFixed(2)} by <strong>{h.changedBy}</strong>
                             </div>
                           ))}
                         </div>
@@ -1816,7 +2071,8 @@ function App() {
                 </div>
               )}
 
-              {currentUser?.role === 'ADMIN' && showAdminBlogManager && (
+              {/* TAB 3: BLOG & PHOTOS (Standalone view with add, edit, single-photo delete & post delete) */}
+              {activeAdminTab === 'blog' && currentUser?.role === 'ADMIN' && (
                 <AdminBlogManager
                   apiBase={API_BASE}
                   posts={blogPosts}
@@ -1825,8 +2081,9 @@ function App() {
                 />
               )}
 
-              {currentUser?.role === 'ADMIN' && (
-                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
+              {/* TAB 4: STAFF ACCOUNTS (Standalone view) */}
+              {activeAdminTab === 'staff' && currentUser?.role === 'ADMIN' && (
+                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
                   <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register &amp; Manage Staff</h3>
                   <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={{ flex: '1 1 200px' }}>
@@ -1896,195 +2153,6 @@ function App() {
                   </div>
                 </div>
               )}
-
-              <div className="admin-toolbar">
-                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
-                    <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Upcoming &amp; Today</button>
-                    <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={handleExportCSV} className="btn btn-secondary">📥 Export CSV</button>
-                    <button type="button" onClick={() => setShowWalkInModal(true)} className="btn btn-secondary" style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>+ Walk-In</button>
-                    <button type="button" onClick={() => setShowStaffBookingModal(true)} className="btn btn-emerald" style={{ boxShadow: '0 4px 15px rgba(15, 77, 58, 0.2)' }}>+ Add Reservation</button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px' }}>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
-                    <button type="button" onClick={() => setAdminDateFilter('ALL')} className={`btn-admin-tab ${adminDateFilter === 'ALL' ? 'active' : ''}`}>All Dates</button>
-                    <button type="button" onClick={() => selectAdminDate(londonYesterdayStr)} className={`btn-admin-tab ${adminDateFilter === londonYesterdayStr ? 'active' : ''}`}>Yesterday</button>
-                    <button type="button" onClick={() => selectAdminDate(londonTodayStr)} className={`btn-admin-tab ${adminDateFilter === londonTodayStr ? 'active' : ''}`}>Today</button>
-                    <button type="button" onClick={() => selectAdminDate(londonTomorrowStr)} className={`btn-admin-tab ${adminDateFilter === londonTomorrowStr ? 'active' : ''}`}>Tomorrow</button>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      aria-label="Previous day"
-                      onClick={() => {
-                        const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
-                        selectAdminDate(shiftDateStr(base, -1));
-                      }}
-                      className="admin-input"
-                      style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      &larr;
-                    </button>
-                    <input
-                      type="date"
-                      value={adminDateFilter === 'ALL' ? '' : adminDateFilter}
-                      onChange={e => selectAdminDate(e.target.value || 'ALL')}
-                      className="admin-input"
-                      style={{ flex: '1 1 auto', textAlign: 'center', minWidth: '150px' }}
-                    />
-                    <button
-                      type="button"
-                      aria-label="Next day"
-                      onClick={() => {
-                        const base = adminDateFilter === 'ALL' ? londonTodayStr : adminDateFilter;
-                        selectAdminDate(shiftDateStr(base, 1));
-                      }}
-                      className="admin-input"
-                      style={{ padding: '10px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      &rarr;
-                    </button>
-                  </div>
-                </div>
-
-                <div className="metric-grid" style={{ display: 'flex', gap: '15px', borderTop: '1px solid rgba(27,26,23,0.1)', paddingTop: '15px', marginTop: '15px' }}>
-                  <div className="metric-tile" style={{ flex: 1 }}>
-                    <span className="metric-label">Reservations</span>
-                    <span className="metric-value">{displayedBookings.length}</span>
-                  </div>
-                  <div className="metric-tile" style={{ flex: 1 }}>
-                    <span className="metric-label">Covers</span>
-                    <span className="metric-value">{totalGuests}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* CLICKABLE LIVE FLOOR STATUS SQUARES (Tables 1–13, auto-green after 2h) */}
-              {activeStaffTables.length > 0 && (
-                <div style={{ backgroundColor: 'var(--clr-marble)', padding: '18px 20px', borderRadius: 'var(--radius-md)', marginBottom: '20px', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--clr-emerald)' }}>
-                      Live Floor Status ({floorPlanDate}) — Tap any table to manage
-                    </h3>
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
-                      <span>🟢 Free</span>
-                      <span>🟡 Reserved Later</span>
-                      <span>🔴 Seated / Late</span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
-                    {activeStaffTables.map(t => {
-                      const info = getTableFloorInfo(t);
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setSelectedFloorTable(t)}
-                          className="floor-table-tile"
-                          style={{ background: info.bg, border: info.border }}
-                        >
-                          <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--clr-charcoal)' }}>
-                            Table {t.tableNumber}{t.tableNumber === 4 ? ' ★' : ''}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--clr-grey)', marginBottom: '4px' }}>Seats {t.capacity}</div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>{info.badge}</div>
-                          <div className="floor-table-hint">
-                            {info.allForTableDate.length === 0 ? 'Tap for walk-in' : `${info.allForTableDate.length} booking${info.allForTableDate.length > 1 ? 's' : ''} • Tap`}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginBottom: '15px' }}>
-                <input
-                  type="text"
-                  placeholder="🔍 Search by guest name, phone, or reference code (e.g. MH-0012)..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="admin-input"
-                  style={{ width: '100%', padding: '12px 16px', fontSize: '0.95rem' }}
-                />
-              </div>
-
-              <div>
-                {sortedDisplayDates.map(bookingDate => {
-                  const dateBookings = displayedBookings.filter(b => b.bookingDate === bookingDate);
-                  return (
-                    <div key={bookingDate}>
-                      <div className="date-group-header">
-                        <span style={{ color: 'var(--clr-cream)' }}>📅 {new Date(`${bookingDate}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                        <span style={{ color: 'var(--clr-gold-pale)', fontWeight: 'normal' }}>{dateBookings.length} {dateBookings.length === 1 ? 'reservation' : 'reservations'}</span>
-                      </div>
-
-                      {dateBookings.map(booking => {
-                        const st = getEffectiveBookingState(booking);
-                        const raw = normalizeRawStatus(booking.status);
-                        return (
-                          <div key={booking.id} className={`admin-card ${st.cardClass}`}>
-                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <div className="card-time">{booking.bookingTime}</div>
-                              <div className="card-table-pill">{getBookingTableLabel(booking)} ({booking.partySize} Guests)</div>
-                              <span className={`status-pill status-pill--${st.visualTone}`}>
-                                {st.visualTone === 'late' ? '⚠' : st.visualTone === 'seated' ? '✓' : '●'} {st.statusLabel}
-                              </span>
-                            </div>
-
-                            <div className="card-guest-info" style={{ flex: '1 1 auto' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                <h3>{booking.customer?.fullName || 'No Name'}</h3>
-                                <span style={{ fontSize: '0.8rem', backgroundColor: 'var(--clr-marble)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--clr-gold)' }}>
-                                  Ref: MH-{String(booking.id).padStart(4, '0')}
-                                </span>
-                              </div>
-                              <p>
-                                <span>📞 {booking.customer?.phone || 'N/A'}</span>
-                                {booking.customer?.email && <span>✉️ {booking.customer.email}</span>}
-                              </p>
-                              {(booking.specialRequests || booking.staffNotes) && (
-                                <div className="card-notes">
-                                  {booking.specialRequests && <div className="guest-note"><strong>Guest:</strong> {booking.specialRequests}</div>}
-                                  {booking.staffNotes && <div className="staff-note"><strong>Staff:</strong> {booking.staffNotes}</div>}
-                                </div>
-                              )}
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                              {booking.bookingDate === londonTodayStr && !['SEATED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(raw) && (
-                                <>
-                                  {raw !== 'ARRIVED' && (
-                                    <button type="button" onClick={() => handleUpdateStatus(booking.id, 'ARRIVED')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>Arrived</button>
-                                  )}
-                                  <button type="button" onClick={() => handleUpdateStatus(booking.id, 'SEATED')} className="btn btn-emerald" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>Seat Guest</button>
-                                  <button type="button" onClick={() => handleUpdateStatus(booking.id, 'NO_SHOW')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem' }}>No Show</button>
-                                </>
-                              )}
-                              {booking.bookingDate === londonTodayStr && ['SEATED', 'ARRIVED'].includes(raw) && (
-                                <button type="button" onClick={() => handleUpdateStatus(booking.id, 'COMPLETED')} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}>✓ Make Available</button>
-                              )}
-                              <button type="button" onClick={() => handleOpenEdit(booking)} className="btn btn-secondary" style={{ padding: '10px 14px', fontSize: '0.85rem', borderColor: 'var(--clr-gold)', color: 'var(--clr-charcoal)' }}>⚙️ Edit</button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-                {displayedBookings.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(27,26,23,0.2)', marginTop: '20px' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.5 }}>🍽️</div>
-                    <p style={{ fontSize: '1.1rem' }}>No reservations found for this selection.</p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
@@ -2098,10 +2166,10 @@ function App() {
               <h3 style={{ margin: 0, color: 'var(--clr-emerald)' }}>
                 Table {selectedFloorTable.tableNumber} (Seats {selectedFloorTable.capacity})
               </h3>
-              <button type="button" onClick={() => setSelectedFloorTable(null)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>✕</button>
+              <button type="button" onClick={() => setSelectedFloorTable(null)} style={{ fontSize: '1.25rem', padding: '6px 10px' }}>X</button>
             </div>
             <p style={{ color: 'var(--clr-grey)', fontSize: '0.88rem', marginBottom: '14px' }}>
-              Date: <strong>{floorPlanDate}</strong> • Status: <strong>{selectedFloorInfo.badge}</strong>
+              Date: <strong>{floorPlanDate}</strong> — Status: <strong>{selectedFloorInfo.badge}</strong>
             </p>
 
             {selectedFloorInfo.activeNowBooking && (
@@ -2121,7 +2189,7 @@ function App() {
                   className="btn btn-emerald"
                   style={{ width: '100%', minHeight: '42px' }}
                 >
-                  ✓ Finish Sitting &amp; Make Table {selectedFloorTable.tableNumber} Available Now
+                  Finish Sitting &amp; Make Table {selectedFloorTable.tableNumber} Available Now
                 </button>
               </div>
             )}
@@ -2143,7 +2211,7 @@ function App() {
                 return (
                   <div key={b.id} className="table-popup-booking-row">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                      <strong>{startStr} – {endStr} • {b.customer?.fullName || 'Guest'} ({b.partySize}p)</strong>
+                      <strong>{startStr} to {endStr} — {b.customer?.fullName || 'Guest'} ({b.partySize}p)</strong>
                       <span className={`status-pill status-pill--${st.visualTone}`}>{st.statusLabel}</span>
                     </div>
                     {(b.specialRequests || b.staffNotes) && (
@@ -2165,7 +2233,7 @@ function App() {
                           className="btn btn-emerald"
                           style={{ padding: '7px 12px', fontSize: '0.8rem' }}
                         >
-                          ✓ Make Available
+                          Make Available
                         </button>
                       )}
                       {floorPlanDate === londonTodayStr && raw === 'BOOKED' && (
@@ -2192,7 +2260,7 @@ function App() {
                         className="btn btn-secondary"
                         style={{ padding: '7px 12px', fontSize: '0.8rem' }}
                       >
-                        ⚙️ Edit
+                        Edit
                       </button>
                     </div>
                   </div>
@@ -2257,8 +2325,8 @@ function App() {
                   <label>Assign Table *</label>
                   <select required value={staffBookingData.tableId} onChange={e => setStaffBookingData({ ...staffBookingData, tableId: e.target.value })} className="admin-input">
                     <option value="">-- Choose --</option>
-                    <option value="UNASSIGNED">⏳ Table Not Sure Yet (Unlimited)</option>
-                    <option value="OTHER">✨ Custom Table / Other (Unlimited)</option>
+                    <option value="UNASSIGNED">Table Not Sure Yet (Unlimited)</option>
+                    <option value="OTHER">Custom Table / Other (Unlimited)</option>
                     {activeStaffTables.map(t => (
                       <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>
                     ))}
@@ -2284,7 +2352,7 @@ function App() {
         </div>
       )}
 
-      {/* --- POPUP 3: EDIT RESERVATION (Includes Guest Count Edit) --- */}
+      {/* --- POPUP 3: EDIT RESERVATION --- */}
       {view === 'admin' && isAuthenticated && editModalBooking && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -2318,7 +2386,7 @@ function App() {
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Reassign Table:</label>
               <select value={editModalBooking.restaurantTable?.id ? String(editModalBooking.restaurantTable.id) : '0'} onChange={e => handleModalTableChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                <option value="0">⏳ Custom / Table Not Sure Yet</option>
+                <option value="0">Custom / Table Not Sure Yet</option>
                 {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
               </select>
             </div>
@@ -2435,7 +2503,7 @@ function App() {
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', fontWeight: '600' }}>Party Size</label>
               <div className="party-stepper-row">
-                <button type="button" disabled={Number(walkInDetails.partySize) <= 1} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.max(1, Number(p.partySize) - 1) }))} className="party-step-btn">−</button>
+                <button type="button" disabled={Number(walkInDetails.partySize) <= 1} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.max(1, Number(p.partySize) - 1) }))} className="party-step-btn">-</button>
                 <div className="party-count-display">{walkInDetails.partySize} {Number(walkInDetails.partySize) === 1 ? 'Guest' : 'Guests'}</div>
                 <button type="button" disabled={Number(walkInDetails.partySize) >= 20} onClick={() => setWalkInDetails(p => ({ ...p, partySize: Math.min(20, Number(p.partySize) + 1) }))} className="party-step-btn">+</button>
               </div>
@@ -2457,8 +2525,8 @@ function App() {
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.84rem', fontWeight: '600' }}>Table *</label>
               <select value={walkInDetails.tableId} onChange={e => setWalkInDetails(p => ({ ...p, tableId: e.target.value }))} className="admin-input" style={{ width: '100%', minHeight: '42px' }}>
                 <option value="">-- Choose a Table --</option>
-                <option value="UNASSIGNED">⏳ Table Not Sure Yet (Unlimited)</option>
-                <option value="OTHER">✨ Custom Table / Other (Unlimited)</option>
+                <option value="UNASSIGNED">Table Not Sure Yet (Unlimited)</option>
+                <option value="OTHER">Custom Table / Other (Unlimited)</option>
                 {activeStaffTables.map(t => <option key={t.id} value={t.id}>Table {t.tableNumber} (Seats {t.capacity})</option>)}
               </select>
             </div>
