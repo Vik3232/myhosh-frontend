@@ -82,34 +82,46 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
     if (files.length === 0) return;
 
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      setStatusMsg('Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in Vercel for 1-click uploads, or paste photo URLs below.');
+      setStatusMsg('Missing Vercel env vars: VITE_CLOUDINARY_CLOUD_NAME or VITE_CLOUDINARY_UPLOAD_PRESET (redeploy after adding).');
       return;
     }
 
     setIsUploading(true);
     setStatusMsg(`Uploading ${files.length} photo(s)...`);
     const added = [];
+    let lastError = '';
+
     try {
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
         const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
           method: 'POST',
           body: formData
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.secure_url) {
-            const optimizedUrl = data.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_1400/');
-            added.push(optimizedUrl);
-          }
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.secure_url) {
+          const optimizedUrl = data.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_1400/');
+          added.push(optimizedUrl);
+        } else {
+          lastError = data?.error?.message || `HTTP ${res.status} from Cloudinary`;
         }
       }
-      setUploadedUrls(prev => [...prev, ...added]);
-      setStatusMsg(`Uploaded ${added.length} of ${files.length} photo(s).`);
-    } catch (_) {
-      setStatusMsg('Upload error. Check your Cloudinary preset settings.');
+
+      if (added.length > 0) {
+        setUploadedUrls(prev => [...prev, ...added]);
+      }
+
+      if (lastError) {
+        setStatusMsg(`Uploaded ${added.length}/${files.length}. Error: ${lastError}`);
+      } else {
+        setStatusMsg(`Uploaded ${added.length} of ${files.length} photo(s).`);
+      }
+    } catch (err) {
+      setStatusMsg(`Network error during upload: ${err.message}`);
     } finally {
       setIsUploading(false);
       e.target.value = '';
