@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
-import './enhancements.css';
-import './design-system.css';
 import { TaglineReveal, useScrollReveal } from './components/DesignPolish';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
@@ -44,6 +42,12 @@ const formatMinsToHHMM = (totalMins) => {
 };
 
 function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('myhosh_theme') || 'light');
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('myhosh_theme', theme);
+  }, [theme]);
+  const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('myhosh_auth') === 'true');
   useEffect(() => {
     sessionStorage.setItem('myhosh_auth', String(isAuthenticated));
@@ -1267,16 +1271,37 @@ useEffect(() => {
     )}
   </nav>
 
-  <button
-    type="button"
-    className="mobile-menu-btn"
-    aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-    aria-expanded={isMobileMenuOpen}
-    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-  >
-    <span className="menu-toggle-line menu-toggle-line--top" />
-    <span className="menu-toggle-line menu-toggle-line--bottom" />
-  </button>
+  <div className="header-controls">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+          >
+            {theme === 'light' ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="mobile-menu-btn"
+            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={isMobileMenuOpen}
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <span className="menu-toggle-line menu-toggle-line--top" />
+            <span className="menu-toggle-line menu-toggle-line--bottom" />
+          </button>
+        </div>
 </header>
 
 <div className={`mobile-drawer ${isMobileMenuOpen ? 'is-open' : ''}`} aria-hidden={!isMobileMenuOpen}>
