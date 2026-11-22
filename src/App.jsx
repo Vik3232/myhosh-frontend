@@ -4,6 +4,7 @@ import './enhancements.css';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
 import { BlogPage, AdminBlogManager } from './components/BlogSection';
+import { AdminSiteContentManager, EventPosterModal, DEFAULT_SITE_CONTENT } from './components/SiteContentManager';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
@@ -161,6 +162,8 @@ function App() {
 
   // Blog State
   const [blogPosts, setBlogPosts] = useState([]);
+  const [siteContent, setSiteContent] = useState(DEFAULT_SITE_CONTENT);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
 
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
@@ -491,6 +494,17 @@ function App() {
       console.error('Error loading blog posts:', err);
     }
   };
+  const loadSiteContent = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/site-content`);
+      if (res.ok) {
+        const data = await res.json();
+        setSiteContent({ ...DEFAULT_SITE_CONTENT, ...data });
+      }
+    } catch (err) {
+      console.error('Error loading site content:', err);
+    }
+  };
 
   useEffect(() => {
     fetch(`${API_BASE}/api/tables`)
@@ -498,8 +512,10 @@ function App() {
       .then(data => setTables(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching tables:', err));
 
+   
     loadMenuData(false);
     loadBlogPosts();
+    loadSiteContent();
   }, []);
 
   // --- MERGED FETCH: Staff gets Past + Today + Future so Yesterday / Tomorrow / Arrows always work ---
@@ -1167,7 +1183,35 @@ const handleModalTimeChange = async () => {
 
   const selectedFloorInfo = selectedFloorTable ? getTableFloorInfo(selectedFloorTable) : null;
   const isOnCustomerHome = view !== 'blog' && view !== 'admin';
+  const activeHeroSlides = [1, 2, 3]
+  .filter(n => siteContent[`slide${n}Enabled`])
+  .map(n => ({
+    imageUrl: siteContent[`slide${n}ImageUrl`] || '/images/meze-spread.webp',
+    headline: siteContent[`slide${n}Headline`] || 'Authentic Turkish Hospitality',
+    subheadline: siteContent[`slide${n}Subheadline`] || '',
+    ctaText: siteContent[`slide${n}CtaText`] || 'Reserve a Table'
+  }))
+  .filter(s => s.imageUrl || s.headline);
 
+const heroSlides = activeHeroSlides.length > 0
+  ? activeHeroSlides
+  : [{
+      imageUrl: DEFAULT_SITE_CONTENT.slide1ImageUrl,
+      headline: DEFAULT_SITE_CONTENT.slide1Headline,
+      subheadline: DEFAULT_SITE_CONTENT.slide1Subheadline,
+      ctaText: DEFAULT_SITE_CONTENT.slide1CtaText
+    }];
+
+const currentHeroSlide = heroSlides[heroSlideIndex % heroSlides.length];
+
+useEffect(() => {
+  if (heroSlides.length <= 1) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const id = setInterval(() => {
+    setHeroSlideIndex(prev => (prev + 1) % heroSlides.length);
+  }, 6500);
+  return () => clearInterval(id);
+}, [heroSlides.length]);
   return (
     <>
       <header className="site-header">
@@ -1328,6 +1372,18 @@ const handleModalTimeChange = async () => {
 
               {/* SEPARATE ADMIN TABS (Reservations | Menu & Prices | Blog & Photos | Staff) */}
               <div className="admin-section-tabs" role="tablist" aria-label="Admin sections">
+              <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeAdminTab === 'promotions'}
+                      onClick={() => {
+                        setActiveAdminTab('promotions');
+                        loadSiteContent();
+                      }}
+                      className={`btn-admin-tab ${activeAdminTab === 'promotions' ? 'active' : ''}`}
+                    >
+                      4. Hero &amp; Poster
+                    </button>
                 <button
                   type="button"
                   role="tab"
@@ -1717,6 +1773,15 @@ const handleModalTimeChange = async () => {
                   onRefresh={loadBlogPosts}
                 />
               )}
+              {/* TAB 4: HERO PROMOTIONS & EVENT POSTER */}
+              {activeAdminTab === 'promotions' && currentUser?.role === 'ADMIN' && (
+                <AdminSiteContentManager
+                  apiBase={API_BASE}
+                  siteContent={siteContent}
+                  getStaffHeaders={getStaffHeaders}
+                  onSaved={(updated) => setSiteContent({ ...DEFAULT_SITE_CONTENT, ...updated })}
+                />
+              )}
 
               {/* TAB 4: STAFF ACCOUNTS (Standalone view) */}
               {activeAdminTab === 'staff' && currentUser?.role === 'ADMIN' && (
@@ -1795,14 +1860,53 @@ const handleModalTimeChange = async () => {
         </div>
       ) : (
         <div className="customer-view">
-          <section id="hero" className="hero-section">
-            <img src="/images/meze-spread.webp" alt="Turkish meze spread" className="hero-bg fade-in" />
+         <section id="hero" className="hero-section">
+            <img
+              key={currentHeroSlide.imageUrl}
+              src={currentHeroSlide.imageUrl}
+              alt={currentHeroSlide.headline}
+              className="hero-bg fade-in"
+            />
             <div className="hero-overlay"></div>
+
+            {heroSlides.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="hero-arrow-btn hero-arrow-btn--prev"
+                  aria-label="Previous promotion"
+                  onClick={() => setHeroSlideIndex(prev => (prev - 1 + heroSlides.length) % heroSlides.length)}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="hero-arrow-btn hero-arrow-btn--next"
+                  aria-label="Next promotion"
+                  onClick={() => setHeroSlideIndex(prev => (prev + 1) % heroSlides.length)}
+                >
+                  ›
+                </button>
+                <div className="hero-slider-controls" role="tablist" aria-label="Hero promotions">
+                  {heroSlides.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      aria-label={`Show promotion ${idx + 1}`}
+                      aria-selected={heroSlideIndex % heroSlides.length === idx}
+                      onClick={() => setHeroSlideIndex(idx)}
+                      className={`hero-dot ${heroSlideIndex % heroSlides.length === idx ? 'active' : ''}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
             <div className="hero-content fade-in">
-              <h1>Authentic Turkish Hospitality</h1>
-              <p>Charcoal grill, fresh meze, and a warm dining experience in the heart of Salisbury.</p>
+              <h1>{currentHeroSlide.headline}</h1>
+              {currentHeroSlide.subheadline && <p>{currentHeroSlide.subheadline}</p>}
               <div className="hero-actions">
-                <a href="#reserve" className="btn btn-primary">Reserve a Table</a>
+                <a href="#reserve" className="btn btn-primary">{currentHeroSlide.ctaText || 'Reserve a Table'}</a>
                 <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-secondary" style={{ color: '#FBF6EA', borderColor: '#FBF6EA' }}>View Menu</button>
               </div>
             </div>
@@ -2619,6 +2723,8 @@ const handleModalTimeChange = async () => {
         </div>
       )}
 
+{/* --- EVENT POSTER POPUP (Controlled by Admin) --- */}
+{isOnCustomerHome && <EventPosterModal siteContent={siteContent} />}
       {/* --- POPUP 6: TERMS & CONDITIONS / PRIVACY POLICY (WITH PDF EXPORT) --- */}
       <LegalModals activeModal={legalModal} onClose={() => setLegalModal(null)} />
     </>

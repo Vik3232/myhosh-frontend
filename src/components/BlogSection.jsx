@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
@@ -16,7 +16,7 @@ const BENTO_SLOTS = [
 ];
 
 export function BlogPage({ posts, onBackHome }) {
-  const [lightboxImg, setLightboxImg] = useState(null);
+  const [lightboxState, setLightboxState] = useState(null); // { items: [{url, title, caption}], index: 0 }
 
   const allPhotos = [];
   posts.forEach(post => {
@@ -30,6 +30,23 @@ export function BlogPage({ posts, onBackHome }) {
       });
     });
   });
+
+  useEffect(() => {
+    if (!lightboxState) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setLightboxState(null);
+      if (e.key === 'ArrowRight' && lightboxState.items.length > 1) {
+        setLightboxState(prev => ({ ...prev, index: (prev.index + 1) % prev.items.length }));
+      }
+      if (e.key === 'ArrowLeft' && lightboxState.items.length > 1) {
+        setLightboxState(prev => ({ ...prev, index: (prev.index - 1 + prev.items.length) % prev.items.length }));
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [lightboxState]);
+
+  const activePhoto = lightboxState ? lightboxState.items[lightboxState.index] : null;
 
   return (
     <div className="subpage-shell fade-in">
@@ -56,7 +73,7 @@ export function BlogPage({ posts, onBackHome }) {
                     key={photo.key}
                     type="button"
                     className={BENTO_SLOTS[idx % BENTO_SLOTS.length]}
-                    onClick={() => setLightboxImg(photo)}
+                    onClick={() => setLightboxState({ items: allPhotos, index: idx })}
                     aria-label={`Open ${photo.title} photo ${idx + 1}`}
                   >
                     <img src={photo.url} alt={`${photo.title} gallery item ${idx + 1}`} loading="lazy" />
@@ -66,44 +83,122 @@ export function BlogPage({ posts, onBackHome }) {
             </section>
           )}
 
-          <div className="blog-list">
-            {posts.map(post => (
-              <article key={post.id} className="blog-post-card">
-                <div className="blog-post-meta">
-                  <span className="blog-category-badge">{post.category || 'Gallery'}</span>
-                  <span>{new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                </div>
-                <h2>{post.title}</h2>
-                {post.content && <p className="blog-post-body">{post.content}</p>}
+          <div className="editorial-blog-grid">
+            {posts.map(post => {
+              const postImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+              const postItems = postImages.map(url => ({
+                url,
+                title: post.title,
+                caption: post.content || ''
+              }));
 
-                {Array.isArray(post.imageUrls) && post.imageUrls.length > 0 && (
-                  <div className="blog-photo-grid">
-                    {post.imageUrls.map((url, idx) => (
-                      <button
-                        key={`${post.id}-${idx}`}
-                        type="button"
-                        className="blog-photo-tile"
-                        onClick={() => setLightboxImg({ url, title: post.title, caption: post.content || '' })}
-                        aria-label={`View photo ${idx + 1} from ${post.title}`}
-                      >
-                        <img src={url} alt={`${post.title} photo ${idx + 1}`} loading="lazy" />
-                      </button>
-                    ))}
+              return (
+                <article key={post.id} className="editorial-blog-card">
+                  {postImages.length > 0 && (
+                    <button
+                      type="button"
+                      className="editorial-card-cover"
+                      onClick={() => setLightboxState({ items: postItems, index: 0 })}
+                      aria-label={`View ${post.title} cover photo`}
+                    >
+                      <img src={postImages[0]} alt={post.title} loading="lazy" />
+                      {postImages.length > 1 && (
+                        <span className="editorial-photo-count">{postImages.length} photos</span>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="editorial-card-body">
+                    <div className="blog-post-meta">
+                      <span className="blog-category-badge">{post.category || 'Gallery'}</span>
+                      <span>{new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+
+                    <h2 className="editorial-card-title">{post.title}</h2>
+                    {post.content && <p className="editorial-card-text">{post.content}</p>}
+
+                    {postImages.length > 1 && (
+                      <div className="editorial-thumb-strip">
+                        {postImages.map((url, idx) => (
+                          <button
+                            key={`${post.id}-thumb-${idx}`}
+                            type="button"
+                            className="editorial-thumb-btn"
+                            onClick={() => setLightboxState({ items: postItems, index: idx })}
+                            aria-label={`Open photo ${idx + 1} from ${post.title}`}
+                          >
+                            <img src={url} alt={`${post.title} ${idx + 1}`} loading="lazy" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         </>
       )}
 
-      {lightboxImg && (
-        <div className="lightbox-overlay" onClick={() => setLightboxImg(null)}>
-          <div className="lightbox-header">
-            <button type="button" className="lightbox-close" onClick={() => setLightboxImg(null)}>X</button>
-          </div>
-          <div className="lightbox-content" onClick={e => e.stopPropagation()}>
-            <img src={lightboxImg.url} alt={lightboxImg.title || 'Gallery full view'} />
+      {activePhoto && (
+        <div className="blog-lightbox-overlay" role="dialog" aria-modal="true" onClick={() => setLightboxState(null)}>
+          <div className="blog-lightbox-frame" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className="blog-lightbox-close"
+              aria-label="Close photo viewer"
+              onClick={() => setLightboxState(null)}
+            >
+              ✕
+            </button>
+
+            <div className="blog-lightbox-stage">
+              {lightboxState.items.length > 1 && (
+                <button
+                  type="button"
+                  className="blog-lightbox-nav blog-lightbox-nav--prev"
+                  aria-label="Previous photo"
+                  onClick={() =>
+                    setLightboxState(prev => ({
+                      ...prev,
+                      index: (prev.index - 1 + prev.items.length) % prev.items.length
+                    }))
+                  }
+                >
+                  ‹
+                </button>
+              )}
+
+              <img src={activePhoto.url} alt={activePhoto.title || 'Gallery view'} className="blog-lightbox-img" />
+
+              {lightboxState.items.length > 1 && (
+                <button
+                  type="button"
+                  className="blog-lightbox-nav blog-lightbox-nav--next"
+                  aria-label="Next photo"
+                  onClick={() =>
+                    setLightboxState(prev => ({
+                      ...prev,
+                      index: (prev.index + 1) % prev.items.length
+                    }))
+                  }
+                >
+                  ›
+                </button>
+              )}
+            </div>
+
+            <div className="blog-lightbox-meta">
+              <div>
+                <strong>{activePhoto.title}</strong>
+                {activePhoto.caption && <p>{activePhoto.caption}</p>}
+              </div>
+              {lightboxState.items.length > 1 && (
+                <span className="blog-lightbox-counter">
+                  {lightboxState.index + 1} / {lightboxState.items.length}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -138,7 +233,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
     setContent(post.content || '');
     setPhotos(Array.isArray(post.imageUrls) ? [...post.imageUrls] : []);
     setManualUrlInput('');
-    setStatusMsg(`Editing "${post.title}". Add or remove individual photos below, then click Save Post.`);
+    setStatusMsg(`Editing "${post.title}". Add or remove individual photos below, then click Save Changes.`);
   };
 
   const handleMultiPhotoUpload = async (e) => {
@@ -287,7 +382,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
                     className="admin-thumb-remove"
                     title="Delete this photo"
                   >
-                    X
+                    ✕
                   </button>
                 </div>
               ))}
