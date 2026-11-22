@@ -165,6 +165,9 @@ function App() {
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
   const londonYesterdayStr = shiftDateStr(londonTodayStr, -1);
+ 
+
+
   const londonTomorrowStr = shiftDateStr(londonTodayStr, 1);
 
   const [adminDateFilter, setAdminDateFilter] = useState(() => getLondonDateStr());
@@ -176,6 +179,8 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [editModalBooking, setEditModalBooking] = useState(null);
   const [modalPartySize, setModalPartySize] = useState(2);
+  const [modalTime, setModalTime] = useState('19:00');
+  
   const [modalNoteText, setModalNoteText] = useState('');
   const [modalSaveFeedback, setModalSaveFeedback] = useState('');
   const [cancelReason, setCancelReason] = useState('Guest requested cancellation');
@@ -925,6 +930,7 @@ function App() {
     setModalSaveFeedback('');
     setEditModalBooking(booking);
     setModalPartySize(booking.partySize || 2);
+    setModalTime((booking.bookingTime || '19:00').slice(0, 5));
     setModalNoteText(booking.staffNotes || '');
   };
 
@@ -971,20 +977,25 @@ function App() {
     }
   };
 
-  const handleModalTimeChange = async (newTime) => {
-    if (!newTime || !editModalBooking) return;
+const handleModalTimeChange = async () => {
+    if (!modalTime || !editModalBooking) return;
     try {
       const response = await fetch(`${API_BASE}/api/bookings/${editModalBooking.id}/time`, {
-        method: 'PUT', headers: getStaffHeaders(), body: JSON.stringify({ bookingTime: newTime })
+        method: 'PUT',
+        headers: getStaffHeaders(),
+        body: JSON.stringify({ bookingTime: modalTime })
       });
       if (response.ok) {
         const updated = await response.json();
         setAllBookings(prev => prev.map(b => (b.id === editModalBooking.id ? updated : b)));
         setEditModalBooking(updated);
-        setModalSaveFeedback(`Time updated to ${newTime}.`);
+        setModalTime((updated.bookingTime || modalTime).slice(0, 5));
+        setModalSaveFeedback(`Sitting time updated to ${(updated.bookingTime || modalTime).slice(0, 5)}.`);
+      } else {
+        alert((await response.text()) || `Could not update sitting time (HTTP ${response.status}).`);
       }
-    } catch (err) {
-      console.error('Error updating time:', err);
+    } catch (_) {
+      alert('Network error updating sitting time.');
     }
   };
 
@@ -2408,9 +2419,18 @@ function App() {
             </div>
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Change Sitting Time:</label>
-              <select value={(editModalBooking.bookingTime || '').slice(0, 5)} onChange={e => handleModalTimeChange(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                {generate15MinSlots('12:00', '22:00').map(slot => <option key={slot} value={slot}>{slot}</option>)}
-              </select>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="time"
+                  value={modalTime}
+                  onChange={e => setModalTime(e.target.value)}
+                  className="admin-input"
+                  style={{ flex: 1 }}
+                />
+                <button type="button" onClick={handleModalTimeChange} className="btn btn-emerald" style={{ padding: '8px 14px', fontSize: '0.85rem' }}>
+                  Update Time
+                </button>
+              </div>
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 'bold' }}>Reassign Table:</label>
