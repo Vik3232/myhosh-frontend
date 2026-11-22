@@ -8,22 +8,22 @@ export const DEFAULT_SITE_CONTENT = {
   slide1ImageUrl: '/images/meze-spread.webp',
   slide1Headline: 'Authentic Turkish Hospitality',
   slide1Subheadline: 'Charcoal grill, fresh meze, and a warm dining experience in the heart of Salisbury.',
-  slide1CtaText: 'Reserve a Table',
+  slide1CtaText: 'Reserve a table',
   slide2Enabled: false,
   slide2ImageUrl: '',
   slide2Headline: '',
   slide2Subheadline: '',
-  slide2CtaText: 'Reserve a Table',
+  slide2CtaText: 'Reserve a table',
   slide3Enabled: false,
   slide3ImageUrl: '',
   slide3Headline: '',
   slide3Subheadline: '',
-  slide3CtaText: 'Reserve a Table',
+  slide3CtaText: 'Reserve a table',
   posterEnabled: false,
   posterImageUrl: '',
   posterTitle: '',
   posterSubtitle: '',
-  posterCtaText: 'Reserve for This Event'
+  posterCtaText: 'Reserve a table'
 };
 
 export function EventPosterModal({ siteContent, forceOpen = false, onForceClose }) {
@@ -75,7 +75,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
       className="poster-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label={siteContent.posterTitle || 'MyHosh Event Poster'}
+      aria-label={siteContent.posterTitle || 'MyHosh event poster'}
       onClick={handleClose}
     >
       <div className="poster-modal-card" onClick={e => e.stopPropagation()}>
@@ -96,7 +96,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
         >
           <img
             src={siteContent.posterImageUrl}
-            alt={siteContent.posterTitle || 'MyHosh Special Event — Click to Reserve'}
+            alt={siteContent.posterTitle || 'MyHosh special event poster, click to reserve'}
           />
         </a>
       </div>
@@ -109,6 +109,7 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
   const [uploadingField, setUploadingField] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [statusType, setStatusType] = useState('info');
   const [previewPoster, setPreviewPoster] = useState(false);
 
   useEffect(() => {
@@ -120,11 +121,13 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
   const handleImageUpload = async (file, fieldName) => {
     if (!file) return;
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      setStatusMsg('Cloudinary preset not configured in Vercel env. Paste a direct image URL instead.');
+      setStatusType('error');
+      setStatusMsg('Cloudinary preset is not set in Vercel. Paste a direct image URL below instead.');
       return;
     }
 
     setUploadingField(fieldName);
+    setStatusType('info');
     setStatusMsg('Uploading image...');
     try {
       const formData = new FormData();
@@ -144,12 +147,15 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
             [fieldName]: optimizedUrl,
             ...(fieldName === 'posterImageUrl' ? { posterEnabled: true } : {})
           }));
-          setStatusMsg('Image uploaded. Click Save Hero & Event Poster to publish.');
+          setStatusType('success');
+          setStatusMsg('Image uploaded. Click Save hero and event poster to publish live.');
         }
       } else {
-        setStatusMsg('Image upload failed. Please try again.');
+        setStatusType('error');
+        setStatusMsg('Image upload failed. Check your file format and try again.');
       }
     } catch (_) {
+      setStatusType('error');
       setStatusMsg('Network error during upload.');
     } finally {
       setUploadingField('');
@@ -170,111 +176,179 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
         const updated = await res.json();
         setDraft({ ...DEFAULT_SITE_CONTENT, ...updated });
         onSaved(updated);
-        setStatusMsg('Hero promotions and event poster saved live.');
+        setStatusType('success');
+        setStatusMsg('Hero banners and event poster are now live on the website.');
       } else {
+        setStatusType('error');
         setStatusMsg((await res.text()) || 'Could not save changes.');
       }
     } catch (_) {
+      setStatusType('error');
       setStatusMsg('Network error while saving changes.');
     } finally {
       setIsSaving(false);
     }
   };
 
+  const activeSlideCount = [1, 2, 3].filter(n => draft[`slide${n}Enabled`]).length;
   const slides = [
-    { num: 1, title: 'Hero Slide 1 (Main Banner)' },
-    { num: 2, title: 'Hero Slide 2 (Promotion)' },
-    { num: 3, title: 'Hero Slide 3 (Promotion)' }
+    { num: 1, title: 'Hero slide 1', subtitle: 'Main homepage banner' },
+    { num: 2, title: 'Hero slide 2', subtitle: 'Optional promotion' },
+    { num: 3, title: 'Hero slide 3', subtitle: 'Optional promotion' }
   ];
 
   return (
-    <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
-      <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)' }}>Hero Promotions (Up to 3 Slides) &amp; Event Poster Popup</h3>
-      <p style={{ color: 'var(--clr-grey)', fontSize: '0.9rem', marginBottom: '12px' }}>
-        Enable 1, 2, or 3 slides to rotate promotions on the homepage hero. Turn on the Event Poster to show a full-image clickable popup when guests open the site.
-      </p>
-
-      {/* RECOMMENDED SIZE GUIDE BANNER */}
-      <div className="size-guide-banner">
+    <div className="cms-shell">
+      <div className="cms-header">
         <div>
-          <strong>Hero Banner Size:</strong> 1920 × 1080 px (16:9 landscape, JPG/WebP). Keep key subject centered for mobile screens.
+          <h3 className="cms-title">Hero banners and event poster</h3>
+          <p className="cms-subtitle">
+            Control up to 3 rotating homepage banners and your popup event flyer. Changes go live immediately after saving.
+          </p>
         </div>
-        <div>
-          <strong>Event Poster Size:</strong> 1080 × 1350 px (4:5 portrait flyer) or 1080 × 1080 px (square). Clicking anywhere on the poster takes guests directly to Reserve.
+        <div className="cms-header-badges">
+          <span className="cms-pill cms-pill--emerald">{activeSlideCount} active hero {activeSlideCount === 1 ? 'slide' : 'slides'}</span>
+          <span className={`cms-pill ${draft.posterEnabled && draft.posterImageUrl ? 'cms-pill--gold' : 'cms-pill--muted'}`}>
+            {draft.posterEnabled && draft.posterImageUrl ? 'Event poster live' : 'Event poster hidden'}
+          </span>
         </div>
       </div>
 
-      <form onSubmit={handleSave} style={{ display: 'grid', gap: '18px' }}>
+      <div className="size-guide-banner">
+        <div>
+          <strong>Hero banner size:</strong> <span className="mono-data">1920 × 1080 px</span> (16:9 landscape, JPG or WebP). Keep food and key details near the centre for mobile screens.
+        </div>
+        <div>
+          <strong>Event poster size:</strong> <span className="mono-data">1080 × 1350 px</span> (4:5 portrait flyer) or <span className="mono-data">1080 × 1080 px</span> (square). Clicking anywhere on the poster takes guests straight to Reserve.
+        </div>
+      </div>
+
+      <form onSubmit={handleSave} className="cms-form-stack">
         {/* HERO SLIDES 1 - 3 */}
+        <div className="cms-section-label">Homepage hero slides</div>
         <div className="promo-admin-grid">
-          {slides.map(({ num, title }) => {
+          {slides.map(({ num, title, subtitle }) => {
             const enabledKey = `slide${num}Enabled`;
             const imgKey = `slide${num}ImageUrl`;
             const headKey = `slide${num}Headline`;
             const subKey = `slide${num}Subheadline`;
             const ctaKey = `slide${num}CtaText`;
+            const isActive = Boolean(draft[enabledKey]);
+            const isUploadingThis = uploadingField === imgKey;
 
             return (
-              <div key={num} className="promo-admin-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '10px' }}>
-                  <strong style={{ color: 'var(--clr-emerald)' }}>{title}</strong>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}>
+              <div key={num} className={`promo-admin-card ${isActive ? 'is-active-card' : 'is-dimmed-card'}`}>
+                <div className="cms-card-top">
+                  <div>
+                    <strong className="cms-card-heading">{title}</strong>
+                    <span className="cms-card-caption">{subtitle}</span>
+                  </div>
+                  <label className={`cms-toggle-pill ${isActive ? 'is-on' : ''}`}>
                     <input
                       type="checkbox"
-                      checked={Boolean(draft[enabledKey])}
+                      checked={isActive}
                       onChange={e => setDraft(prev => ({ ...prev, [enabledKey]: e.target.checked }))}
                     />
-                    Active
+                    <span>{isActive ? 'Active' : 'Hidden'}</span>
                   </label>
                 </div>
 
-                {draft[imgKey] && (
-                  <div className="promo-preview-box">
+                {/* Live Mini Hero Preview */}
+                <div className="cms-hero-preview">
+                  {draft[imgKey] ? (
                     <img src={draft[imgKey]} alt={`Hero slide ${num} preview`} />
+                  ) : (
+                    <div className="cms-hero-preview-empty">No background photo set</div>
+                  )}
+                  <div className="cms-hero-preview-scrim" />
+                  <div className="cms-hero-preview-overlay">
+                    <div className="cms-hero-preview-headline">
+                      {draft[headKey] || 'Your hero headline appears here'}
+                    </div>
+                    {draft[subKey] && (
+                      <div className="cms-hero-preview-sub">{draft[subKey]}</div>
+                    )}
+                    <span className="cms-hero-preview-cta">{draft[ctaKey] || 'Reserve a table'}</span>
                   </div>
-                )}
+                </div>
 
-                <div style={{ display: 'grid', gap: '8px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                    Upload Background Photo (1920 × 1080 px / 16:9)
+                {/* Styled Upload Actions */}
+                <div className="cms-upload-row">
+                  <label className="cms-upload-btn">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={Boolean(uploadingField)}
+                      onChange={e => {
+                        handleImageUpload(e.target.files?.[0], imgKey);
+                        e.target.value = '';
+                      }}
+                    />
+                    {isUploadingThis ? 'Uploading...' : 'Upload photo'}
                   </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={Boolean(uploadingField)}
-                    onChange={e => {
-                      handleImageUpload(e.target.files?.[0], imgKey);
-                      e.target.value = '';
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Or paste image URL (e.g. /images/meze-spread.webp)"
-                    value={draft[imgKey] || ''}
-                    onChange={e => setDraft(prev => ({ ...prev, [imgKey]: e.target.value }))}
-                    className="admin-input"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Hero Headline (e.g. Friday Live Grill Night)"
-                    value={draft[headKey] || ''}
-                    onChange={e => setDraft(prev => ({ ...prev, [headKey]: e.target.value }))}
-                    className="admin-input"
-                  />
-                  <textarea
-                    rows="2"
-                    placeholder="Hero Subheadline / Promotion details"
-                    value={draft[subKey] || ''}
-                    onChange={e => setDraft(prev => ({ ...prev, [subKey]: e.target.value }))}
-                    className="admin-input"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Button text (default: Reserve a Table)"
-                    value={draft[ctaKey] || ''}
-                    onChange={e => setDraft(prev => ({ ...prev, [ctaKey]: e.target.value }))}
-                    className="admin-input"
-                  />
+
+                  {draft[imgKey] && (
+                    <button
+                      type="button"
+                      className="cms-clear-btn"
+                      onClick={() => setDraft(prev => ({ ...prev, [imgKey]: '' }))}
+                    >
+                      Remove
+                    </button>
+                  )}
+
+                  {num === 1 && draft[imgKey] !== DEFAULT_SITE_CONTENT.slide1ImageUrl && (
+                    <button
+                      type="button"
+                      className="cms-clear-btn"
+                      onClick={() => setDraft(prev => ({ ...prev, [imgKey]: DEFAULT_SITE_CONTENT.slide1ImageUrl }))}
+                    >
+                      Reset default
+                    </button>
+                  )}
+                </div>
+
+                <div className="cms-fields">
+                  <div className="cms-field">
+                    <label>Image URL</label>
+                    <input
+                      type="text"
+                      placeholder="/images/meze-spread.webp or https://..."
+                      value={draft[imgKey] || ''}
+                      onChange={e => setDraft(prev => ({ ...prev, [imgKey]: e.target.value }))}
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="cms-field">
+                    <label>Headline</label>
+                    <input
+                      type="text"
+                      placeholder="Authentic Turkish Hospitality"
+                      value={draft[headKey] || ''}
+                      onChange={e => setDraft(prev => ({ ...prev, [headKey]: e.target.value }))}
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="cms-field">
+                    <label>Subheadline</label>
+                    <textarea
+                      rows="2"
+                      placeholder="Short promotion note or restaurant description"
+                      value={draft[subKey] || ''}
+                      onChange={e => setDraft(prev => ({ ...prev, [subKey]: e.target.value }))}
+                      className="admin-input"
+                    />
+                  </div>
+                  <div className="cms-field">
+                    <label>Button label</label>
+                    <input
+                      type="text"
+                      placeholder="Reserve a table"
+                      value={draft[ctaKey] || ''}
+                      onChange={e => setDraft(prev => ({ ...prev, [ctaKey]: e.target.value }))}
+                      className="admin-input"
+                    />
+                  </div>
                 </div>
               </div>
             );
@@ -282,92 +356,117 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
         </div>
 
         {/* EVENT POSTER POPUP CARD */}
-        <div className="promo-admin-card" style={{ borderColor: 'var(--clr-gold)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+        <div className="cms-section-label">Opening event poster popup</div>
+        <div className={`promo-admin-card cms-poster-card ${draft.posterEnabled ? 'is-active-card' : ''}`}>
+          <div className="cms-card-top">
             <div>
-              <strong style={{ color: 'var(--clr-emerald)', fontSize: '1.05rem' }}>Event Poster Popup (1080 × 1350 px / 4:5 Portrait)</strong>
-              <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: 'var(--clr-grey)' }}>
-                Displays borderless with only a top close button (✕). Clicking anywhere on the poster takes guests straight to Reserve.
-              </p>
+              <strong className="cms-card-heading">Event poster popup</strong>
+              <span className="cms-card-caption">
+                Shows borderless when visitors open the website. Tapping anywhere on the poster scrolls straight to booking.
+              </span>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}>
+            <label className={`cms-toggle-pill ${draft.posterEnabled ? 'is-on' : ''}`}>
               <input
                 type="checkbox"
                 checked={Boolean(draft.posterEnabled)}
                 onChange={e => setDraft(prev => ({ ...prev, posterEnabled: e.target.checked }))}
               />
-              Show Popup to Visitors
+              <span>{draft.posterEnabled ? 'Visible to guests' : 'Hidden'}</span>
             </label>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', alignItems: 'start' }}>
-            <div>
+          <div className="cms-poster-grid">
+            <div className="cms-poster-preview-col">
               {draft.posterImageUrl ? (
                 <div className="promo-preview-box promo-preview-box--poster">
                   <img src={draft.posterImageUrl} alt="Event poster preview" />
                 </div>
               ) : (
-                <div style={{ padding: '28px', textAlign: 'center', borderRadius: '8px', border: '1px dashed rgba(27,26,23,0.2)', color: 'var(--clr-grey)', fontSize: '0.85rem' }}>
-                  No poster uploaded yet. Recommended: 1080 × 1350 px.
+                <div className="cms-poster-empty">
+                  <strong>No poster uploaded</strong>
+                  <span>Recommended size: 1080 × 1350 px (4:5 portrait)</span>
                 </div>
               )}
-              <div style={{ marginTop: '10px', display: 'grid', gap: '8px' }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={Boolean(uploadingField)}
-                  onChange={e => {
-                    handleImageUpload(e.target.files?.[0], 'posterImageUrl');
-                    e.target.value = '';
-                  }}
-                />
+
+              <div className="cms-upload-row">
+                <label className="cms-upload-btn">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={Boolean(uploadingField)}
+                    onChange={e => {
+                      handleImageUpload(e.target.files?.[0], 'posterImageUrl');
+                      e.target.value = '';
+                    }}
+                  />
+                  {uploadingField === 'posterImageUrl' ? 'Uploading...' : 'Upload poster'}
+                </label>
+
+                {draft.posterImageUrl && (
+                  <button
+                    type="button"
+                    className="cms-clear-btn"
+                    onClick={() => setDraft(prev => ({ ...prev, posterImageUrl: '', posterEnabled: false }))}
+                  >
+                    Remove poster
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="cms-fields">
+              <div className="cms-field">
+                <label>Poster image URL</label>
                 <input
                   type="text"
-                  placeholder="Or paste poster image URL"
+                  placeholder="https://..."
                   value={draft.posterImageUrl || ''}
                   onChange={e => setDraft(prev => ({ ...prev, posterImageUrl: e.target.value }))}
                   className="admin-input"
                 />
               </div>
-            </div>
 
-            <div style={{ display: 'grid', gap: '10px' }}>
-              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>
-                Poster Name (for accessibility &amp; tracking updates)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. New Year Gala 2026"
-                value={draft.posterTitle || ''}
-                onChange={e => setDraft(prev => ({ ...prev, posterTitle: e.target.value }))}
-                className="admin-input"
-              />
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--clr-grey)' }}>
-                Tip: Include a small &quot;Tap to Reserve&quot; line in your poster design so guests know clicking it jumps to booking.
+              <div className="cms-field">
+                <label>Event name (internal label)</label>
+                <input
+                  type="text"
+                  placeholder="Example: Festive evening menu"
+                  value={draft.posterTitle || ''}
+                  onChange={e => setDraft(prev => ({ ...prev, posterTitle: e.target.value }))}
+                  className="admin-input"
+                />
+              </div>
+
+              <p className="cms-helper-note">
+                Tip: Include a short line like &ldquo;Tap poster to book&rdquo; inside your poster design so guests immediately know it links to reservations.
               </p>
+
               {draft.posterImageUrl && (
-                <button
-                  type="button"
-                  onClick={() => setPreviewPoster(true)}
-                  className="btn btn-secondary"
-                  style={{ justifySelf: 'start', padding: '8px 16px', fontSize: '0.85rem' }}
-                >
-                  Preview Borderless Popup
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPoster(true)}
+                    className="btn btn-secondary"
+                  >
+                    Preview borderless popup
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {statusMsg && (
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: statusMsg.toLowerCase().includes('error') || statusMsg.toLowerCase().includes('failed') ? 'var(--clr-error)' : 'var(--clr-emerald)' }}>
-            {statusMsg}
+        {/* SAVE ACTION BAR */}
+        <div className="cms-save-bar">
+          <div>
+            {statusMsg && (
+              <div className={`cms-status cms-status--${statusType}`}>
+                {statusMsg}
+              </div>
+            )}
           </div>
-        )}
-
-        <div>
           <button type="submit" disabled={isSaving || Boolean(uploadingField)} className="btn btn-emerald">
-            {isSaving ? 'Saving...' : 'Save Hero & Event Poster'}
+            {isSaving ? 'Saving...' : 'Save hero and event poster'}
           </button>
         </div>
       </form>
