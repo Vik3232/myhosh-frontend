@@ -46,6 +46,19 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
     setDismissedKey(posterKey);
   };
 
+  const handlePosterClick = (e) => {
+    e.preventDefault();
+    handleClose();
+    if (!forceOpen) {
+      const reserveSection = document.getElementById('reserve');
+      if (reserveSection) {
+        reserveSection.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.location.hash = '#reserve';
+      }
+    }
+  };
+
   useEffect(() => {
     if (!shouldShow) return;
     const onKey = (e) => {
@@ -58,37 +71,34 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
   if (!shouldShow) return null;
 
   return (
-    <div className="poster-modal-overlay" role="dialog" aria-modal="true" aria-label="Special Event Poster" onClick={handleClose}>
+    <div
+      className="poster-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={siteContent.posterTitle || 'MyHosh Event Poster'}
+      onClick={handleClose}
+    >
       <div className="poster-modal-card" onClick={e => e.stopPropagation()}>
-        <button type="button" className="poster-modal-close" aria-label="Close event poster" onClick={handleClose}>
+        <button
+          type="button"
+          className="poster-modal-close"
+          aria-label="Close event poster"
+          onClick={handleClose}
+        >
           ✕
         </button>
 
-        <div className="poster-modal-media">
+        <a
+          href="#reserve"
+          onClick={handlePosterClick}
+          className="poster-modal-link"
+          aria-label="Click poster to reserve a table"
+        >
           <img
             src={siteContent.posterImageUrl}
-            alt={siteContent.posterTitle || 'MyHosh Special Event Poster'}
+            alt={siteContent.posterTitle || 'MyHosh Special Event — Click to Reserve'}
           />
-        </div>
-
-        {(siteContent.posterTitle || siteContent.posterSubtitle || siteContent.posterCtaText) && (
-          <div className="poster-modal-footer">
-            {siteContent.posterTitle && <h3>{siteContent.posterTitle}</h3>}
-            {siteContent.posterSubtitle && <p>{siteContent.posterSubtitle}</p>}
-            <div className="poster-modal-actions">
-              <a
-                href="#reserve"
-                onClick={handleClose}
-                className="btn btn-emerald"
-              >
-                {siteContent.posterCtaText || 'Reserve a Table'}
-              </a>
-              <button type="button" onClick={handleClose} className="btn btn-secondary">
-                Continue to Site
-              </button>
-            </div>
-          </div>
-        )}
+        </a>
       </div>
     </div>
   );
@@ -127,9 +137,14 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
       if (res.ok) {
         const data = await res.json();
         if (data.secure_url) {
-          const optimizedUrl = data.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_1600/');
-          setDraft(prev => ({ ...prev, [fieldName]: optimizedUrl }));
-          setStatusMsg('Image uploaded. Click Save All Changes to publish.');
+          const widthTransform = fieldName === 'posterImageUrl' ? 'w_1200' : 'w_1920';
+          const optimizedUrl = data.secure_url.replace('/image/upload/', `/image/upload/f_auto,q_auto,${widthTransform}/`);
+          setDraft(prev => ({
+            ...prev,
+            [fieldName]: optimizedUrl,
+            ...(fieldName === 'posterImageUrl' ? { posterEnabled: true } : {})
+          }));
+          setStatusMsg('Image uploaded. Click Save Hero & Event Poster to publish.');
         }
       } else {
         setStatusMsg('Image upload failed. Please try again.');
@@ -175,9 +190,19 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
   return (
     <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.08)', boxShadow: 'var(--shadow-soft)' }}>
       <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)' }}>Hero Promotions (Up to 3 Slides) &amp; Event Poster Popup</h3>
-      <p style={{ color: 'var(--clr-grey)', fontSize: '0.9rem', marginBottom: '20px' }}>
-        Enable 1, 2, or 3 slides to rotate promotions on the homepage hero. Turn on the Event Poster to show a popup banner when guests open the site.
+      <p style={{ color: 'var(--clr-grey)', fontSize: '0.9rem', marginBottom: '12px' }}>
+        Enable 1, 2, or 3 slides to rotate promotions on the homepage hero. Turn on the Event Poster to show a full-image clickable popup when guests open the site.
       </p>
+
+      {/* RECOMMENDED SIZE GUIDE BANNER */}
+      <div className="size-guide-banner">
+        <div>
+          <strong>Hero Banner Size:</strong> 1920 × 1080 px (16:9 landscape, JPG/WebP). Keep key subject centered for mobile screens.
+        </div>
+        <div>
+          <strong>Event Poster Size:</strong> 1080 × 1350 px (4:5 portrait flyer) or 1080 × 1080 px (square). Clicking anywhere on the poster takes guests directly to Reserve.
+        </div>
+      </div>
 
       <form onSubmit={handleSave} style={{ display: 'grid', gap: '18px' }}>
         {/* HERO SLIDES 1 - 3 */}
@@ -210,7 +235,9 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
                 )}
 
                 <div style={{ display: 'grid', gap: '8px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Upload Background Photo</label>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                    Upload Background Photo (1920 × 1080 px / 16:9)
+                  </label>
                   <input
                     type="file"
                     accept="image/*"
@@ -258,9 +285,9 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
         <div className="promo-admin-card" style={{ borderColor: 'var(--clr-gold)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
             <div>
-              <strong style={{ color: 'var(--clr-emerald)', fontSize: '1.05rem' }}>Event Poster Popup (Shows on Website Open)</strong>
+              <strong style={{ color: 'var(--clr-emerald)', fontSize: '1.05rem' }}>Event Poster Popup (1080 × 1350 px / 4:5 Portrait)</strong>
               <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: 'var(--clr-grey)' }}>
-                Great for New Year, Valentine&apos;s, live music, or seasonal set menus. Turn off anytime with one click.
+                Displays borderless with only a top close button (✕). Clicking anywhere on the poster takes guests straight to Reserve.
               </p>
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}>
@@ -281,7 +308,7 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
                 </div>
               ) : (
                 <div style={{ padding: '28px', textAlign: 'center', borderRadius: '8px', border: '1px dashed rgba(27,26,23,0.2)', color: 'var(--clr-grey)', fontSize: '0.85rem' }}>
-                  No poster uploaded yet.
+                  No poster uploaded yet. Recommended: 1080 × 1350 px.
                 </div>
               )}
               <div style={{ marginTop: '10px', display: 'grid', gap: '8px' }}>
@@ -305,27 +332,19 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
             </div>
 
             <div style={{ display: 'grid', gap: '10px' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--clr-charcoal)' }}>
+                Poster Name (for accessibility &amp; tracking updates)
+              </label>
               <input
                 type="text"
-                placeholder="Event Title (optional, e.g. Festive Set Menu)"
+                placeholder="e.g. New Year Gala 2026"
                 value={draft.posterTitle || ''}
                 onChange={e => setDraft(prev => ({ ...prev, posterTitle: e.target.value }))}
                 className="admin-input"
               />
-              <textarea
-                rows="3"
-                placeholder="Short event note (optional, e.g. Book early for Friday and Saturday evenings)"
-                value={draft.posterSubtitle || ''}
-                onChange={e => setDraft(prev => ({ ...prev, posterSubtitle: e.target.value }))}
-                className="admin-input"
-              />
-              <input
-                type="text"
-                placeholder="Button label (e.g. Reserve for This Event)"
-                value={draft.posterCtaText || ''}
-                onChange={e => setDraft(prev => ({ ...prev, posterCtaText: e.target.value }))}
-                className="admin-input"
-              />
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--clr-grey)' }}>
+                Tip: Include a small &quot;Tap to Reserve&quot; line in your poster design so guests know clicking it jumps to booking.
+              </p>
               {draft.posterImageUrl && (
                 <button
                   type="button"
@@ -333,7 +352,7 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
                   className="btn btn-secondary"
                   style={{ justifySelf: 'start', padding: '8px 16px', fontSize: '0.85rem' }}
                 >
-                  Preview Popup
+                  Preview Borderless Popup
                 </button>
               )}
             </div>

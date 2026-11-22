@@ -1265,7 +1265,7 @@ body {
   }
 }
 
-/* --- EVENT POSTER POPUP MODAL --- */
+/* --- EVENT POSTER POPUP MODAL (Borderless, Pure Clickable Poster) --- */
 .poster-modal-overlay {
   position: fixed;
   inset: 0;
@@ -1275,119 +1275,77 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 20px;
 }
 
 .poster-modal-card {
   position: relative;
-  width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: var(--clr-cream);
-  border: 1px solid var(--clr-gold);
-  border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  display: inline-block;
+  width: fit-content;
+  max-width: min(92vw, 480px);
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
 }
 
 .poster-modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 1px solid rgba(251, 246, 234, 0.5);
+  border: none;
   background: rgba(19, 18, 9, 0.72);
   color: #FBF6EA;
   font-size: 1rem;
+  line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.poster-modal-media {
-  background: #181818;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.poster-modal-close:hover {
+  background: rgba(19, 18, 9, 0.92);
+  transform: scale(1.06);
 }
 
-.poster-modal-media img {
-  width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
+.poster-modal-link {
   display: block;
+  line-height: 0;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
 }
 
-.poster-modal-footer {
-  padding: 18px 20px 20px;
-  text-align: center;
-}
-
-.poster-modal-footer h3 {
-  margin: 0 0 6px;
-  color: var(--clr-emerald);
-  font-size: 1.35rem;
-}
-
-.poster-modal-footer p {
-  margin: 0 0 16px;
-  color: var(--clr-grey);
-  font-size: 0.92rem;
-}
-
-.poster-modal-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* --- ADMIN PROMO & POSTER CARDS --- */
-.promo-admin-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
-}
-
-.promo-admin-card {
-  background: #ffffff;
-  border: 1px solid rgba(27, 26, 23, 0.12);
+.poster-modal-link img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(92vw, 480px);
+  max-height: 82vh;
+  object-fit: contain;
   border-radius: 12px;
-  padding: 16px;
+  border: none;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 
-.promo-preview-box {
-  width: 100%;
-  height: 135px;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 10px;
-  background: #1f1f1f;
-  border: 1px solid rgba(27, 26, 23, 0.1);
+/* --- ADMIN SIZE GUIDE BANNER --- */
+.size-guide-banner {
+  background: rgba(15, 77, 58, 0.08);
+  border: 1px solid rgba(15, 77, 58, 0.22);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 0.85rem;
+  color: var(--clr-charcoal);
+  display: grid;
+  gap: 6px;
 }
-
-.promo-preview-box--poster {
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.promo-preview-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.promo-preview-box--poster img {
-  object-fit: contain;
-}
-
 /* --- REDESIGNED EDITORIAL BLOG CARDS (Zero Empty Whitespace) --- */
 .editorial-blog-grid {
   display: grid;
