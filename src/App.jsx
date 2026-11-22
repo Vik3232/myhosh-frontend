@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import './enhancements.css';
+import './design-system.css';
+import { TaglineReveal, useScrollReveal } from './components/DesignPolish';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
 import { BlogPage, AdminBlogManager } from './components/BlogSection';
@@ -1183,6 +1185,7 @@ const handleModalTimeChange = async () => {
 
   const selectedFloorInfo = selectedFloorTable ? getTableFloorInfo(selectedFloorTable) : null;
   const isOnCustomerHome = view !== 'blog' && view !== 'admin';
+  useScrollReveal(view);
   const activeHeroSlides = [1, 2, 3]
   .filter(n => siteContent[`slide${n}Enabled`])
   .map(n => ({
@@ -1214,96 +1217,90 @@ useEffect(() => {
 }, [heroSlides.length]);
   return (
     <>
-      <header className="site-header">
-        <div className="brand-logo" onClick={navigateHome} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', margin: '-12px 0' }}>
-          <img
-            src="/images/myhosh-salisbury-logo-horizontal-transparent.png"
-            alt="MyHosh Salisbury"
-            style={{ height: '75px', width: 'auto', objectFit: 'contain' }}
-          />
-        </div>
+      <a href="#main-content" className="skip-link">Skip to content</a>
 
-        <nav className="nav-links">
-          {isOnCustomerHome ? (
-            <>
-              <a href="#menu" className="nav-link">Menu</a>
-              <a href="#space" className="nav-link">Our Space</a>
-              <a href="#visit" className="nav-link">Visit Us</a>
-              <button
-                type="button"
-                onClick={navigateBlog}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
-              >
-                Gallery &amp; Blog
-              </button>
-              {staffLinkUnlocked && (
-                <button
-                  type="button"
-                  onClick={openStaffPortal}
-                  className="nav-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0, color: 'var(--clr-emerald)', fontWeight: 600 }}
-                >
-                  {isAuthenticated ? 'Staff Dashboard' : 'Staff Login'}
-                </button>
-              )}
-              <a href="#reserve" className="btn btn-primary" style={{ minHeight: '40px', padding: '10px 20px' }}>Reserve</a>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={navigateHome}
-              className="nav-link"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
-            >
-              Return to Site
-            </button>
-          )}
-        </nav>
+<header className="site-header">
+  <div className="brand-logo" onClick={navigateHome} style={{ cursor: 'pointer' }}>
+    <span className="brand-logo-badge">
+      <img
+        src="/images/myhosh-salisbury-logo-horizontal-transparent.png"
+        alt="MyHosh Salisbury"
+      />
+    </span>
+  </div>
 
-        <button type="button" className="mobile-menu-btn" aria-label="Toggle navigation menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-          <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg>
+  <nav className="nav-links">
+    {isOnCustomerHome ? (
+      <>
+        <a href="#menu" className="nav-link">Menu</a>
+        <a href="#space" className="nav-link">Our space</a>
+        <a href="#visit" className="nav-link">Visit us</a>
+        <button
+          type="button"
+          onClick={navigateBlog}
+          className="nav-link"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
+        >
+          Gallery and blog
         </button>
-      </header>
+        {staffLinkUnlocked && (
+          <button
+            type="button"
+            onClick={openStaffPortal}
+            className="nav-link"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px', color: 'var(--clr-gold-pale)', fontWeight: 600 }}
+          >
+            {isAuthenticated ? 'Staff dashboard' : 'Staff login'}
+          </button>
+        )}
+        <a href="#reserve" className="btn btn-primary" style={{ minHeight: '36px', padding: '6px 14px', fontSize: '14px' }}>Reserve</a>
+      </>
+    ) : (
+      <button
+        type="button"
+        onClick={navigateHome}
+        className="nav-link"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
+      >
+        Return to site
+      </button>
+    )}
+  </nav>
 
-      {isMobileMenuOpen && (
-        <div style={{ position: 'fixed', top: '70px', left: 0, width: '100%', background: 'var(--clr-cream)', borderBottom: '1px solid var(--clr-gold-soft)', padding: '20px', zIndex: 99, display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: 'var(--shadow-soft)' }}>
-          {isOnCustomerHome ? (
-            <>
-              <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Menu</a>
-              <a href="#space" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Our Space</a>
-              <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase' }}>Visit Us</a>
-              <button
-                type="button"
-                onClick={navigateBlog}
-                style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
-              >
-                Gallery &amp; Blog
-              </button>
-              {staffLinkUnlocked && (
-                <button
-                  type="button"
-                  onClick={openStaffPortal}
-                  style={{ fontSize: '1.1rem', fontWeight: 600, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-emerald)' }}
-                >
-                  {isAuthenticated ? 'Staff Dashboard' : 'Staff Login'}
-                </button>
-              )}
-              <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', color: 'var(--clr-emerald)' }}>Reserve a Table</a>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={navigateHome}
-              style={{ fontSize: '1.1rem', fontWeight: 500, textTransform: 'uppercase', background: 'none', border: 'none', textAlign: 'left', padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer', color: 'var(--clr-charcoal)' }}
-            >
-              Return to Site
-            </button>
-          )}
-        </div>
+  <button
+    type="button"
+    className="mobile-menu-btn"
+    aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+    aria-expanded={isMobileMenuOpen}
+    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+  >
+    <span className="menu-toggle-line menu-toggle-line--top" />
+    <span className="menu-toggle-line menu-toggle-line--bottom" />
+  </button>
+</header>
+
+<div className={`mobile-drawer ${isMobileMenuOpen ? 'is-open' : ''}`} aria-hidden={!isMobileMenuOpen}>
+  {isOnCustomerHome ? (
+    <>
+      <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '60ms' }}>Menu</a>
+      <a href="#space" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '120ms' }}>Our space</a>
+      <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '180ms' }}>Visit us</a>
+      <button type="button" onClick={navigateBlog} className="mobile-drawer-item" style={{ transitionDelay: '240ms' }}>Gallery and blog</button>
+      {staffLinkUnlocked && (
+        <button type="button" onClick={openStaffPortal} className="mobile-drawer-item" style={{ transitionDelay: '300ms', color: 'var(--clr-gold-pale)' }}>
+          {isAuthenticated ? 'Staff dashboard' : 'Staff login'}
+        </button>
       )}
+      <a href="#reserve" onClick={() => setIsMobileMenuOpen(false)} className="btn btn-primary" style={{ marginTop: '8px', minHeight: '48px' }}>
+        Reserve a table
+      </a>
+    </>
+  ) : (
+    <button type="button" onClick={navigateHome} className="mobile-drawer-item" style={{ transitionDelay: '60ms' }}>
+      Return to site
+    </button>
+  )}
+</div>
 
       {/* EXPLICIT 3-WAY VIEW SWITCH: Blog | Admin | Customer Home (Safe Default) */}
       {view === 'blog' ? (
@@ -1859,7 +1856,7 @@ useEffect(() => {
           )}
         </div>
       ) : (
-        <div className="customer-view">
+        <main id="main-content" className="customer-view">
          <section id="hero" className="hero-section">
             <img
               key={currentHeroSlide.imageUrl}
@@ -1901,22 +1898,21 @@ useEffect(() => {
                 </div>
               </>
             )}
-
-            <div className="hero-content fade-in">
+<div className="hero-content fade-in">
+              <span className="hero-proof-chip">99 Fisherton Street, Salisbury</span>
               <h1>{currentHeroSlide.headline}</h1>
               {currentHeroSlide.subheadline && <p>{currentHeroSlide.subheadline}</p>}
               <div className="hero-actions">
-                <a href="#reserve" className="btn btn-primary">{currentHeroSlide.ctaText || 'Reserve a Table'}</a>
-                <button type="button" onClick={() => setIsLightboxOpen(true)} className="btn btn-secondary" style={{ color: '#FBF6EA', borderColor: '#FBF6EA' }}>View Menu</button>
+                <a href="#reserve" className="btn btn-primary">{currentHeroSlide.ctaText || 'Reserve a table'}</a>
               </div>
             </div>
           </section>
 
-          <section className="feature-strip">
+          <section className="feature-strip" data-reveal>
             <div className="feature-item">
               <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"></path><path d="M9.828 15.828a4 4 0 015.656-5.656S15 12 13 13c0-2-2.5-3-4-3 1.5 2 2.5 3 2.5 4.5 0 1.5-1.686 3-1.672 1.328z"></path></svg>
               <h3>Charcoal Grill</h3>
-              <p>Authentic fire-roasted meats and skewers.</p>
+              <p>Authentic fire roasted meats and skewers.</p>
             </div>
             <div className="feature-item">
               <svg className="feature-icon" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15c0-4.418-4.03-8-9-8s-9 3.582-9 8h18z"></path><path d="M12 7V3M8 5v2M16 5v2"></path><path d="M3 15h18v2a4 4 0 01-4 4H7a4 4 0 01-4-4v-2z"></path></svg>
@@ -1930,7 +1926,7 @@ useEffect(() => {
             </div>
           </section>
 
-          <section id="menu" className="menu-section">
+          <section id="menu" className="menu-section" data-reveal>
             <div className="menu-section-header">
               <h2>Our Menu</h2>
               <div className="gold-divider"><span></span></div>
@@ -2002,14 +1998,16 @@ useEffect(() => {
             </div>
           </section>
 
-          <section id="space" className="space-section">
+          <TaglineReveal />
+
+       <section id="space" className="space-section" data-reveal>
             <div className="arch-image-container">
               <img src="/images/interior.webp" alt="MyHosh Interior" className="arch-mask" loading="lazy" />
             </div>
             <div className="space-content">
               <h2>An Elegant Atmosphere</h2>
               <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '20px 0' }}><span></span></div>
-              <p>Settle into our emerald velvet chairs, dine on white marble tables, and let our warm, candle-lit ambience transport you to the heart of Turkey.</p>
+              <p>Settle into our emerald velvet chairs, dine on white marble tables, and let our warm, candlelit ambience transport you to the heart of Turkey.</p>
             </div>
           </section>
 
@@ -2019,7 +2017,7 @@ useEffect(() => {
             <h2>From the Charcoal Grill</h2>
           </section>
 
-          <section id="reserve" className="booking-section">
+          <section id="reserve" className="booking-section" data-reveal>
             <div className="text-center" style={{ marginBottom: '40px' }}>
               <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
               <div className="gold-divider"><span></span></div>
@@ -2155,11 +2153,11 @@ useEffect(() => {
                             <button type="button" className="legal-inline-link" onClick={() => setLegalModal('terms')}>
                               Terms &amp; Conditions
                             </button>
-                            {' '}(2-hour sitting, 15-min hold) and have read the{' '}
+                            {' '}( two hour sitting, 15-min hold) and have read the{' '}
                             <button type="button" className="legal-inline-link" onClick={() => setLegalModal('privacy')}>
                               Privacy Policy
                             </button>
-                            {' '}(6-month UK GDPR auto-deletion; click to view or save as PDF).
+                            {' '}(six month UK GDPR automatic deletion; click to view or save as PDF).
                           </span>
                         </label>
                       </div>
@@ -2185,7 +2183,7 @@ useEffect(() => {
             </div>
           </section>
 
-          <section id="visit" className="visit-section">
+        <section id="visit" className="visit-section" data-reveal>
             <img src="/images/storefront.webp" alt="MyHosh Storefront" className="visit-image" loading="lazy" />
             <div className="visit-details">
               <h2>Visit Us</h2>
@@ -2294,10 +2292,10 @@ useEffect(() => {
               </div>
             </div>
           )}
-        </div>
-      )}
+       </main>
+     )}
 
-      {/* --- POPUP 1: CLICKABLE TABLE FLOOR DETAILS MODAL --- */}
+     {/* --- POPUP 1: CLICKABLE TABLE FLOOR DETAILS MODAL --- */}
       {view === 'admin' && isAuthenticated && selectedFloorTable && selectedFloorInfo && (
         <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedFloorTable(null)}>
           <div className="modal-content" style={{ maxWidth: '540px' }} onClick={e => e.stopPropagation()}>
