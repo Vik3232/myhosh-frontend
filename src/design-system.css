@@ -1,35 +1,36 @@
 /* ==========================================================================
-   MYHOSH SALISBURY — PROFESSIONAL DESIGN SYSTEM (SKILL_2.md Compliant)
+   MYHOSH SALISBURY — WARM CREAM, EMERALD & GOLD DESIGN SYSTEM
+   (Original MyHosh Palette + SKILL_2.md Typography, Spacing & Motion)
    ========================================================================== */
 
    :root {
-    /* B4. Approved Dark Mode Background Colors (Flat Only) */
-    --bg-black: #000000;
-    --bg-base: #131209;
-    --bg-surface-1: #181818;
-    --bg-surface-2: #1F1F1F;
-    --bg-surface-3: #272727;
-    --bg-surface-4: #313131;
+    /* Original MyHosh Brand Palette (Flat Surfaces Only) */
+    --bg-base: #FBF6EA;
+    --bg-surface-1: #F5EFE2;
+    --bg-surface-2: #FFFFFF;
+    --bg-surface-3: #EFE7D6;
+    --bg-surface-4: #E6DCC7;
   
     /* Foreground & Brand Accents */
-    --fg-primary: #F5F3EE;
-    --fg-secondary: #B8B4AA;
-    --fg-muted: #8A867C;
-    --border-subtle: rgba(245, 243, 238, 0.12);
-    --border-strong: rgba(245, 243, 238, 0.24);
+    --fg-primary: #1B1A17;
+    --fg-secondary: #5C584F;
+    --fg-muted: #7A756A;
+    --border-subtle: rgba(27, 26, 23, 0.12);
+    --border-strong: rgba(27, 26, 23, 0.24);
   
-    /* Override Legacy App.css Variables Cleanly */
-    --clr-cream: #131209;
-    --clr-marble: #1F1F1F;
-    --clr-charcoal: #F5F3EE;
-    --clr-grey: #B8B4AA;
-    --clr-emerald: #197A5C;
-    --clr-emerald-dark: #125E46;
+    /* MyHosh Core Variables */
+    --clr-cream: #FBF6EA;
+    --clr-marble: #F5EFE2;
+    --clr-charcoal: #1B1A17;
+    --clr-grey: #5C584F;
+    --clr-emerald: #0F4D3A;
+    --clr-emerald-dark: #0A382A;
     --clr-gold: #C89D54;
-    --clr-gold-soft: rgba(200, 157, 84, 0.28);
+    --clr-gold-hover: #B78A3E;
+    --clr-gold-soft: rgba(200, 157, 84, 0.32);
     --clr-gold-pale: #E5CFA3;
-    --clr-error: #E06354;
-    --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.42);
+    --clr-error: #B3402F;
+    --shadow-soft: 0 12px 32px rgba(27, 26, 23, 0.08);
   
     /* B1. Single Primary Typeface + Mono for Numeric Data */
     --font-sans: 'Manrope', system-ui, sans-serif;
@@ -158,8 +159,8 @@
     left: var(--sp-200);
     z-index: 2000;
     padding: var(--sp-75) var(--sp-200);
-    background: var(--bg-black);
-    color: var(--fg-primary);
+    background: var(--clr-emerald);
+    color: var(--clr-cream);
     border: 1px solid var(--clr-gold);
     border-radius: var(--radius-sm);
     text-decoration: none;
@@ -177,7 +178,7 @@
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 2px solid var(--clr-gold);
+    outline: 2px solid var(--clr-emerald);
     outline-offset: 2px;
   }
   
@@ -216,21 +217,21 @@
   }
   
   .btn-primary {
-    background-color: var(--fg-primary);
-    color: var(--bg-black);
-    border-color: var(--fg-primary);
+    background-color: var(--clr-gold);
+    color: var(--clr-charcoal);
+    border-color: var(--clr-gold);
     padding: var(--sp-75) var(--sp-200);
   }
   
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--clr-gold-pale);
-    border-color: var(--clr-gold-pale);
+    background-color: var(--clr-gold-hover);
+    border-color: var(--clr-gold-hover);
     transform: translateY(-1px);
   }
   
   .btn-emerald {
     background-color: var(--clr-emerald);
-    color: #FFFFFF;
+    color: var(--clr-cream);
     border-color: var(--clr-emerald);
     padding: var(--sp-75) var(--sp-200);
   }
@@ -242,19 +243,19 @@
   }
   
   .btn-secondary {
-    background-color: var(--bg-surface-3);
+    background-color: var(--bg-surface-2);
     color: var(--fg-primary);
     border: 1px solid var(--border-strong);
     padding: var(--sp-75) var(--sp-200);
   }
   
   .btn-secondary:hover:not(:disabled) {
-    background-color: var(--bg-surface-4);
-    border-color: var(--clr-gold);
+    background-color: var(--bg-surface-3);
+    border-color: var(--clr-emerald);
     transform: translateY(-1px);
   }
   
-  /* --- B7. FLOATING TRANSLUCENT NAVIGATION BAR --- */
+  /* --- B7. FLOATING TRANSLUCENT NAVIGATION BAR (Warm Cream Glass) --- */
   .site-header {
     position: fixed;
     top: var(--sp-200);
@@ -264,17 +265,17 @@
     max-width: calc(100% - 32px);
     height: auto;
     padding: var(--sp-75) var(--sp-200);
-    background: rgba(24, 24, 24, 0.8);
+    background: rgba(251, 246, 234, 0.88);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
+    border: 1px solid rgba(200, 157, 84, 0.35);
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-300);
     z-index: 1000;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 12px 32px rgba(27, 26, 23, 0.12);
   }
   
   @media (max-width: 860px) {
@@ -293,13 +294,12 @@
   .brand-logo-badge {
     display: inline-flex;
     align-items: center;
-    padding: var(--sp-50) var(--sp-100);
-    border-radius: var(--radius-sm);
-    background: rgba(245, 243, 238, 0.94);
+    padding: var(--sp-0);
+    background: transparent;
   }
   
   .brand-logo img {
-    height: 36px !important;
+    height: 44px !important;
     width: auto;
     display: block;
   }
@@ -311,7 +311,7 @@
   }
   
   .nav-link {
-    color: var(--fg-secondary);
+    color: var(--fg-primary);
     font-size: 14px;
     line-height: 20px;
     font-weight: 500;
@@ -325,8 +325,14 @@
   
   .nav-link:hover,
   .nav-link.is-current {
-    color: var(--fg-primary);
-    background-color: var(--bg-surface-3);
+    color: var(--clr-emerald);
+    background-color: rgba(15, 77, 58, 0.08);
+  }
+  
+  /* Keep Staff Dashboard / Staff Login crisp Emerald on light cream header & drawer */
+  .site-header .nav-link[style*='gold-pale'],
+  .mobile-drawer-item[style*='gold-pale'] {
+    color: var(--clr-emerald) !important;
   }
   
   /* Animated Hamburger-to-X Menu Toggle (B7) */
@@ -355,7 +361,7 @@
     width: 18px;
     height: 2px;
     border-radius: 2px;
-    background-color: var(--fg-primary);
+    background-color: var(--clr-emerald);
     transform-origin: center;
     transition: transform var(--dur-layout) var(--ease-out-expo), opacity var(--dur-hover) var(--ease-out-expo);
   }
@@ -377,12 +383,12 @@
     }
   }
   
-  /* Full-Height Blurred Mobile Drawer with Staggered Link Entrance (B7) */
+  /* Full-Height Blurred Warm Cream Mobile Drawer with Staggered Entrance (B7) */
   .mobile-drawer {
     position: fixed;
     inset: 0;
     z-index: 990;
-    background: rgba(19, 18, 9, 0.96);
+    background: rgba(251, 246, 234, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     padding: var(--sp-900) var(--sp-300) var(--sp-500);
@@ -407,7 +413,7 @@
     padding: var(--sp-100) var(--sp-200);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
-    background: var(--bg-surface-1);
+    background: var(--bg-surface-2);
     color: var(--fg-primary);
     font-size: 20px;
     line-height: 28px;
@@ -431,11 +437,11 @@
     background: var(--bg-surface-3);
   }
   
-  /* --- B5. HERO SECTION (680px Max Width, Flat Scrim, Text Gradient Only) --- */
+  /* --- B5. HERO SECTION (680px Max Width, Flat Photo Scrim, Crisp Text) --- */
   .hero-section {
     position: relative;
     min-height: 92vh;
-    background-color: var(--bg-black);
+    background-color: var(--clr-emerald-dark);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -447,7 +453,7 @@
   .hero-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(19, 18, 9, 0.64) !important;
+    background: rgba(19, 18, 9, 0.56) !important;
     z-index: 1;
   }
   
@@ -464,7 +470,6 @@
     gap: var(--sp-300);
   }
   
-  /* The ONE allowed gradient: Dark Theme Hero Text #FFFFFF -> #9B9B9B (B5) */
   .hero-content h1 {
     margin: var(--sp-0);
     max-width: 680px;
@@ -472,7 +477,7 @@
     line-height: 60px;
     font-weight: 600;
     letter-spacing: -0.025em;
-    background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%);
+    background: linear-gradient(90deg, #FFFFFF 0%, #E5CFA3 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -485,7 +490,7 @@
     font-size: 18px;
     line-height: 28px;
     font-weight: 400;
-    color: var(--fg-secondary);
+    color: #F5EFE2;
   }
   
   .hero-proof-chip {
@@ -494,9 +499,9 @@
     gap: var(--sp-75);
     padding: var(--sp-50) var(--sp-100);
     border-radius: 999px;
-    background: var(--bg-surface-2);
-    border: 1px solid var(--border-subtle);
-    color: var(--clr-gold-pale);
+    background: rgba(15, 77, 58, 0.85);
+    border: 1px solid rgba(200, 157, 84, 0.55);
+    color: #FBF6EA;
     font-size: 12px;
     line-height: 16px;
     font-weight: 500;
@@ -524,9 +529,9 @@
     }
   }
   
-  /* --- B11. MANDATORY TAGLINE REVEAL SECTION --- */
+  /* --- B11. MANDATORY TAGLINE REVEAL SECTION (Warm Marble) --- */
   .tagline-reveal-section {
-    background-color: var(--bg-black);
+    background-color: var(--bg-surface-1);
     padding: var(--sp-900) var(--sp-300);
     border-top: 1px solid var(--border-subtle);
     border-bottom: 1px solid var(--border-subtle);
@@ -541,7 +546,7 @@
   .tagline-reveal-eyebrow {
     display: block;
     margin-bottom: var(--sp-200);
-    color: var(--clr-gold);
+    color: var(--clr-emerald);
     font-size: 12px;
     line-height: 16px;
     font-weight: 600;
@@ -561,7 +566,7 @@
   .tagline-reveal-word {
     display: inline-block;
     margin-right: 0.28em;
-    opacity: 0.28;
+    opacity: 0.26;
     transition: opacity 420ms var(--ease-out-expo);
   }
   
@@ -593,10 +598,10 @@
     transform: translateY(0);
   }
   
-  /* --- FEATURE STRIP, MENU, SPACE, IMAGE BAND, BOOKING, VISIT, FOOTER --- */
+  /* --- FEATURE STRIP, MENU, SPACE, IMAGE BAND --- */
   .feature-strip {
     background-color: var(--bg-surface-1) !important;
-    padding: var(--sp-700) var(--sp-300) !important;
+    padding: var(--sp-600) var(--sp-300) !important;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: var(--sp-300);
@@ -615,7 +620,7 @@
   }
   
   .feature-icon {
-    color: var(--clr-gold);
+    color: var(--clr-emerald);
     margin-bottom: var(--sp-200);
   }
   
@@ -624,6 +629,7 @@
     font-size: 20px;
     line-height: 28px;
     font-weight: 600;
+    color: var(--clr-emerald);
   }
   
   .feature-item p {
@@ -644,11 +650,7 @@
     font-size: 36px !important;
     line-height: 40px !important;
     font-weight: 600 !important;
-    color: var(--fg-primary) !important;
-  }
-  
-  .gold-divider {
-    display: none !important;
+    color: var(--clr-emerald) !important;
   }
   
   .menu-category-tabs {
@@ -661,7 +663,7 @@
   
   .menu-cat-tab {
     background-color: var(--bg-surface-2) !important;
-    color: var(--fg-secondary) !important;
+    color: var(--fg-primary) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-sm) !important;
     padding: var(--sp-75) var(--sp-200) !important;
@@ -678,13 +680,13 @@
   
   .menu-cat-tab:hover {
     background-color: var(--bg-surface-3) !important;
-    color: var(--fg-primary) !important;
+    border-color: var(--clr-gold) !important;
   }
   
   .menu-cat-tab.active {
-    background-color: var(--fg-primary) !important;
-    color: var(--bg-black) !important;
-    border-color: var(--fg-primary) !important;
+    background-color: var(--clr-emerald) !important;
+    color: var(--clr-cream) !important;
+    border-color: var(--clr-emerald) !important;
   }
   
   .menu-card {
@@ -692,12 +694,12 @@
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-md) !important;
     padding: var(--sp-200) !important;
-    box-shadow: none !important;
+    box-shadow: var(--shadow-soft) !important;
     transition: border-color var(--dur-hover) var(--ease-out-expo), transform var(--dur-hover) var(--ease-out-expo);
   }
   
   .menu-card:hover {
-    border-color: var(--border-strong) !important;
+    border-color: var(--clr-gold) !important;
     transform: translateY(-2px);
   }
   
@@ -714,7 +716,7 @@
     font-size: 16px !important;
     line-height: 24px !important;
     font-weight: 600 !important;
-    color: var(--clr-gold-pale) !important;
+    color: var(--clr-emerald) !important;
   }
   
   .text-muted {
@@ -723,10 +725,8 @@
   
   /* Space & Charcoal Band */
   .space-section {
-    background-color: var(--bg-surface-1) !important;
+    background-color: var(--bg-base) !important;
     padding: var(--sp-800) var(--sp-300) !important;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
   }
   
   .space-content p {
@@ -736,51 +736,40 @@
   }
   
   .image-band {
-    background-color: var(--bg-black) !important;
+    background-color: var(--clr-emerald-dark) !important;
   }
   
   .image-band .overlay {
-    background: rgba(19, 18, 9, 0.56) !important;
+    background: rgba(19, 18, 9, 0.48) !important;
   }
   
   .image-band h2 {
     font-size: 36px !important;
     line-height: 40px !important;
-    color: var(--fg-primary) !important;
+    color: var(--clr-cream) !important;
   }
   
-  /* --- RESERVATION SECTION & INPUTS --- */
+  /* --- RESERVATION SECTION (Signature Emerald Backdrop + Crisp Cream Card) --- */
   .booking-section {
-    background-color: var(--bg-base) !important;
+    background-color: var(--clr-emerald) !important;
     padding: var(--sp-800) var(--sp-300) !important;
   }
   
-  .booking-hours-box {
-    display: inline-block;
-    padding: var(--sp-200) var(--sp-300);
-    border-radius: var(--radius-md);
-    background: var(--bg-surface-2);
-    border: 1px solid var(--border-subtle);
-    color: var(--fg-secondary);
-    font-size: 14px;
-    line-height: 20px;
-  }
-  
   .booking-container {
-    background-color: var(--bg-surface-1) !important;
-    border: 1px solid var(--border-subtle) !important;
+    background-color: var(--bg-surface-2) !important;
+    border: 1px solid rgba(200, 157, 84, 0.45) !important;
     border-radius: var(--radius-lg) !important;
     overflow: hidden;
-    box-shadow: var(--shadow-soft) !important;
+    box-shadow: 0 20px 50px rgba(10, 56, 42, 0.35) !important;
   }
   
   .booking-form-content {
-    background-color: var(--bg-surface-1) !important;
+    background-color: var(--bg-surface-2) !important;
     padding: var(--sp-400) !important;
   }
   
   .form-group label {
-    color: var(--fg-secondary) !important;
+    color: var(--fg-primary) !important;
     font-size: 14px !important;
     line-height: 20px !important;
     font-weight: 500 !important;
@@ -789,9 +778,9 @@
   .form-input,
   .admin-input,
   .time-trigger-btn {
-    background-color: var(--bg-surface-3) !important;
+    background-color: var(--bg-base) !important;
     color: var(--fg-primary) !important;
-    border: 1px solid var(--border-subtle) !important;
+    border: 1px solid var(--border-strong) !important;
     border-radius: var(--radius-sm) !important;
     padding: var(--sp-100) var(--sp-200) !important;
     font-family: var(--font-sans) !important;
@@ -803,7 +792,7 @@
   .form-input:hover,
   .admin-input:hover,
   .time-trigger-btn:hover {
-    border-color: var(--border-strong) !important;
+    border-color: var(--clr-emerald) !important;
   }
   
   .form-input::placeholder,
@@ -813,14 +802,14 @@
   
   .time-sheet-card,
   .modal-content {
-    background-color: var(--bg-surface-1) !important;
+    background-color: var(--bg-surface-2) !important;
     color: var(--fg-primary) !important;
     border: 1px solid var(--border-strong) !important;
     border-radius: var(--radius-lg) !important;
   }
   
   .time-slot-chip {
-    background-color: var(--bg-surface-2) !important;
+    background-color: var(--bg-base) !important;
     color: var(--fg-primary) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-sm) !important;
@@ -828,33 +817,32 @@
   }
   
   .time-slot-chip.selected {
-    background-color: var(--fg-primary) !important;
-    color: var(--bg-black) !important;
-    border-color: var(--fg-primary) !important;
+    background-color: var(--clr-emerald) !important;
+    color: var(--clr-cream) !important;
+    border-color: var(--clr-emerald) !important;
   }
   
   .fully-booked-call-box {
-    background-color: var(--bg-surface-2) !important;
-    border: 1px solid var(--clr-gold-soft) !important;
+    background-color: var(--bg-surface-1) !important;
+    border: 1px solid var(--clr-gold) !important;
     border-radius: var(--radius-md) !important;
     color: var(--fg-primary) !important;
   }
   
   .booking-summary-item {
-    background-color: var(--bg-surface-2) !important;
+    background-color: var(--bg-surface-1) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-sm) !important;
   }
   
   .legal-inline-link {
-    color: var(--clr-gold-pale) !important;
+    color: var(--clr-emerald) !important;
   }
   
   /* --- VISIT US & FOOTER --- */
   .visit-section {
-    background-color: var(--bg-surface-1) !important;
+    background-color: var(--bg-base) !important;
     padding: var(--sp-800) var(--sp-300) !important;
-    border-top: 1px solid var(--border-subtle);
   }
   
   .visit-image {
@@ -867,23 +855,23 @@
   }
   
   .text-emerald {
-    color: var(--clr-gold-pale) !important;
+    color: var(--clr-emerald) !important;
   }
   
   .site-footer {
-    background-color: var(--bg-black) !important;
-    border-top: 1px solid var(--border-subtle);
+    background-color: var(--clr-emerald-dark) !important;
+    border-top: 1px solid rgba(200, 157, 84, 0.35);
     padding: var(--sp-700) var(--sp-300) var(--sp-500) !important;
-    color: var(--fg-secondary) !important;
+    color: var(--clr-cream) !important;
   }
   
   .footer-logo {
-    color: var(--fg-primary) !important;
+    color: var(--clr-gold-pale) !important;
     font-weight: 600 !important;
     letter-spacing: 0.14em;
   }
   
-  /* --- BLOG & EDITORIAL CARDS ON DARK THEME --- */
+  /* --- BLOG & EDITORIAL CARDS ON WARM CREAM --- */
   .subpage-shell {
     padding-top: var(--sp-900) !important;
     min-height: 100vh;
@@ -891,7 +879,7 @@
   }
   
   .bento-grid {
-    background-color: var(--bg-surface-1) !important;
+    background-color: #2B2926 !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-lg) !important;
     padding: var(--sp-75) !important;
@@ -899,8 +887,8 @@
   }
   
   .bento-tile {
-    border-radius: var(--radius-sm) !important; /* 16px - 8px = 8px */
-    background-color: var(--bg-surface-2) !important;
+    border-radius: var(--radius-sm) !important;
+    background-color: var(--bg-surface-3) !important;
   }
   
   .editorial-blog-card {
@@ -918,12 +906,12 @@
   }
   
   .blog-category-badge {
-    background-color: var(--bg-surface-3) !important;
-    color: var(--clr-gold-pale) !important;
-    border: 1px solid var(--border-subtle) !important;
+    background-color: rgba(15, 77, 58, 0.1) !important;
+    color: var(--clr-emerald) !important;
+    border: 1px solid rgba(15, 77, 58, 0.2) !important;
   }
   
-  /* --- ADMIN DASHBOARD (Full 4-Sided Borders, High-Contrast Floor Visibility) --- */
+  /* --- ADMIN DASHBOARD (Warm Cream & Emerald, Full 4-Sided Borders) --- */
   .admin-view {
     min-height: 100vh;
     background-color: var(--bg-base) !important;
@@ -933,12 +921,19 @@
   .admin-header h1 {
     font-size: 30px !important;
     line-height: 36px !important;
-    color: var(--fg-primary) !important;
+    color: var(--clr-emerald) !important;
   }
   
-  .admin-toolbar,
+  .admin-toolbar {
+    background-color: var(--bg-surface-2) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: var(--radius-lg) !important;
+    color: var(--fg-primary) !important;
+    box-shadow: var(--shadow-soft) !important;
+  }
+  
   .promo-admin-card {
-    background-color: var(--bg-surface-1) !important;
+    background-color: var(--bg-surface-2) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-lg) !important;
     color: var(--fg-primary) !important;
@@ -946,7 +941,7 @@
   
   .btn-admin-tab {
     background-color: var(--bg-surface-2) !important;
-    color: var(--fg-secondary) !important;
+    color: var(--fg-primary) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-sm) !important;
     padding: var(--sp-75) var(--sp-200) !important;
@@ -954,64 +949,65 @@
     line-height: 20px !important;
     font-weight: 600 !important;
     cursor: pointer;
-    transition: background-color var(--dur-hover) var(--ease-out-expo), color var(--dur-hover) var(--ease-out-expo);
+    transition: background-color var(--dur-hover) var(--ease-out-expo), color var(--dur-hover) var(--ease-out-expo), border-color var(--dur-hover) var(--ease-out-expo);
   }
   
   .btn-admin-tab:hover {
     background-color: var(--bg-surface-3) !important;
-    color: var(--fg-primary) !important;
+    border-color: var(--clr-gold) !important;
   }
   
   .btn-admin-tab.active {
-    background-color: var(--fg-primary) !important;
-    color: var(--bg-black) !important;
-    border-color: var(--fg-primary) !important;
+    background-color: var(--clr-emerald) !important;
+    color: var(--clr-cream) !important;
+    border-color: var(--clr-emerald) !important;
   }
   
   .metric-tile {
-    background-color: var(--bg-surface-2) !important;
+    background-color: var(--bg-surface-1) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-md) !important;
   }
   
   .metric-value {
     font-family: var(--font-mono) !important;
-    color: var(--fg-primary) !important;
+    color: var(--clr-emerald) !important;
   }
   
   .date-group-header {
-    background-color: var(--bg-surface-3) !important;
-    border: 1px solid var(--border-subtle) !important;
+    background-color: var(--clr-emerald) !important;
+    border: 1px solid var(--clr-emerald-dark) !important;
     border-radius: var(--radius-sm) !important;
   }
   
-  /* Full 4-Sided Borders (B4) — Never Single-Sided Left Border */
+  /* Full 4-Sided Borders (B4) — Crisp Seated Green & Late Red */
   .admin-card {
     background-color: var(--bg-surface-2) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-md) !important;
     color: var(--fg-primary) !important;
+    box-shadow: var(--shadow-soft) !important;
   }
   
   .admin-card.is-seated {
-    background-color: rgba(25, 122, 92, 0.16) !important;
-    border: 1px solid #2AA87E !important;
+    background-color: rgba(15, 77, 58, 0.1) !important;
+    border: 1px solid var(--clr-emerald) !important;
   }
   
   .admin-card.is-late {
-    background-color: rgba(224, 99, 84, 0.16) !important;
-    border: 1px solid #E06354 !important;
+    background-color: rgba(179, 64, 47, 0.1) !important;
+    border: 1px solid var(--clr-error) !important;
   }
   
   .card-time {
     font-family: var(--font-mono) !important;
-    color: var(--fg-primary) !important;
+    color: var(--clr-emerald) !important;
   }
   
   .card-table-pill {
-    background-color: var(--bg-surface-3) !important;
+    background-color: var(--bg-surface-1) !important;
     color: var(--fg-primary) !important;
-    border: 1px solid var(--border-subtle) !important;
+    border: 1px solid var(--clr-gold-soft) !important;
   }
   
   .floor-table-tile {
@@ -1020,23 +1016,15 @@
   }
   
   .table-popup-booking-row {
-    background-color: var(--bg-surface-2) !important;
+    background-color: var(--bg-surface-1) !important;
     border: 1px solid var(--border-subtle) !important;
     border-radius: var(--radius-sm) !important;
   }
   
   .size-guide-banner {
-    background-color: var(--bg-surface-2) !important;
-    border: 1px solid var(--clr-gold-soft) !important;
-    color: var(--fg-secondary) !important;
-  }
-  
-  /* Override White Cards Inside Admin Menu & Blog Managers */
-  .admin-view [style*='background: #fff'],
-  .admin-view [style*='background: rgb(255, 255, 255)'] {
-    background-color: var(--bg-surface-2) !important;
+    background-color: rgba(15, 77, 58, 0.08) !important;
+    border: 1px solid rgba(15, 77, 58, 0.22) !important;
     color: var(--fg-primary) !important;
-    border-color: var(--border-subtle) !important;
   }
   
   /* --- B7 & B11. REDUCED MOTION COMPLIANCE --- */
