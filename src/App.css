@@ -1626,7 +1626,7 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   }
   .mobile-drawer .btn { margin-top: var(--s-300) !important; min-height: 52px; }
 
-  /* 3. Hero: low-left editorial alignment, solid cream headline for iOS */
+  /* 3. Hero: low-left editorial alignment; sticky bottom bar owns the mobile Reserve CTA */
   .hero-section { min-height: 88svh; align-items: end; }
   .hero-overlay { background: rgba(19, 18, 9, 0.62); }
   .hero-content {
@@ -1639,16 +1639,14 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
     max-width: 100%;
     margin-bottom: var(--s-100);
     font: var(--t-h4);
-    line-height: 1.15;
     background: none;
     -webkit-text-fill-color: currentColor;
     color: #fbf6ea;
     filter: none;
     text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
   }
-  .hero-content p { max-width: 100%; margin-bottom: var(--s-300); font: var(--t-body-3); line-height: 1.55; }
-  .hero-actions { width: 100%; flex-direction: column; align-items: stretch; gap: var(--s-100); }
-  .hero-actions .btn { width: 100%; min-height: 52px; }
+  .hero-content p { max-width: 100%; margin-bottom: 0; font: var(--t-body-3); }
+  .hero-actions { display: none; }
   .hero-slider-controls { bottom: var(--s-300); justify-content: flex-start; padding-left: var(--s-200); }
 
   /* 4. Feature strip: compact horizontal rows */
@@ -1711,8 +1709,7 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
     max-width: 360px;
     margin: 0 auto;
     padding: var(--s-200) !important;
-    font-size: 0.875rem !important;
-    line-height: 1.6;
+    font: var(--t-body-6) !important;
   }
   .booking-image-side { display: none; }
   .booking-container { border-radius: var(--r-2xl); }
@@ -1769,7 +1766,7 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   .visit-section { gap: var(--s-400); padding: var(--s-600) var(--s-300); }
   .visit-image { aspect-ratio: 16 / 10; }
   .visit-details .btn { width: 100%; }
-  .site-footer { padding: var(--s-600) var(--s-200) calc(var(--s-400) + 72px + env(safe-area-inset-bottom)); }
+  .site-footer { padding: var(--s-600) var(--s-200) calc(var(--s-400) + var(--s-800) + env(safe-area-inset-bottom)); }
   .footer-links { gap: var(--s-100) var(--s-300); margin-bottom: var(--s-300); }
   .footer-links a, .footer-links button { min-height: 44px; display: inline-flex; align-items: center; }
   .footer-bottom { flex-direction: column; gap: var(--s-75) !important; }
@@ -1815,43 +1812,13 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
 
 /* Very small phones (iPhone SE / 360px) */
 @media (max-width: 380px) {
-  .hero-content h1 { font-size: 1.625rem; line-height: 1.2; }
+  .hero-content h1 { font: var(--t-h5); }
   .brand-logo-badge img { height: 32px; }
   .time-chips-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .booking-summary-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------- 18. REDUCED MOTION (CONSOLIDATED) ---------- */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --mv-sm: 0px;
-    --mv-md: 0px;
-    --mv-lg: 0px;
-    --zoom-from: 1;
-    --pop-from: 1;
-  }
-  *,
-  *::before,
-  *::after {
-    animation-delay: 0ms !important;
-    animation-duration: 240ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 240ms !important;
-    scroll-behavior: auto !important;
-  }
-  body::before,
-  .hero-section::after,
-  .btn-primary::after,
-  html[data-theme='dark'] .btn-emerald::after { display: none; }
-  .image-band img { animation: none; inset: 0; height: 100%; }
-  .staff-login-shell::before { animation: none; inset: 0; }
-  .hero-bg,
-  .poster-modal-card,
-  .poster-book-text { animation-name: fadeIn !important; }
-  .myhosh-ring-inner { animation: pulse 1.4s var(--ease) infinite !important; }
-  .mobile-reserve-bar { transition-duration: 240ms; }
-}
-/* ---------- 19. STAFF LOGIN PORTAL, PASSWORD TOGGLE & STRENGTH METER ---------- */
+/* ---------- 18. STAFF LOGIN PORTAL, PASSWORD TOGGLE & STRENGTH METER ---------- */
 @keyframes staffLatticeDrift {
   from {
     transform: translate3d(0, 0, 0);
@@ -1894,7 +1861,6 @@ html[data-theme='dark'] .staff-login-shell::before {
   width: min(100%, 420px);
   padding: var(--s-400) var(--s-300);
   border: 1px solid var(--line);
-  border-top: 2px solid var(--clr-gold);
   border-radius: var(--r-2xl);
   background: var(--bg-surface);
   box-shadow: var(--shadow-soft);
@@ -1969,7 +1935,7 @@ html[data-theme='dark'] .staff-login-shell::before {
 .staff-login-form .staff-login-field:nth-child(2) { animation-delay: 120ms; }
 .staff-login-form .staff-login-field:nth-child(3) { animation-delay: 180ms; }
 
-/* PIN treatment: truly centered despite 0.5em letter-spacing, clear of eye button */
+/* PIN treatment: centered despite 0.5em letter-spacing, clear of eye button */
 .staff-login-pin {
   text-align: center;
   text-indent: 0.5em;
@@ -2127,113 +2093,39 @@ html[data-theme='dark'] .staff-login-shell::before {
   animation: fadeIn var(--dur-fast) var(--ease) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .staff-login-shell::before { animation: none; inset: 0; }
-  .staff-login-form .staff-login-field { animation: fadeIn 240ms var(--ease) both; animation-delay: 0ms !important; }
-}
-
 @media (max-width: 480px) {
   .staff-login-shell { padding: var(--s-700) var(--s-200) var(--s-500); }
   .staff-login-card { padding: var(--s-300) var(--s-200); }
 }
 
-.staff-login-card h2 {
-  margin-bottom: var(--s-75);
-  font: var(--t-h5);
-  color: var(--accent-text);
-}
-
-.staff-login-subtitle {
-  margin-bottom: var(--s-300);
-  font: var(--t-body-6);
-  color: var(--text-2);
-}
-
-.staff-login-form {
-  display: grid;
-  gap: var(--s-200);
-}
-
-.password-field-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.password-field-input {
-  width: 100%;
-  padding-right: 48px !important;
-}
-
-.password-toggle-btn {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-lg);
-  color: var(--text-2);
-  transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
-}
-
-.password-toggle-btn:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 8%, transparent);
-}
-
-.pw-rules-list {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-50) var(--s-100);
-  margin-top: var(--s-75);
-  padding: var(--s-75) var(--s-100);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg-raised);
-  text-align: left;
-  color: var(--text-2);
-}
-
-.pw-rules-list li {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  line-height: 1.1rem;
-  transition: color var(--dur-fast) var(--ease);
-}
-
-.pw-rules-list li.is-met {
-  color: var(--accent-text);
-  font-weight: 600;
-}
-
-.forgot-help-btn {
-  margin-top: var(--s-200);
-  padding: var(--s-50) var(--s-75);
-  font: var(--t-caption-1);
-  color: var(--text-2);
-  text-decoration: underline;
-  text-decoration-color: var(--clr-gold);
-  text-underline-offset: 3px;
-  transition: color var(--dur-fast) var(--ease);
-}
-
-.forgot-help-btn:hover {
-  color: var(--accent-text);
-}
-
-.forgot-help-box {
-  margin-top: var(--s-100);
-  padding: var(--s-100) var(--s-200);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg-raised);
-  text-align: left;
-  font: var(--t-caption-2);
-  color: var(--text-2);
-  animation: fadeIn var(--dur-fast) var(--ease) both;
+/* ---------- 19. REDUCED MOTION (ALWAYS LAST IN FILE) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mv-sm: 0px;
+    --mv-md: 0px;
+    --mv-lg: 0px;
+    --zoom-from: 1;
+    --pop-from: 1;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0ms !important;
+    animation-duration: 240ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 240ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::before,
+  .hero-section::after,
+  .btn-primary::after,
+  html[data-theme='dark'] .btn-emerald::after { display: none; }
+  .image-band img { animation: none; inset: 0; height: 100%; }
+  .staff-login-shell::before { animation: none; inset: 0; }
+  .hero-bg,
+  .poster-modal-card,
+  .poster-book-text,
+  .staff-login-form .staff-login-field { animation-name: fadeIn !important; }
+  .myhosh-ring-inner { animation: pulse 1.4s var(--ease) infinite !important; }
+  .mobile-reserve-bar { transition-duration: 240ms; }
 }
