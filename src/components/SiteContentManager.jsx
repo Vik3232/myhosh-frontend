@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
@@ -70,7 +71,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
 
   if (!shouldShow) return null;
 
-  return (
+  return createPortal(
     <div
       className="poster-modal-overlay"
       role="dialog"
@@ -92,15 +93,17 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
           href="#reserve"
           onClick={handlePosterClick}
           className="poster-modal-link"
-          aria-label="Click poster to reserve a table"
+          aria-label="Click here to book a table"
         >
           <img
             src={siteContent.posterImageUrl}
-            alt={siteContent.posterTitle || 'MyHosh special event poster, click to reserve'}
+            alt={siteContent.posterTitle || 'MyHosh special event poster'}
           />
+          <span className="poster-book-badge">Click here to book</span>
         </a>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -1522,3 +1522,89 @@ html[data-theme='dark'] .admin-section-tabs .btn-admin-tab.active {
   color: var(--text);
   min-width: 68px;
 }
+/* ==========================================================================
+   EVENT POSTER: LIGHT MODE BACKDROP FIX + "CLICK HERE TO BOOK" OVERLAY
+   ========================================================================== */
+
+/* Light Mode: frosted warm-cream backdrop instead of harsh black */
+:root .poster-modal-overlay,
+html[data-theme='light'] .poster-modal-overlay {
+  background: rgba(251, 246, 234, 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Dark Mode: keep normal dark backdrop */
+html[data-theme='dark'] .poster-modal-overlay {
+  background: rgba(0, 0, 0, 0.74);
+}
+
+/* Shrink-wrap strictly to the image edges (zero black side bars) */
+.poster-modal-card {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  max-width: min(92vw, 480px);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.poster-modal-link {
+  position: relative;
+  display: block;
+  line-height: 0;
+  overflow: hidden;
+  border-radius: var(--r-2xl);
+  background: transparent;
+  box-shadow: var(--shadow-float);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.poster-modal-link img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(92vw, 480px);
+  max-height: 82svh;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Always-visible bottom call to action over the poster image */
+.poster-book-badge {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s-200);
+  transform: translateX(-50%);
+  z-index: 2;
+  max-width: calc(100% - var(--s-300));
+  padding: var(--s-75) var(--s-200);
+  border: 1px solid rgba(27, 26, 23, 0.16);
+  border-radius: var(--r-full);
+  background: var(--clr-gold);
+  color: var(--on-gold);
+  font: var(--t-button-sm);
+  white-space: nowrap;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(19, 18, 9, 0.32);
+  transition:
+    transform var(--dur-base) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+
+.poster-modal-link:hover .poster-book-badge {
+  background: var(--clr-gold-soft);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Keep Admin poster preview neutral (warm marble in Light Mode, charcoal in Dark Mode) */
+.promo-preview-box,
+.promo-preview-box--poster {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+}
+
+.promo-preview-box--poster img {
+  object-fit: contain;
+}
