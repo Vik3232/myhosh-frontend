@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+const POSTER_DELAY_MS = 5000;
 
 export const DEFAULT_SITE_CONTENT = {
   slide1Enabled: true,
@@ -28,13 +29,33 @@ export const DEFAULT_SITE_CONTENT = {
 };
 
 export function EventPosterModal({ siteContent, forceOpen = false, onForceClose }) {
-  const [dismissedKey, setDismissedKey] = useState(() => sessionStorage.getItem('myhosh_dismissed_poster') || '');
+  const [dismissedKey, setDismissedKey] = useState(() => {
+    try {
+      return sessionStorage.getItem('myhosh_dismissed_poster') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [delayElapsed, setDelayElapsed] = useState(false);
 
-  const posterKey = `${siteContent?.posterImageUrl || ''}|${siteContent?.posterTitle || ''}`;
-  const shouldShow = forceOpen || Boolean(
-    siteContent?.posterEnabled &&
-    siteContent?.posterImageUrl &&
-    siteContent.posterImageUrl.trim() !== '' &&
+  const posterUrl = (siteContent?.posterImageUrl || '').trim();
+  const posterKey = `${posterUrl}|${siteContent?.posterTitle || ''}`;
+  const isPosterConfigured = Boolean(siteContent?.posterEnabled && posterUrl);
+
+  // Start a single 5-second countdown from when the modal mounts on the site
+  useEffect(() => {
+    if (forceOpen || !isPosterConfigured) return;
+
+    const timerId = window.setTimeout(() => {
+      setDelayElapsed(true);
+    }, POSTER_DELAY_MS);
+
+    return () => window.clearTimeout(timerId);
+  }, [forceOpen, isPosterConfigured]);
+
+  const shouldShow = forceOpen || (
+    isPosterConfigured &&
+    delayElapsed &&
     dismissedKey !== posterKey
   );
 
@@ -43,7 +64,9 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
       onForceClose();
       return;
     }
-    sessionStorage.setItem('myhosh_dismissed_poster', posterKey);
+    try {
+      sessionStorage.setItem('myhosh_dismissed_poster', posterKey);
+    } catch (_) {}
     setDismissedKey(posterKey);
   };
 
@@ -67,7 +90,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shouldShow, forceOpen, posterKey]);
+  });
 
   if (!shouldShow) return null;
 
@@ -79,7 +102,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
       aria-label={siteContent.posterTitle || 'MyHosh event poster'}
       onClick={handleClose}
     >
-      <div className="poster-modal-card" onClick={e => e.stopPropagation()}>
+      <div className="poster-modal-card poster-modal-card--animated" onClick={e => e.stopPropagation()}>
         <button
           type="button"
           className="poster-modal-close"
@@ -93,7 +116,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
           href="#reserve"
           onClick={handlePosterClick}
           className="poster-modal-link"
-          aria-label="Click here to book a table"
+          aria-label="Reserve your table"
         >
           <img
             src={siteContent.posterImageUrl}
@@ -365,7 +388,7 @@ export function AdminSiteContentManager({ apiBase, siteContent, getStaffHeaders,
             <div>
               <strong className="cms-card-heading">Event poster popup</strong>
               <span className="cms-card-caption">
-                Shows borderless when visitors open the website. Tapping anywhere on the poster scrolls straight to booking.
+                Appears borderless 5 seconds after guests open the website. Tapping anywhere on the poster scrolls straight to booking.
               </span>
             </div>
             <label className={`cms-toggle-pill ${draft.posterEnabled ? 'is-on' : ''}`}>
