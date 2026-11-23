@@ -2156,6 +2156,85 @@ h1, h2, h3, h4, .menu-item-info h4, .footer-links a { overflow-wrap: anywhere; }
   .mobile-reserve-bar { padding-left: var(--s-100); padding-right: var(--s-100); }
 }
 
+/* ---------- 18c. PREMIUM COLOUR & MOTION LAYER ---------- */
+:root, html[data-theme='light'] {
+  --bg-page: #faf5e9;
+  --fill-accent: #0d4636;
+  --fill-accent-hover: #17614b;
+  --grad-gold: linear-gradient(135deg, #e6c27a 0%, #c89d54 45%, #a57a34 100%);
+  --grad-emerald: linear-gradient(160deg, #0f4d3a 0%, #0a2f25 100%);
+  --glow-gold: 0 10px 30px -10px rgba(200, 157, 84, 0.55);
+}
+html[data-theme='dark'] {
+  --grad-gold: linear-gradient(135deg, #f1dfa6 0%, #d6b070 50%, #b0853d 100%);
+  --grad-emerald: linear-gradient(160deg, #134a3a 0%, #071d17 100%);
+  --glow-gold: 0 10px 30px -10px rgba(214, 176, 112, 0.45);
+}
+
+/* Rich section backgrounds */
+.booking-section, .feature-strip, .site-footer { background-image: var(--pattern-lattice), var(--grad-emerald); }
+
+/* Gold primary button with soft glow + shine sweep */
+.btn-primary, .btn-gold, .mobile-reserve-bar .btn:first-child {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--grad-gold); color: var(--on-gold); box-shadow: var(--glow-gold);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.btn-primary::after, .btn-gold::after, .mobile-reserve-bar .btn:first-child::after {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
+  transform: translateX(-120%); animation: btnShine 4.5s var(--ease) 1.5s infinite;
+}
+@keyframes btnShine { 0%, 70% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.btn:active { transform: scale(0.97); }
+
+/* Hero: slow cinematic zoom + title rising in */
+.hero-section img, .hero-slide img { animation: heroZoom 14s ease-out both; }
+@keyframes heroZoom { from { transform: scale(1.1); } to { transform: scale(1); } }
+.hero-content h1 { animation: riseIn 900ms var(--ease) 150ms both; }
+.hero-content p { animation: riseIn 900ms var(--ease) 300ms both; }
+.hero-proof-chip, .hero-actions { animation: riseIn 900ms var(--ease) 450ms both; }
+@keyframes riseIn { from { opacity: 0; transform: translateY(var(--mv-md)); } to { opacity: 1; transform: none; } }
+
+/* Gold divider draws itself */
+.gold-divider::before, .gold-divider::after { transform-origin: center; animation: lineDraw 1s var(--ease) both; }
+.gold-divider span { animation: popIn 600ms var(--ease) 400ms both; }
+@keyframes lineDraw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes popIn { from { opacity: 0; transform: rotate(45deg) scale(0); } to { opacity: 1; transform: rotate(45deg) scale(1); } }
+
+/* Cards: elegant lift + gold edge (only on devices with a mouse) */
+.menu-card, .feature-item { transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+@media (hover: hover) {
+  .menu-card:hover, .feature-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); border-color: var(--clr-gold-soft); }
+  .btn-primary:hover, .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 16px 36px -12px rgba(200,157,84,0.7); }
+}
+/* Touch feedback on phones */
+@media (hover: none) { .menu-card:active, .feature-item:active { transform: scale(0.985); } }
+
+/* Menu tabs: smooth active pill */
+.menu-cat-tab { transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.menu-cat-tab.active, .menu-cat-tab[aria-selected='true'] { background: var(--grad-gold); color: var(--on-gold); box-shadow: var(--glow-gold); }
+
+/* Menu price in gold */
+.menu-item-price { color: var(--gold-text); }
+
+/* Staggered reveal for lists */
+.menu-grid > *, .feature-strip > * { animation: riseIn 700ms var(--ease) both; }
+.menu-grid > *:nth-child(2), .feature-strip > *:nth-child(2) { animation-delay: 80ms; }
+.menu-grid > *:nth-child(3), .feature-strip > *:nth-child(3) { animation-delay: 160ms; }
+.menu-grid > *:nth-child(4), .feature-strip > *:nth-child(4) { animation-delay: 240ms; }
+.menu-grid > *:nth-child(n+5) { animation-delay: 320ms; }
+
+/* Reserve bar slides up on first load */
+@media (max-width: 767px) { .mobile-reserve-bar:not(.is-hidden) { animation: barUp 600ms var(--ease) 800ms both; } }
+@keyframes barUp { from { transform: translateY(110%); } to { transform: none; } }
+
+/* Turn all of this off for people who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary::after, .btn-gold::after, .mobile-reserve-bar .btn:first-child::after { animation: none; display: none; }
+  .hero-section img, .hero-slide img { animation: none; }
+}
+
 /* ---------- 19. REDUCED MOTION (ALWAYS LAST IN FILE) ---------- */
 @media (prefers-reduced-motion: reduce) {
   :root {
