@@ -1844,27 +1844,52 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   .btn-primary::after,
   html[data-theme='dark'] .btn-emerald::after { display: none; }
   .image-band img { animation: none; inset: 0; height: 100%; }
+  .staff-login-shell::before { animation: none; inset: 0; }
   .hero-bg,
   .poster-modal-card,
   .poster-book-text { animation-name: fadeIn !important; }
   .myhosh-ring-inner { animation: pulse 1.4s var(--ease) infinite !important; }
   .mobile-reserve-bar { transition-duration: 240ms; }
 }
-/* ---------- 19. STAFF LOGIN PATTERN, PASSWORD TOGGLE & STRENGTH RULES ---------- */
+/* ---------- 19. STAFF LOGIN ANIMATED FOOD MOTIF, PASSWORD TOGGLE & STRENGTH RULES ---------- */
+@keyframes staffFoodDrift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(160px, 160px, 0);
+  }
+}
+
 .staff-login-shell {
+  position: relative;
   min-height: 100svh;
   width: 100%;
   display: grid;
   place-items: center;
   padding: var(--s-900) var(--s-200) var(--s-600);
-  background-color: #0a2f25;
-  background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.18' stroke-width='1'%3E%3Cpath d='M28 0L56 28L28 56L0 28Z'/%3E%3Cpath d='M28 10L46 28L28 46L10 28Z' stroke-opacity='0.12'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: var(--bg-page);
+  overflow: hidden;
+  isolation: isolate;
 }
 
-html[data-theme='dark'] .staff-login-shell {
-  background-color: #131209;
-  background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M28 0L56 28L28 56L0 28Z'/%3E%3Cpath d='M28 10L46 28L28 46L10 28Z' stroke-opacity='0.09'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+/* GPU-composited seamless diagonal drift of Turkish grill, tea & meze motifs */
+.staff-login-shell::before {
+  content: '';
+  position: absolute;
+  inset: -160px;
+  z-index: -1;
+  pointer-events: none;
+  background-size: 160px 160px;
+  background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%239E7732' stroke-opacity='0.22' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M28 24 C32 33 32 38 28 47 L44 47 C40 38 40 33 44 24 Z'/%3E%3Cpath d='M23 50 Q36 55 49 50'/%3E%3Cpath d='M33 19 Q35 15 33 11'/%3E%3Cpath d='M39 19 Q41 15 39 12'/%3E%3Cg transform='translate(118 38) rotate(-45)'%3E%3Cpath d='M-22 0 L24 0'/%3E%3Ccircle cx='-24.5' cy='0' r='2.5'/%3E%3Crect x='-14' y='-4.5' width='8' height='9' rx='2'/%3E%3Ccircle cx='0' cy='0' r='4.2'/%3E%3Crect x='6.5' y='-4.5' width='8' height='9' rx='2'/%3E%3Cpath d='M21 -2.5 L25 0 L21 2.5'/%3E%3C/g%3E%3Cpath d='M22 122 C22 135 58 135 58 122 Z'/%3E%3Cpath d='M32 134 L48 134'/%3E%3Cpath d='M34 116 Q36 111 34 106'/%3E%3Cpath d='M40 115 Q42 109 40 104'/%3E%3Cpath d='M46 116 Q48 111 46 106'/%3E%3Cpath d='M120 103 C126 111 130 116 130 123 A10 10 0 1 1 110 123 C110 116 115 112 120 103 Z'/%3E%3Cpath d='M120 115 C123 119 124.5 122 124.5 125 A4.5 4.5 0 1 1 115.5 125 C115.5 122 117 119 120 115 Z'/%3E%3Cpath d='M80 75 L84 80 L80 85 L76 80 Z'/%3E%3Ccircle cx='80' cy='14' r='1.5'/%3E%3Ccircle cx='14' cy='80' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+  will-change: transform;
+  animation: staffFoodDrift 28s linear infinite;
 }
+
+html[data-theme='dark'] .staff-login-shell::before {
+  background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.14' stroke-width='1.35' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M28 24 C32 33 32 38 28 47 L44 47 C40 38 40 33 44 24 Z'/%3E%3Cpath d='M23 50 Q36 55 49 50'/%3E%3Cpath d='M33 19 Q35 15 33 11'/%3E%3Cpath d='M39 19 Q41 15 39 12'/%3E%3Cg transform='translate(118 38) rotate(-45)'%3E%3Cpath d='M-22 0 L24 0'/%3E%3Ccircle cx='-24.5' cy='0' r='2.5'/%3E%3Crect x='-14' y='-4.5' width='8' height='9' rx='2'/%3E%3Ccircle cx='0' cy='0' r='4.2'/%3E%3Crect x='6.5' y='-4.5' width='8' height='9' rx='2'/%3E%3Cpath d='M21 -2.5 L25 0 L21 2.5'/%3E%3C/g%3E%3Cpath d='M22 122 C22 135 58 135 58 122 Z'/%3E%3Cpath d='M32 134 L48 134'/%3E%3Cpath d='M34 116 Q36 111 34 106'/%3E%3Cpath d='M40 115 Q42 109 40 104'/%3E%3Cpath d='M46 116 Q48 111 46 106'/%3E%3Cpath d='M120 103 C126 111 130 116 130 123 A10 10 0 1 1 110 123 C110 116 115 112 120 103 Z'/%3E%3Cpath d='M120 115 C123 119 124.5 122 124.5 125 A4.5 4.5 0 1 1 115.5 125 C115.5 122 117 119 120 115 Z'/%3E%3Cpath d='M80 75 L84 80 L80 85 L76 80 Z'/%3E%3Ccircle cx='80' cy='14' r='1.5'/%3E%3Ccircle cx='14' cy='80' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 
 .staff-login-card {
   width: min(100%, 420px);
