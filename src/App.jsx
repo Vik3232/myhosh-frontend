@@ -52,6 +52,7 @@ function App() {
   useEffect(() => {
     sessionStorage.setItem('myhosh_auth', String(isAuthenticated));
   }, [isAuthenticated]);
+  
 
   // Only true when visiting #staff-portal-99 (or already logged in)
   const [staffLinkUnlocked, setStaffLinkUnlocked] = useState(() =>
@@ -1214,14 +1215,28 @@ const heroSlides = activeHeroSlides.length > 0
 
 const currentHeroSlide = heroSlides[heroSlideIndex % heroSlides.length];
 
-useEffect(() => {
-  if (heroSlides.length <= 1) return;
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const id = setInterval(() => {
-    setHeroSlideIndex(prev => (prev + 1) % heroSlides.length);
-  }, 6500);
-  return () => clearInterval(id);
-}, [heroSlides.length]);
+const [hideReserveBar, setHideReserveBar] = useState(false);
+
+  useEffect(() => {
+    const target = document.getElementById('reserve');
+    if (!target || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setHideReserveBar(entry.isIntersecting),
+      { threshold: 0.15 }
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, [view]);
+
+  useEffect(() => {
+    if (heroSlides.length <= 1) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => {
+      setHeroSlideIndex(prev => (prev + 1) % heroSlides.length);
+    }, 6500);
+    return () => clearInterval(id);
+  }, [heroSlides.length]);
+
   return (
     <>
       <a href="#main-content" className="skip-link">Skip to content</a>
@@ -2309,7 +2324,7 @@ useEffect(() => {
             </div>
           )}
 
-          {isLightboxOpen && (
+{isLightboxOpen && (
             <div className="lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
               <div className="lightbox-header">
                 <button type="button" className="lightbox-close" onClick={() => setIsLightboxOpen(false)}>X</button>
@@ -2319,6 +2334,26 @@ useEffect(() => {
               </div>
             </div>
           )}
+
+          <div
+            className={`mobile-reserve-bar ${hideReserveBar ? 'is-hidden' : ''}`}
+            aria-hidden={hideReserveBar}
+          >
+            <a
+              href="#reserve"
+              className="btn btn-primary"
+              tabIndex={hideReserveBar ? -1 : undefined}
+            >
+              Reserve a table
+            </a>
+            <a
+              href={clientTelHref}
+              className="btn btn-secondary"
+              tabIndex={hideReserveBar ? -1 : undefined}
+            >
+              Call
+            </a>
+          </div>
        </main>
      )}
 
