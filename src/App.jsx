@@ -1394,18 +1394,6 @@ useEffect(() => {
 
               {/* SEPARATE ADMIN TABS (Reservations | Menu & Prices | Blog & Photos | Staff) */}
               <div className="admin-section-tabs" role="tablist" aria-label="Admin sections">
-              <button
-                      type="button"
-                      role="tab"
-                      aria-selected={activeAdminTab === 'promotions'}
-                      onClick={() => {
-                        setActiveAdminTab('promotions');
-                        loadSiteContent();
-                      }}
-                      className={`btn-admin-tab ${activeAdminTab === 'promotions' ? 'active' : ''}`}
-                    >
-                      4. Hero &amp; Poster
-                    </button>
                 <button
                   type="button"
                   role="tab"
@@ -1413,7 +1401,7 @@ useEffect(() => {
                   onClick={() => setActiveAdminTab('reservations')}
                   className={`btn-admin-tab ${activeAdminTab === 'reservations' ? 'active' : ''}`}
                 >
-                  1. Reservations
+                  Reservations
                 </button>
                 {currentUser?.role === 'ADMIN' && (
                   <>
@@ -1427,7 +1415,7 @@ useEffect(() => {
                       }}
                       className={`btn-admin-tab ${activeAdminTab === 'menu' ? 'active' : ''}`}
                     >
-                      2. Menu &amp; Prices
+                      Menu &amp; Prices
                     </button>
                     <button
                       type="button"
@@ -1439,7 +1427,19 @@ useEffect(() => {
                       }}
                       className={`btn-admin-tab ${activeAdminTab === 'blog' ? 'active' : ''}`}
                     >
-                      3. Blog &amp; Photos
+                      Blog &amp; Photos
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeAdminTab === 'promotions'}
+                      onClick={() => {
+                        setActiveAdminTab('promotions');
+                        loadSiteContent();
+                      }}
+                      className={`btn-admin-tab ${activeAdminTab === 'promotions' ? 'active' : ''}`}
+                    >
+                      Hero &amp; Poster
                     </button>
                     <button
                       type="button"
@@ -1469,7 +1469,6 @@ useEffect(() => {
                           type="button"
                           onClick={() => setShowWalkInModal(true)}
                           className="btn btn-secondary"
-                          style={{ borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}
                         >
                           + Walk-In
                         </button>
@@ -2044,7 +2043,7 @@ useEffect(() => {
 
           <section id="reserve" className="booking-section" data-reveal>
             <div className="text-center" style={{ marginBottom: '40px' }}>
-              <h2 style={{ color: 'var(--clr-cream)', fontSize: '2.5rem' }}>Reserve a Table</h2>
+            <h2 className="booking-section-title">Reserve a Table</h2>
               <div className="gold-divider"><span></span></div>
               <div style={{ color: 'var(--clr-gold-pale)', fontSize: '0.95rem', background: 'rgba(0,0,0,0.3)', display: 'inline-block', padding: '15px 25px', borderRadius: '8px' }}>
                 <strong>Opening Hours</strong><br />
@@ -2439,7 +2438,7 @@ useEffect(() => {
                   setWalkInDetails(p => ({ ...p, tableId: tableIdStr }));
                   setShowWalkInModal(true);
                 }}
-                className="btn btn-secondary"
+            className="btn btn-secondary btn-walkin"
                 style={{ flex: 1, borderColor: 'var(--clr-emerald)', color: 'var(--clr-emerald)' }}
               >
                 + Walk-In Here
