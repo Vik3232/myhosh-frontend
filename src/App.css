@@ -1702,3 +1702,264 @@ html[data-theme='dark'] .hours-card {
   html[data-theme='dark'] .btn-emerald::after { display: none; }
 }
 
+/* Event Poster Card: Enforced 4:5 Frame + Weighted Entrance Animation */
+@keyframes posterFrameEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.poster-modal-card {
+  position: relative;
+  display: inline-block;
+  width: min(88vw, 400px);
+  max-width: 400px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  animation: posterFrameEnter 650ms var(--ease) both;
+}
+
+.poster-modal-close {
+  position: absolute;
+  top: var(--s-100);
+  right: var(--s-100);
+  z-index: 4;
+  border-radius: 0;
+  background: rgba(19, 18, 9, 0.85);
+  border: 1px solid rgba(200, 157, 84, 0.65);
+  color: #fbf6ea;
+}
+
+.poster-modal-link {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 82svh;
+  line-height: 0;
+  overflow: hidden;
+  border-radius: 0;
+  border: 1px solid rgba(200, 157, 84, 0.55);
+  background: #131209;
+  cursor: pointer;
+  box-shadow: 0 28px 70px rgba(19, 18, 9, 0.44);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.poster-modal-link:hover {
+  transform: translateY(-2px);
+}
+
+.poster-modal-link img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-modal-card {
+    animation: fadeIn 240ms var(--ease) both;
+  }
+}
+/* ==========================================================================
+   MOBILE UI POLISH: HERO & RESERVATION FORM (SKILL.md COMPLIANT)
+   ========================================================================== */
+
+   @media (max-width: 767px) {
+    /* Hero: clean mobile vertical rhythm, readable scale, zero side-edge crowding */
+    .hero-section {
+      min-height: 92svh;
+    }
+  
+    .hero-content {
+      padding: var(--s-800) var(--s-200) var(--s-600);
+      gap: 0;
+    }
+  
+    .hero-proof-chip {
+      max-width: 100%;
+      margin-bottom: var(--s-200);
+      padding: var(--s-50) var(--s-100);
+      font: var(--t-caption-4);
+      text-align: center;
+    }
+  
+    .hero-content h1 {
+      max-width: 100%;
+      margin-bottom: var(--s-100);
+      font: var(--t-h4);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+  
+    .hero-content p {
+      max-width: 100%;
+      margin-bottom: var(--s-300);
+      font: var(--t-body-3);
+      line-height: 1.55;
+    }
+  
+    .hero-actions {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--s-100);
+    }
+  
+    .hero-actions .btn {
+      width: 100%;
+      min-height: 48px;
+      padding: var(--s-100) var(--s-200);
+      font: var(--t-button-md);
+    }
+  
+    .hero-slider-controls {
+      bottom: var(--s-200);
+      gap: var(--s-100);
+    }
+  
+    /* Booking band & form card: crisp mobile framing without cramped padding */
+    .booking-section {
+      padding: var(--s-700) var(--s-200);
+    }
+  
+    .booking-container {
+      border-radius: var(--r-2xl);
+      box-shadow: var(--shadow-soft);
+    }
+  
+    .booking-image-side {
+      height: 180px;
+      max-height: 180px;
+    }
+  
+    .booking-form-content {
+      padding: var(--s-200);
+    }
+  
+    .form-grid {
+      gap: var(--s-100);
+    }
+  
+    .form-group label {
+      font: var(--t-title-4);
+    }
+  
+    .form-input,
+    .time-trigger-btn {
+      min-height: 48px;
+      padding: var(--s-75) var(--s-200);
+      border-radius: var(--r-lg);
+      font: var(--t-body-3);
+    }
+  
+    /* Party size stepper & quick-select chips on mobile */
+    .party-stepper-row {
+      gap: var(--s-75);
+      margin-bottom: var(--s-75);
+    }
+  
+    .party-step-btn {
+      width: 48px;
+      min-width: 48px;
+      min-height: 48px;
+      border-radius: var(--r-lg);
+    }
+  
+    .party-count-display {
+      min-height: 48px;
+      padding: 0 var(--s-100);
+      font: var(--t-title-3);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+  
+    .quick-party-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--s-75);
+    }
+  
+    .quick-party-chip {
+      min-height: 44px;
+      padding: var(--s-50);
+      border-radius: var(--r-lg);
+      font: var(--t-button-xs);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+  
+    /* Time slot bottom sheet on mobile */
+    .time-sheet-card {
+      max-height: 82svh;
+      padding: var(--s-200);
+      border-radius: var(--r-2xl);
+    }
+  
+    .time-chips-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--s-75);
+    }
+  
+    .time-slot-chip {
+      min-height: 44px;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+  
+    .booking-form-content .btn[type='submit'] {
+      width: 100%;
+      min-height: 48px;
+      margin-top: var(--s-100);
+      font: var(--t-button-md);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .site-header {
+      top: var(--s-100);
+      max-width: calc(100% - var(--s-200));
+      padding: var(--s-50) var(--s-100);
+      gap: var(--s-100);
+      border-radius: var(--r-xl);
+    }
+  
+    .brand-logo-badge img {
+      height: 36px;
+    }
+  
+    .theme-toggle-btn,
+    .mobile-menu-btn {
+      width: 44px;
+      height: 44px;
+    }
+  
+    .booking-form-content {
+      padding: var(--s-200) var(--s-100);
+    }
+  
+    .btn {
+      white-space: normal;
+      text-align: center;
+    }
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .hero-content > *,
+    .booking-container,
+    .time-sheet-card,
+    .btn,
+    .time-slot-chip {
+      animation-name: fadeIn !important;
+      transition-duration: 240ms !important;
+    }
+  }
