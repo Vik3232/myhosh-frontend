@@ -1363,3 +1363,162 @@ html[data-theme='light'] .mobile-drawer-item[style*='gold-pale'] {
   height: 100dvh;
   animation: backdropFade var(--dur-fast) var(--ease) both;
 }
+/* ==========================================================================
+   RESERVATION BAND & PRO STAFF DASHBOARD UPGRADE
+   ========================================================================== */
+
+/* 1. Replace dull flat green wall behind Reserve with crisp warm marble & dark emerald accents */
+.booking-section {
+  background-color: #EFE7D6;
+  background-image: none;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.booking-section-title,
+.booking-section > .text-center h2 {
+  color: #0F4D3A !important;
+}
+
+.booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'] {
+  background: #0A2F25 !important;
+  color: #FBF6EA !important;
+  border: 1px solid rgba(200, 157, 84, 0.45);
+  border-radius: var(--r-xl) !important;
+  padding: 14px 28px !important;
+  box-shadow: var(--shadow-soft);
+}
+
+html[data-theme='dark'] .booking-section {
+  background-color: #181818;
+}
+
+html[data-theme='dark'] .booking-section-title,
+html[data-theme='dark'] .booking-section > .text-center h2 {
+  color: #F4F1EA !important;
+}
+
+html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'] {
+  background: #1F1F1F !important;
+  color: #E1BD7C !important;
+  border-color: var(--line-strong);
+}
+
+/* 2. Upgrade Staff Dashboard to ResyOS / Linear-grade Hierarchy */
+.admin-header {
+  padding-bottom: var(--s-200);
+  margin-bottom: var(--s-200);
+}
+
+/* Segmented Navigation Bar for Admin Tabs */
+.admin-section-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  margin-bottom: var(--s-300);
+}
+
+.admin-section-tabs .btn-admin-tab {
+  min-height: 38px;
+  padding: 6px 16px;
+  border-radius: var(--r-lg);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.admin-section-tabs .btn-admin-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.admin-section-tabs .btn-admin-tab.active {
+  background: var(--bg-surface);
+  color: var(--text);
+  border-color: var(--line);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='dark'] .admin-section-tabs .btn-admin-tab.active {
+  background: #F4F1EA;
+  color: #131209;
+  border-color: #F4F1EA;
+}
+
+/* Tighter, Executive KPI Strip (No more giant empty rectangles) */
+.metric-tile {
+  align-items: flex-start;
+  text-align: left;
+  padding: 14px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--bg-page);
+}
+
+.metric-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Cleaner Toolbar Controls */
+.admin-toolbar {
+  padding: var(--s-200) var(--s-300);
+}
+
+.admin-toolbar .btn-admin-tab {
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+.admin-toolbar .btn {
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+/* Pro Floor Status Tiles */
+.floor-table-tile {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: var(--r-xl);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.floor-table-hint {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* Crisp Reservation Row Alignment */
+.admin-card {
+  padding: 16px 20px;
+  border-radius: var(--r-xl);
+  box-shadow: none;
+}
+
+.card-time {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 68px;
+}

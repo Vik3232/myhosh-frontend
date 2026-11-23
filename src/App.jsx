@@ -741,13 +741,16 @@ function App() {
       sanitizeCSVCell(getBookingTableLabel(b)),
       sanitizeCSVCell(b.status)
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,' + headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
+    const csvString = headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodeURI(csvContent));
-    link.setAttribute('download', `MyHosh_Reservations_${adminDateFilter}.csv`);
+    link.href = url;
+    link.download = `MyHosh_Reservations_${adminDateFilter}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const numGuestsParsed = parseInt(partySize, 10) || 2;
