@@ -1935,19 +1935,14 @@ html[data-theme='dark'] .staff-login-shell::before {
 .staff-login-form .staff-login-field:nth-child(2) { animation-delay: 120ms; }
 .staff-login-form .staff-login-field:nth-child(3) { animation-delay: 180ms; }
 
-/* PIN treatment: centered despite 0.5em letter-spacing, clear of eye button */
+/* PIN treatment: left-aligned to match form axis, monospace only when typed */
 .staff-login-pin {
-  text-align: center;
-  text-indent: 0.5em;
-  letter-spacing: 0.5em;
+  text-align: left;
+}
+.staff-login-pin:not(:placeholder-shown) {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  padding-inline: var(--s-600) !important;
-}
-.staff-login-pin::placeholder {
-  text-indent: 0;
-  letter-spacing: normal;
-  font-family: var(--font-body);
+  letter-spacing: 0.25em;
 }
 
 /* Password field with inline visibility toggle */
@@ -2096,6 +2091,69 @@ html[data-theme='dark'] .staff-login-shell::before {
 @media (max-width: 480px) {
   .staff-login-shell { padding: var(--s-700) var(--s-200) var(--s-500); }
   .staff-login-card { padding: var(--s-300) var(--s-200); }
+}
+
+/* ---------- 18b. PROFESSIONAL MOBILE POLISH (audit fixes) ---------- */
+
+/* Stop sticky hover states on touch screens (cards "stuck" lifted after a tap) */
+@media (hover: none) {
+  .menu-card:hover, .feature-item:hover, .btn:hover { transform: none; box-shadow: none; }
+}
+
+/* Keep scroll inside modals/sheets instead of scrolling the page behind */
+.time-sheet-card, .modal-content, .mobile-drawer,
+.lightbox-overlay, .blog-lightbox-overlay, .poster-modal-overlay { overscroll-behavior: contain; }
+
+/* Long words (dish names, emails, URLs) never overflow on phones */
+h1, h2, h3, h4, .menu-item-info h4, .footer-links a { overflow-wrap: anywhere; }
+
+@media (max-width: 767px) {
+  /* Fluid headings: smooth sizing between 360px and 767px instead of hard jumps */
+  .hero-content h1 { font-size: clamp(1.625rem, 6.4vw + 0.2rem, 2.25rem); line-height: 1.15; }
+  h2 { font-size: clamp(1.5rem, 5vw + 0.4rem, 1.875rem); line-height: 1.2; }
+
+  /* Hero: svh fallback for older browsers, comfortable reading width */
+  .hero-section { min-height: 88vh; min-height: 88svh; }
+  .hero-content p { max-width: 34ch; color: rgba(251, 246, 234, 0.9); }
+
+  /* Touch targets: Apple/Google minimum 44–48px */
+  .menu-cat-tab, .time-slot-chip, .quick-party-chip, .party-step-btn { min-height: 44px; }
+  .booking-form-content input:not([type='checkbox']):not([type='radio']),
+  .booking-form-content select,
+  .booking-form-content textarea { min-height: 48px; width: 100%; }
+  .booking-form-content textarea { min-height: 112px; resize: vertical; }
+
+  /* Menu cards: price aligned, tabular numbers, no cramped wrapping */
+  .menu-item-price { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
+  .menu-category-tabs { box-shadow: 0 1px 0 var(--line); }
+
+  /* Sticky reserve bar: premium frosted look, clear separation from content */
+  .mobile-reserve-bar {
+    background: var(--glass);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    backdrop-filter: saturate(160%) blur(14px);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Section rhythm: consistent vertical spacing on phones */
+  .menu-section, .booking-section, .tagline-reveal-section { padding-top: var(--s-600); padding-bottom: var(--s-600); }
+
+  /* Images: no layout jump while loading */
+  .visit-image img, .arch-mask img, .bento-grid img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+/* Phones held sideways: hero must not swallow the whole screen */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .hero-section { min-height: 100vh; min-height: 100svh; align-items: center; }
+  .hero-content { padding-top: var(--s-700); padding-bottom: var(--s-400); }
+  .time-sheet-card, .modal-content { max-height: 92svh; }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .hero-content h1 { font-size: 1.5rem; line-height: 1.2; }
+  .site-header { width: calc(100% - var(--s-200)); }
+  .mobile-reserve-bar { padding-left: var(--s-100); padding-right: var(--s-100); }
 }
 
 /* ---------- 19. REDUCED MOTION (ALWAYS LAST IN FILE) ---------- */
