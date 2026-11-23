@@ -1404,13 +1404,54 @@ html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0,0,0
   border-color: var(--line-strong);
 }
 
-/* 2. Upgrade Staff Dashboard to ResyOS / Linear-grade Hierarchy */
+/* ==========================================================================
+   FINAL POLISH: EMERALD LIGHT MODE, PRO DASHBOARD & SHARP ELITE POSTER CTA
+   ========================================================================== */
+
+/* 1. Restore Rich MyHosh Deep Emerald + Gold Lattice in Light Mode (Dark Mode stays Obsidian/Gold) */
+.booking-section {
+  background-color: #0f4d3a;
+  background-image: var(--pattern-lattice);
+  border-top: 1px solid rgba(200, 157, 84, 0.32);
+  border-bottom: 1px solid rgba(200, 157, 84, 0.32);
+}
+
+.booking-section-title,
+.booking-section > .text-center h2 {
+  color: #fbf6ea !important;
+}
+
+/* Crisp Deep-Emerald Opening Hours Pill (replaces dull muddy translucent box) */
+.booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'] {
+  background: #0a2f25 !important;
+  color: #fbf6ea !important;
+  border: 1px solid rgba(200, 157, 84, 0.5);
+  border-radius: var(--r-xl) !important;
+  padding: 14px 28px !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme='dark'] .booking-section {
+  background-color: #181818;
+  border-color: var(--line);
+}
+
+html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'] {
+  background: #1f1f1f !important;
+  color: #e1bd7c !important;
+  border-color: var(--line-strong);
+}
+
+/* 2. Pro Staff Dashboard Hierarchy — Signature Emerald in Light Mode, Ivory/Gold in Dark Mode */
 .admin-header {
   padding-bottom: var(--s-200);
   margin-bottom: var(--s-200);
 }
 
-/* Segmented Navigation Bar for Admin Tabs */
+.admin-header h1 {
+  color: var(--accent-text);
+}
+
 .admin-section-tabs {
   display: inline-flex;
   flex-wrap: wrap;
@@ -1437,19 +1478,19 @@ html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0,0,0
 }
 
 .admin-section-tabs .btn-admin-tab.active {
-  background: var(--bg-surface);
-  color: var(--text);
-  border-color: var(--line);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: #0f4d3a;
+  color: #fbf6ea;
+  border-color: #0f4d3a;
+  box-shadow: 0 4px 12px rgba(15, 77, 58, 0.22);
 }
 
 html[data-theme='dark'] .admin-section-tabs .btn-admin-tab.active {
-  background: #F4F1EA;
+  background: #f4f1ea;
   color: #131209;
-  border-color: #F4F1EA;
+  border-color: #f4f1ea;
+  box-shadow: none;
 }
 
-/* Tighter, Executive KPI Strip (No more giant empty rectangles) */
 .metric-tile {
   align-items: flex-start;
   text-align: left;
@@ -1471,27 +1512,20 @@ html[data-theme='dark'] .admin-section-tabs .btn-admin-tab.active {
   font-size: 26px;
   line-height: 32px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--accent-text);
 }
 
-/* Cleaner Toolbar Controls */
 .admin-toolbar {
   padding: var(--s-200) var(--s-300);
 }
 
-.admin-toolbar .btn-admin-tab {
-  min-height: 38px;
-  padding: 6px 14px;
-  font-size: 13px;
-}
-
+.admin-toolbar .btn-admin-tab,
 .admin-toolbar .btn {
   min-height: 38px;
   padding: 6px 14px;
   font-size: 13px;
 }
 
-/* Pro Floor Status Tiles */
 .floor-table-tile {
   text-align: left;
   padding: 12px 14px;
@@ -1509,7 +1543,6 @@ html[data-theme='dark'] .admin-section-tabs .btn-admin-tab.active {
   opacity: 0.8;
 }
 
-/* Crisp Reservation Row Alignment */
 .admin-card {
   padding: 16px 20px;
   border-radius: var(--r-xl);
@@ -1519,27 +1552,19 @@ html[data-theme='dark'] .admin-section-tabs .btn-admin-tab.active {
 .card-time {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--accent-text);
   min-width: 68px;
 }
-/* ==========================================================================
-   EVENT POSTER: LIGHT MODE BACKDROP FIX + "CLICK HERE TO BOOK" OVERLAY
-   ========================================================================== */
 
-/* Light Mode: frosted warm-cream backdrop instead of harsh black */
+/* 3. Event Poster: ZERO Background/Blur Behind Poster + Sharp Animated Elite CTA Bar */
 :root .poster-modal-overlay,
-html[data-theme='light'] .poster-modal-overlay {
-  background: rgba(251, 246, 234, 0.72);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-}
-
-/* Dark Mode: keep normal dark backdrop */
+html[data-theme='light'] .poster-modal-overlay,
 html[data-theme='dark'] .poster-modal-overlay {
-  background: rgba(0, 0, 0, 0.74);
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-/* Shrink-wrap strictly to the image edges (zero black side bars) */
 .poster-modal-card {
   position: relative;
   display: inline-block;
@@ -1550,15 +1575,29 @@ html[data-theme='dark'] .poster-modal-overlay {
   padding: 0;
 }
 
+.poster-modal-close {
+  top: var(--s-100);
+  right: var(--s-100);
+  z-index: 4;
+  border-radius: 0;
+  background: rgba(19, 18, 9, 0.85);
+  border: 1px solid rgba(200, 157, 84, 0.65);
+  color: #fbf6ea;
+}
+
 .poster-modal-link {
   position: relative;
   display: block;
   line-height: 0;
   overflow: hidden;
-  border-radius: var(--r-2xl);
+  border-radius: 0;
   background: transparent;
-  box-shadow: var(--shadow-float);
+  box-shadow: 0 28px 70px rgba(19, 18, 9, 0.44);
   transition: transform var(--dur-base) var(--ease);
+}
+
+.poster-modal-link:hover {
+  transform: translateY(-2px);
 }
 
 .poster-modal-link img {
@@ -1571,34 +1610,97 @@ html[data-theme='dark'] .poster-modal-overlay {
   box-shadow: none;
 }
 
-/* Always-visible bottom call to action over the poster image */
-.poster-book-badge {
+/* Sharp-Corner Elite CTA Bar (border-radius: 0, weighted entrance + arrow glide) */
+@keyframes posterBarReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.poster-book-bar {
   position: absolute;
-  left: 50%;
+  left: var(--s-200);
+  right: var(--s-200);
   bottom: var(--s-200);
-  transform: translateX(-50%);
-  z-index: 2;
-  max-width: calc(100% - var(--s-300));
-  padding: var(--s-75) var(--s-200);
-  border: 1px solid rgba(27, 26, 23, 0.16);
-  border-radius: var(--r-full);
-  background: var(--clr-gold);
-  color: var(--on-gold);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-200);
+  padding: 14px 18px;
+  border-radius: 0;
+  border: 1px solid var(--clr-gold);
+  background: #131209;
+  color: #fbf6ea;
   font: var(--t-button-sm);
-  white-space: nowrap;
-  text-align: center;
-  box-shadow: 0 8px 24px rgba(19, 18, 9, 0.32);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+  animation: posterBarReveal 550ms var(--ease) 180ms both;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+
+.poster-book-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--clr-gold);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.poster-book-bar-arrow {
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--clr-gold);
   transition:
     transform var(--dur-base) var(--ease),
-    background-color var(--dur-fast) var(--ease);
+    color var(--dur-fast) var(--ease);
 }
 
-.poster-modal-link:hover .poster-book-badge {
-  background: var(--clr-gold-soft);
-  transform: translateX(-50%) translateY(-2px);
+.poster-modal-link:hover .poster-book-bar {
+  background: var(--clr-gold);
+  color: #131209;
+  border-color: var(--clr-gold);
 }
 
-/* Keep Admin poster preview neutral (warm marble in Light Mode, charcoal in Dark Mode) */
+.poster-modal-link:hover .poster-book-bar::after {
+  transform: scaleX(1);
+}
+
+.poster-modal-link:hover .poster-book-bar-arrow {
+  color: #131209;
+  transform: translateX(6px);
+}
+
+.poster-modal-link:active .poster-book-bar {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-book-bar {
+    animation: fadeIn 240ms var(--ease) both;
+  }
+  .poster-modal-link:hover .poster-book-bar-arrow {
+    transform: none;
+  }
+}
+
+/* Keep Admin Poster Preview Neutral */
 .promo-preview-box,
 .promo-preview-box--poster {
   background: var(--bg-raised);

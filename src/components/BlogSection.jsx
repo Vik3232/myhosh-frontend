@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+const GALLERY_GRID_CATEGORY = 'Gallery Grid';
 
 const BENTO_SLOTS = [
   'bento-tile bento-tile--tall-coral',
@@ -16,16 +17,23 @@ const BENTO_SLOTS = [
   'bento-tile bento-tile--sq-cyan'
 ];
 
+const isGridPost = (post) =>
+  (post?.category || '').trim().toLowerCase() === GALLERY_GRID_CATEGORY.toLowerCase();
+
 export function BlogPage({ posts, onBackHome }) {
   const [lightboxState, setLightboxState] = useState(null);
 
-  const allPhotos = [];
-  posts.forEach(post => {
+  // Strictly separate Bento Grid uploads from Editorial Blog Story cards (zero duplication)
+  const gridPosts = posts.filter(isGridPost);
+  const storyPosts = posts.filter(post => !isGridPost(post));
+
+  const gridPhotos = [];
+  gridPosts.forEach(post => {
     (post.imageUrls || []).forEach((url, idx) => {
-      allPhotos.push({
+      gridPhotos.push({
         url,
         title: post.title,
-        category: post.category || 'Gallery',
+        category: 'Gallery',
         caption: post.content || '',
         key: `${post.id}-${idx}`
       });
@@ -66,21 +74,21 @@ export function BlogPage({ posts, onBackHome }) {
         </button>
       </div>
 
-      {posts.length === 0 ? (
+      {gridPhotos.length === 0 && storyPosts.length === 0 ? (
         <div className="subpage-empty">
           <p>Gallery stories and photos will appear here as soon as they are published.</p>
         </div>
       ) : (
         <>
-          {allPhotos.length > 0 && (
+          {gridPhotos.length > 0 && (
             <section className="bento-showcase" aria-label="Photo gallery mosaic">
               <div className="bento-grid">
-                {allPhotos.map((photo, idx) => (
+                {gridPhotos.map((photo, idx) => (
                   <button
                     key={photo.key}
                     type="button"
                     className={BENTO_SLOTS[idx % BENTO_SLOTS.length]}
-                    onClick={() => setLightboxState({ items: allPhotos, index: idx })}
+                    onClick={() => setLightboxState({ items: gridPhotos, index: idx })}
                     aria-label={`Open ${photo.title} photo ${idx + 1}`}
                   >
                     <img src={photo.url} alt={`${photo.title} gallery item ${idx + 1}`} loading="lazy" />
@@ -90,60 +98,62 @@ export function BlogPage({ posts, onBackHome }) {
             </section>
           )}
 
-          <div className="editorial-blog-grid">
-            {posts.map(post => {
-              const postImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
-              const postItems = postImages.map(url => ({
-                url,
-                title: post.title,
-                caption: post.content || ''
-              }));
+          {storyPosts.length > 0 && (
+            <div className="editorial-blog-grid">
+              {storyPosts.map(post => {
+                const postImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+                const postItems = postImages.map(url => ({
+                  url,
+                  title: post.title,
+                  caption: post.content || ''
+                }));
 
-              return (
-                <article key={post.id} className="editorial-blog-card">
-                  {postImages.length > 0 && (
-                    <button
-                      type="button"
-                      className="editorial-card-cover"
-                      onClick={() => setLightboxState({ items: postItems, index: 0 })}
-                      aria-label={`View ${post.title} cover photo`}
-                    >
-                      <img src={postImages[0]} alt={post.title} loading="lazy" />
-                      {postImages.length > 1 && (
-                        <span className="editorial-photo-count">{postImages.length} photos</span>
-                      )}
-                    </button>
-                  )}
-
-                  <div className="editorial-card-body">
-                    <div className="blog-post-meta">
-                      <span className="blog-category-badge">{post.category || 'Gallery'}</span>
-                      <span>{new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                    </div>
-
-                    <h2 className="editorial-card-title">{post.title}</h2>
-                    {post.content && <p className="editorial-card-text">{post.content}</p>}
-
-                    {postImages.length > 1 && (
-                      <div className="editorial-thumb-strip">
-                        {postImages.map((url, idx) => (
-                          <button
-                            key={`${post.id}-thumb-${idx}`}
-                            type="button"
-                            className="editorial-thumb-btn"
-                            onClick={() => setLightboxState({ items: postItems, index: idx })}
-                            aria-label={`Open photo ${idx + 1} from ${post.title}`}
-                          >
-                            <img src={url} alt={`${post.title} ${idx + 1}`} loading="lazy" />
-                          </button>
-                        ))}
-                      </div>
+                return (
+                  <article key={post.id} className="editorial-blog-card">
+                    {postImages.length > 0 && (
+                      <button
+                        type="button"
+                        className="editorial-card-cover"
+                        onClick={() => setLightboxState({ items: postItems, index: 0 })}
+                        aria-label={`View ${post.title} cover photo`}
+                      >
+                        <img src={postImages[0]} alt={post.title} loading="lazy" />
+                        {postImages.length > 1 && (
+                          <span className="editorial-photo-count">{postImages.length} photos</span>
+                        )}
+                      </button>
                     )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+
+                    <div className="editorial-card-body">
+                      <div className="blog-post-meta">
+                        <span className="blog-category-badge">{post.category || 'Journal'}</span>
+                        <span>{new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      </div>
+
+                      <h2 className="editorial-card-title">{post.title}</h2>
+                      {post.content && <p className="editorial-card-text">{post.content}</p>}
+
+                      {postImages.length > 1 && (
+                        <div className="editorial-thumb-strip">
+                          {postImages.map((url, idx) => (
+                            <button
+                              key={`${post.id}-thumb-${idx}`}
+                              type="button"
+                              className="editorial-thumb-btn"
+                              onClick={() => setLightboxState({ items: postItems, index: idx })}
+                              aria-label={`Open photo ${idx + 1} from ${post.title}`}
+                            >
+                              <img src={url} alt={`${post.title} ${idx + 1}`} loading="lazy" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 
@@ -217,6 +227,7 @@ export function BlogPage({ posts, onBackHome }) {
 export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh }) {
   const editorRef = useRef(null);
   const [editingPostId, setEditingPostId] = useState(null);
+  const [placement, setPlacement] = useState('story'); // 'grid' | 'story'
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Food & Grill');
   const [content, setContent] = useState('');
@@ -227,8 +238,12 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
   const [statusMsg, setStatusMsg] = useState('');
   const [statusType, setStatusType] = useState('info');
 
+  const gridCount = posts.filter(isGridPost).length;
+  const storyCount = posts.length - gridCount;
+
   const resetForm = () => {
     setEditingPostId(null);
+    setPlacement('story');
     setTitle('');
     setCategory('Food & Grill');
     setContent('');
@@ -237,14 +252,16 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
   };
 
   const startEditingPost = (post) => {
+    const isGrid = isGridPost(post);
     setEditingPostId(post.id);
+    setPlacement(isGrid ? 'grid' : 'story');
     setTitle(post.title || '');
-    setCategory(post.category || 'Food & Grill');
+    setCategory(isGrid ? 'Food & Grill' : (post.category || 'Food & Grill'));
     setContent(post.content || '');
     setPhotos(Array.isArray(post.imageUrls) ? [...post.imageUrls] : []);
     setManualUrlInput('');
     setStatusType('info');
-    setStatusMsg(`Editing "${post.title}". Add or remove individual photos below, then click Save changes.`);
+    setStatusMsg(`Editing "${post.title}". You can switch its placement or edit photos below, then click Save changes.`);
     editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -310,16 +327,23 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
     try {
       const endpoint = editingPostId ? `${apiBase}/api/blog/${editingPostId}` : `${apiBase}/api/blog`;
       const method = editingPostId ? 'PUT' : 'POST';
+      const finalCategory = placement === 'grid' ? GALLERY_GRID_CATEGORY : category;
       const res = await fetch(endpoint, {
         method,
         headers: getStaffHeaders(),
-        body: JSON.stringify({ title, category, content, imageUrls: photos })
+        body: JSON.stringify({ title, category: finalCategory, content, imageUrls: photos })
       });
       if (res.ok) {
         const wasEditing = Boolean(editingPostId);
         resetForm();
         setStatusType('success');
-        setStatusMsg(wasEditing ? 'Post and photos updated.' : 'Blog post published to the gallery.');
+        setStatusMsg(
+          wasEditing
+            ? 'Updated successfully.'
+            : placement === 'grid'
+              ? 'Photos published to the Top Photo Grid only.'
+              : 'Story published to the Blog Cards only.'
+        );
         await onRefresh();
       } else {
         setStatusType('error');
@@ -331,7 +355,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
   };
 
   const handleDeletePost = async (id) => {
-    if (!window.confirm('Delete this entire blog post and all its photos?')) return;
+    if (!window.confirm('Delete this entry and all its photos?')) return;
     const res = await fetch(`${apiBase}/api/blog/${id}`, {
       method: 'DELETE',
       headers: getStaffHeaders(false)
@@ -339,7 +363,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
     if (res.ok) {
       if (editingPostId === id) resetForm();
       setStatusType('info');
-      setStatusMsg('Blog post deleted.');
+      setStatusMsg('Entry deleted.');
       await onRefresh();
     }
   };
@@ -349,52 +373,80 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
       <div className="cms-header">
         <div>
           <h3 className="cms-title">
-            {editingPostId ? 'Edit gallery post' : 'Create gallery post'}
+            {editingPostId ? 'Edit gallery or blog entry' : 'Add gallery photos or blog story'}
           </h3>
           <p className="cms-subtitle">
-            Upload photos for the homepage Bento mosaic and write a short story for each gallery card. The first photo acts as the card cover.
+            Choose whether photos appear in the Top Photo Grid (Bento mosaic) or as a Blog Story Card below. Photos never duplicate between the two.
           </p>
         </div>
         <div className="cms-header-badges">
-          <span className="cms-pill cms-pill--emerald">{posts.length} published {posts.length === 1 ? 'post' : 'posts'}</span>
+          <span className="cms-pill cms-pill--gold">{gridCount} photo grid {gridCount === 1 ? 'set' : 'sets'}</span>
+          <span className="cms-pill cms-pill--emerald">{storyCount} blog {storyCount === 1 ? 'card' : 'cards'}</span>
           {editingPostId && (
             <button type="button" onClick={resetForm} className="btn btn-secondary" style={{ minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>
-              Create new post instead
+              Create new instead
             </button>
           )}
         </div>
       </div>
 
       <form onSubmit={handleSavePost} className="promo-admin-card cms-form-stack">
-        <div className="cms-two-col">
+        {/* Clear Placement Toggle: Top Bento Grid vs Blog Story Card */}
+        <div className="cms-field">
+          <label>Where should these photos appear?</label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setPlacement('grid')}
+              className={`btn-admin-tab ${placement === 'grid' ? 'active' : ''}`}
+            >
+              Top Photo Grid only (Bento)
+            </button>
+            <button
+              type="button"
+              onClick={() => setPlacement('story')}
+              className={`btn-admin-tab ${placement === 'story' ? 'active' : ''}`}
+            >
+              Blog Story Card only
+            </button>
+          </div>
+        </div>
+
+        <div className={placement === 'story' ? 'cms-two-col' : 'cms-fields'}>
           <div className="cms-field">
-            <label>Post title</label>
+            <label>{placement === 'grid' ? 'Photo set title (shown in lightbox)' : 'Story title'}</label>
             <input
               type="text"
               required
-              placeholder="Example: Weekend charcoal grill spread"
+              placeholder={placement === 'grid' ? 'Example: Evening charcoal grill photos' : 'Example: Weekend charcoal grill spread'}
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="admin-input"
             />
           </div>
 
-          <div className="cms-field">
-            <label>Category</label>
-            <select value={category} onChange={e => setCategory(e.target.value)} className="admin-input">
-              <option value="Food & Grill">Food &amp; Grill</option>
-              <option value="Fresh Meze">Fresh Meze</option>
-              <option value="Restaurant & Ambience">Restaurant &amp; Ambience</option>
-              <option value="Events & Celebrations">Events &amp; Celebrations</option>
-            </select>
-          </div>
+          {placement === 'story' && (
+            <div className="cms-field">
+              <label>Story category</label>
+              <select value={category} onChange={e => setCategory(e.target.value)} className="admin-input">
+                <option value="Food & Grill">Food &amp; Grill</option>
+                <option value="Fresh Meze">Fresh Meze</option>
+                <option value="Restaurant & Ambience">Restaurant &amp; Ambience</option>
+                <option value="Events & Celebrations">Events &amp; Celebrations</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="cms-field">
-          <label>Story or caption</label>
+          <label>{placement === 'grid' ? 'Short caption (optional, shown when clicked)' : 'Story text'}</label>
           <textarea
-            rows="3"
-            placeholder="Write a short description that appears beneath the cover photo..."
+            rows={placement === 'grid' ? '2' : '3'}
+            placeholder={
+              placement === 'grid'
+                ? 'Optional short caption displayed inside the photo viewer...'
+                : 'Write a short story that appears on the blog card...'
+            }
             value={content}
             onChange={e => setContent(e.target.value)}
             className="admin-input"
@@ -402,10 +454,10 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
         </div>
 
         <div className="cms-field">
-          <label>Gallery photos ({photos.length} attached)</label>
+          <label>Photos ({photos.length} attached)</label>
           <div className="cms-upload-dropzone">
             <div className="cms-upload-dropzone-copy">
-              <strong>{isUploading ? 'Uploading your photos...' : 'Add photos to this post'}</strong>
+              <strong>{isUploading ? 'Uploading your photos...' : 'Add photos'}</strong>
               <span>Select one or multiple JPG, PNG, or WebP images from your computer or phone.</span>
             </div>
 
@@ -433,7 +485,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
               {photos.map((url, i) => (
                 <div key={`${url}-${i}`} className="cms-thumb-card">
                   <img src={url} alt={`Photo ${i + 1}`} />
-                  {i === 0 && <span className="cms-thumb-cover-tag">Cover</span>}
+                  {placement === 'story' && i === 0 && <span className="cms-thumb-cover-tag">Cover</span>}
                   <button
                     type="button"
                     aria-label={`Delete photo ${i + 1}`}
@@ -468,16 +520,18 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
                 ? 'Saving...'
                 : editingPostId
                   ? `Save changes (${photos.length} ${photos.length === 1 ? 'photo' : 'photos'})`
-                  : `Publish post (${photos.length} ${photos.length === 1 ? 'photo' : 'photos'})`}
+                  : placement === 'grid'
+                    ? `Publish to Photo Grid (${photos.length})`
+                    : `Publish Blog Card (${photos.length})`}
             </button>
           </div>
         </div>
       </form>
 
-      <div className="cms-section-label">Published posts ({posts.length})</div>
+      <div className="cms-section-label">Published entries ({posts.length})</div>
       {posts.length === 0 ? (
         <div className="promo-admin-card" style={{ textAlign: 'center', color: 'var(--text-2, var(--text-muted))' }}>
-          No blog posts published yet. Add your first set of food or restaurant photos above.
+          No entries published yet. Add photos to the Top Photo Grid or publish your first Blog Story Card above.
         </div>
       ) : (
         <div className="cms-post-list">
@@ -485,6 +539,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
             const cover = Array.isArray(p.imageUrls) && p.imageUrls.length > 0 ? p.imageUrls[0] : '';
             const count = p.imageUrls?.length || 0;
             const isBeingEdited = editingPostId === p.id;
+            const entryIsGrid = isGridPost(p);
 
             return (
               <div key={p.id} className={`cms-post-row ${isBeingEdited ? 'is-editing' : ''}`}>
@@ -498,7 +553,9 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
 
                 <div className="cms-post-info">
                   <div className="cms-post-meta">
-                    <span className="blog-category-badge">{p.category || 'Gallery'}</span>
+                    <span className={`cms-pill ${entryIsGrid ? 'cms-pill--gold' : 'cms-pill--emerald'}`}>
+                      {entryIsGrid ? 'Top Photo Grid' : `Blog Card · ${p.category || 'Journal'}`}
+                    </span>
                     <span className="cms-post-date">
                       {new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
