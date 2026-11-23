@@ -1376,36 +1376,65 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
 
           {!isAuthenticated ? (
             <div className="staff-login-card">
-              <h2>Staff Gateway</h2>
-              <p className="staff-login-subtitle">Authorized MyHosh personnel only.</p>
+              <div className="staff-login-badge" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+
+              <h2 className="staff-login-title">Staff Gateway</h2>
+              <p className="staff-login-subtitle">MyHosh Salisbury internal portal</p>
+
+              <div className="staff-login-divider">Authorized Sign In</div>
+
               <form onSubmit={handleAdminLogin} className="staff-login-form">
-                <PasswordInput
-                  placeholder="Staff Access PIN"
-                  value={loginGatePin}
-                  onChange={e => setLoginGatePin(e.target.value)}
-                  autoComplete="off"
-                />
-                <input
-                  type="text"
-                  placeholder="Staff Username"
-                  value={loginUsername}
-                  onChange={e => setLoginUsername(e.target.value)}
-                  required
-                  autoComplete="username"
-                  className="admin-input"
-                />
-                <PasswordInput
-                  placeholder="Staff Password"
-                  value={loginPassword}
-                  onChange={e => setLoginPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-                {loginError && <div className="cms-status cms-status--error">{loginError}</div>}
-                <button type="submit" disabled={isLoggingIn} className="btn btn-primary" style={{ width: '100%', minHeight: '48px' }}>
+                <div className="staff-login-field">
+                  <label htmlFor="staff-gate-pin">Staff Access PIN</label>
+                  <PasswordInput
+                    id="staff-gate-pin"
+                    inputClassName="staff-login-pin"
+                    placeholder="Enter gate PIN"
+                    value={loginGatePin}
+                    onChange={e => setLoginGatePin(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="staff-login-field">
+                  <label htmlFor="staff-login-username">Username</label>
+                  <input
+                    id="staff-login-username"
+                    type="text"
+                    placeholder="Enter staff username"
+                    value={loginUsername}
+                    onChange={e => setLoginUsername(e.target.value)}
+                    required
+                    autoComplete="username"
+                    className="admin-input"
+                  />
+                </div>
+
+                <div className="staff-login-field">
+                  <label htmlFor="staff-login-password">Password</label>
+                  <PasswordInput
+                    id="staff-login-password"
+                    placeholder="Enter staff password"
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                {loginError && <div className="staff-login-error" role="alert">{loginError}</div>}
+
+                <button type="submit" disabled={isLoggingIn} className="btn btn-primary staff-login-submit">
                   Access System
                 </button>
               </form>
+
+              <p className="staff-login-footnote">Sessions automatically expire after 12 hours.</p>
 
               <button
                 type="button"

@@ -1851,7 +1851,7 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   .myhosh-ring-inner { animation: pulse 1.4s var(--ease) infinite !important; }
   .mobile-reserve-bar { transition-duration: 240ms; }
 }
-/* ---------- 19. STAFF LOGIN ARCHITECTURAL GRID, PASSWORD TOGGLE & STRENGTH RULES ---------- */
+/* ---------- 19. STAFF LOGIN PORTAL, PASSWORD TOGGLE & STRENGTH METER ---------- */
 @keyframes staffLatticeDrift {
   from {
     transform: translate3d(0, 0, 0);
@@ -1873,7 +1873,7 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   isolation: isolate;
 }
 
-/* Minimal architectural diamond hairline grid (flat, subtle, GPU-composited) */
+/* Minimal architectural diamond hairline grid (GPU-composited) */
 .staff-login-shell::before {
   content: '';
   position: absolute;
@@ -1891,7 +1891,7 @@ html[data-theme='dark'] .staff-login-shell::before {
 }
 
 .staff-login-card {
-  width: min(100%, 400px);
+  width: min(100%, 420px);
   padding: var(--s-400) var(--s-300);
   border: 1px solid var(--line);
   border-top: 2px solid var(--clr-gold);
@@ -1900,6 +1900,241 @@ html[data-theme='dark'] .staff-login-shell::before {
   box-shadow: var(--shadow-soft);
   text-align: center;
   animation: popIn var(--dur-base) var(--ease) both;
+}
+
+.staff-login-badge {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--s-200);
+  border: 1px solid rgba(200, 157, 84, 0.45);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--clr-gold) 14%, transparent);
+  color: var(--accent-text);
+  animation: popIn 600ms var(--ease) 80ms both;
+}
+.staff-login-badge svg { width: 26px; height: 26px; }
+
+.staff-login-title {
+  margin-bottom: var(--s-50);
+  font: var(--t-h5);
+  color: var(--accent-text);
+}
+
+.staff-login-subtitle {
+  margin-bottom: var(--s-300);
+  font: var(--t-body-6);
+  color: var(--text-2);
+}
+
+.staff-login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--s-100);
+  margin: 0 0 var(--s-300);
+  color: var(--text-2);
+  font: var(--t-caption-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.staff-login-divider::before,
+.staff-login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.staff-login-form {
+  display: grid;
+  gap: var(--s-200);
+  text-align: left;
+}
+
+.staff-login-field {
+  display: grid;
+  gap: var(--s-75);
+}
+
+.staff-login-field label {
+  font: var(--t-title-4);
+  color: var(--text);
+}
+
+.staff-login-form .staff-login-field {
+  animation: rise 500ms var(--ease) both;
+}
+.staff-login-form .staff-login-field:nth-child(1) { animation-delay: 60ms; }
+.staff-login-form .staff-login-field:nth-child(2) { animation-delay: 120ms; }
+.staff-login-form .staff-login-field:nth-child(3) { animation-delay: 180ms; }
+
+/* PIN treatment: truly centered despite 0.5em letter-spacing, clear of eye button */
+.staff-login-pin {
+  text-align: center;
+  text-indent: 0.5em;
+  letter-spacing: 0.5em;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  padding-inline: var(--s-600) !important;
+}
+.staff-login-pin::placeholder {
+  text-indent: 0;
+  letter-spacing: normal;
+  font-family: var(--font-body);
+}
+
+/* Password field with inline visibility toggle */
+.password-field {
+  position: relative;
+  width: 100%;
+}
+.password-field .admin-input,
+.password-field .form-input {
+  width: 100%;
+  padding-right: var(--s-600);
+}
+.password-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: var(--s-50);
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.password-toggle-btn:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.password-toggle-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+.password-toggle-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Password strength meter (Create Staff & Edit Staff forms) */
+.pw-strength-meter {
+  display: grid;
+  gap: var(--s-75);
+  margin-top: var(--s-75);
+  text-align: left;
+}
+.pw-strength-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s-75);
+}
+.pw-strength-bars span {
+  --tone: var(--line-strong);
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--tone);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.pw-strength-meter[data-strength='weak'] .pw-strength-bars span:nth-child(-n+1) { --tone: var(--clr-error); }
+.pw-strength-meter[data-strength='fair'] .pw-strength-bars span:nth-child(-n+2) { --tone: var(--gold-text); }
+.pw-strength-meter[data-strength='good'] .pw-strength-bars span:nth-child(-n+3) { --tone: var(--clr-gold); }
+.pw-strength-meter[data-strength='strong'] .pw-strength-bars span:nth-child(-n+4) { --tone: var(--accent-text); }
+
+.pw-strength-label {
+  font: var(--t-caption-3);
+  color: var(--text-2);
+}
+.pw-strength-meter[data-strength='weak'] .pw-strength-label { color: var(--clr-error); }
+.pw-strength-meter[data-strength='strong'] .pw-strength-label { color: var(--accent-text); }
+
+.pw-strength-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s-50) var(--s-100);
+  margin-top: var(--s-50);
+  font: var(--t-caption-2);
+  color: var(--text-2);
+}
+.pw-strength-rules li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-75);
+  list-style: none;
+}
+.pw-strength-rules li::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  border: 1px solid var(--line-strong);
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.pw-strength-rules li[data-met='true'] { color: var(--text); }
+.pw-strength-rules li[data-met='true']::before {
+  background: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+.staff-login-error {
+  padding: var(--s-100) var(--s-200);
+  border: 1px solid var(--clr-error);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--clr-error) 10%, transparent);
+  color: var(--clr-error);
+  font: var(--t-body-5);
+  text-align: left;
+  animation: fadeIn var(--dur-base) var(--ease) both;
+}
+
+.staff-login-submit {
+  width: 100%;
+  margin-top: var(--s-100);
+  min-height: 48px;
+  font: var(--t-button-lg);
+}
+
+.staff-login-footnote {
+  margin-top: var(--s-300);
+  font: var(--t-caption-2);
+  color: var(--text-2);
+}
+
+.forgot-help-btn {
+  margin-top: var(--s-100);
+  padding: var(--s-50) var(--s-75);
+  font: var(--t-caption-1);
+  color: var(--text-2);
+  text-decoration: underline;
+  text-decoration-color: var(--clr-gold);
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease);
+}
+.forgot-help-btn:hover { color: var(--accent-text); }
+
+.forgot-help-box {
+  margin-top: var(--s-100);
+  padding: var(--s-100) var(--s-200);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+  text-align: left;
+  font: var(--t-caption-2);
+  color: var(--text-2);
+  animation: fadeIn var(--dur-fast) var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-login-shell::before { animation: none; inset: 0; }
+  .staff-login-form .staff-login-field { animation: fadeIn 240ms var(--ease) both; animation-delay: 0ms !important; }
+}
+
+@media (max-width: 480px) {
+  .staff-login-shell { padding: var(--s-700) var(--s-200) var(--s-500); }
+  .staff-login-card { padding: var(--s-300) var(--s-200); }
 }
 
 .staff-login-card h2 {

@@ -22,12 +22,13 @@ export function PasswordInput({
   autoComplete = 'current-password',
   required = false,
   id,
-  ariaLabel
+  ariaLabel,
+  inputClassName = ''
 }) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <div className="password-field-wrap">
+    <div className="password-field">
       <input
         id={id}
         type={visible ? 'text' : 'password'}
@@ -37,7 +38,7 @@ export function PasswordInput({
         autoComplete={autoComplete}
         required={required}
         aria-label={ariaLabel || placeholder}
-        className="admin-input password-field-input"
+        className={`admin-input ${inputClassName}`.trim()}
       />
       <button
         type="button"
@@ -48,14 +49,14 @@ export function PasswordInput({
         title={visible ? 'Hide' : 'Show'}
       >
         {visible ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.77 21.77 0 0 1 5.06-5.94" />
             <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-2.16 3.19" />
             <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
             <line x1="1" y1="1" x2="23" y2="23" />
           </svg>
         ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
@@ -67,8 +68,28 @@ export function PasswordInput({
 
 export function PasswordStrengthChecklist({ password }) {
   const checks = getPasswordChecks(password);
+  const metCount = Object.values(checks).filter(Boolean).length;
+
+  let strength = '';
+  let label = 'Password requirements';
+  if (password) {
+    if (metCount <= 2) {
+      strength = 'weak';
+      label = 'Weak password';
+    } else if (metCount === 3) {
+      strength = 'fair';
+      label = 'Fair — add remaining rules';
+    } else if (metCount === 4) {
+      strength = 'good';
+      label = 'Good — 1 rule left';
+    } else {
+      strength = 'strong';
+      label = 'Strong password';
+    }
+  }
+
   const rules = [
-    { key: 'length', label: '8+ chars' },
+    { key: 'length', label: '8+ characters' },
     { key: 'upper', label: 'Uppercase (A-Z)' },
     { key: 'lower', label: 'Lowercase (a-z)' },
     { key: 'number', label: 'Number (0-9)' },
@@ -76,13 +97,22 @@ export function PasswordStrengthChecklist({ password }) {
   ];
 
   return (
-    <ul className="pw-rules-list" aria-label="Password security requirements">
-      {rules.map(rule => (
-        <li key={rule.key} className={checks[rule.key] ? 'is-met' : ''}>
-          {checks[rule.key] ? '✓' : '·'} {rule.label}
-        </li>
-      ))}
-    </ul>
+    <div className="pw-strength-meter" data-strength={strength || undefined}>
+      <div className="pw-strength-bars" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="pw-strength-label">{label}</div>
+      <ul className="pw-strength-rules" aria-label="Password security requirements">
+        {rules.map(rule => (
+          <li key={rule.key} data-met={checks[rule.key] ? 'true' : 'false'}>
+            {rule.label}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -166,7 +196,7 @@ export function EditStaffModal({ staff, apiBase, getStaffHeaders, onClose, onSav
             {password && <PasswordStrengthChecklist password={password} />}
           </div>
 
-          {error && <div className="cms-status cms-status--error">{error}</div>}
+          {error && <div className="staff-login-error">{error}</div>}
 
           <div className="modal-actions" style={{ marginTop: '8px' }}>
             <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>
