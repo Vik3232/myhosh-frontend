@@ -741,7 +741,7 @@ function App() {
       sanitizeCSVCell(getBookingTableLabel(b)),
       sanitizeCSVCell(b.status)
     ]);
-    const csvString = headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
+   const csvString = headers.join(',') + '\n' + rows.map(e => e.join(',')).join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

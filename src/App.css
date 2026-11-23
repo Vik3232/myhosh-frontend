@@ -1496,3 +1496,291 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   .admin-card { padding: var(--s-200); }
   .btn { white-space: normal; text-align: center; }
 }
+/* ==========================================================================
+   MyHosh Salisbury  App.elite.css
+   Load AFTER App.css (import it right after './App.css' in App.jsx, or paste
+   this whole file at the bottom of App.css). It only adds or overrides.
+   Motion stays on transform and opacity, one easing curve, flat colours.
+   ========================================================================== */
+
+/* ---------- 1. FINISH: type, scrollbar, selection ---------- */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--clr-gold) var(--bg-page);
+}
+body {
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: lining-nums;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb {
+  background: var(--clr-gold);
+  border: 2px solid var(--bg-page);
+  border-radius: var(--r-full);
+}
+
+/* ---------- 2. SCROLL PROGRESS + PARALLAX (CSS only, no scroll listeners) ---------- */
+@keyframes scrollProgress { to { transform: scaleX(1); } }
+@keyframes bandParallax {
+  from { transform: translateY(-6%); }
+  to { transform: translateY(6%); }
+}
+@keyframes scrollCue {
+  0% { transform: scaleY(0); opacity: 0; }
+  30% { opacity: 1; }
+  70% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+@keyframes sheen {
+  from { transform: translateX(-160%) skewX(-20deg); }
+  to { transform: translateX(300%) skewX(-20deg); }
+}
+
+@supports (animation-timeline: scroll()) {
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 260;
+    height: 2px;
+    background: var(--clr-gold);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    pointer-events: none;
+    animation: scrollProgress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@supports (animation-timeline: view()) {
+  .image-band img {
+    inset: -12% 0;
+    height: 124%;
+    animation: bandParallax linear both;
+    animation-timeline: view();
+  }
+}
+
+/* ---------- 3. HEADER: glass edge ---------- */
+.site-header {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), var(--shadow-soft);
+}
+html[data-theme='dark'] .site-header {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-soft);
+}
+
+/* ---------- 4. HERO: legibility and scroll cue ---------- */
+.hero-content h1 { filter: drop-shadow(0 2px 24px rgba(0, 0, 0, 0.35)); }
+.hero-section::after {
+  content: '';
+  position: absolute;
+  left: var(--s-400);
+  bottom: 0;
+  display: none;
+  width: 1px;
+  height: 56px;
+  background: var(--clr-gold-pale);
+  transform-origin: top;
+  animation: scrollCue 2.4s var(--ease) 1.4s infinite;
+}
+@media (min-width: 1024px) { .hero-section::after { display: block; } }
+
+/* ---------- 5. BUTTONS: sheen sweep on hover ---------- */
+.btn-primary,
+html[data-theme='dark'] .btn-emerald {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-primary::after,
+html[data-theme='dark'] .btn-emerald::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  width: 40%;
+  background: rgba(255, 255, 255, 0.38);
+  transform: translateX(-160%) skewX(-20deg);
+  pointer-events: none;
+}
+.btn-primary:hover:not(:disabled)::after,
+html[data-theme='dark'] .btn-emerald:hover:not(:disabled)::after {
+  animation: sheen 900ms var(--ease) both;
+}
+
+/* ---------- 6. FEATURE STRIP: icon rings ---------- */
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  padding: var(--s-100);
+  border: 1px solid rgba(200, 157, 84, 0.55);
+  border-radius: var(--r-full);
+  background: rgba(200, 157, 84, 0.12);
+  transition: transform var(--dur-base) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.feature-item:hover .feature-icon { transform: scale(1.08); background: rgba(200, 157, 84, 0.22); }
+html[data-theme='dark'] .feature-icon { color: var(--clr-gold-pale); }
+
+/* ---------- 7. MENU: refined price and hover ---------- */
+.menu-card:hover .menu-item-price { color: var(--gold-text); }
+.menu-item-price { transition: color var(--dur-fast) var(--ease); }
+.menu-section-header h2 { margin-bottom: var(--s-100); }
+
+/* ---------- 8. TAGLINE: gold lead line ---------- */
+.tagline-reveal-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-100);
+}
+.tagline-reveal-eyebrow::before {
+  content: '';
+  width: var(--s-500);
+  height: 1px;
+  background: var(--clr-gold);
+}
+
+/* ---------- 9. MATTED GOLD FRAMES ON IMAGES ---------- */
+.arch-image-container {
+  box-shadow: 0 0 0 var(--s-75) var(--bg-page), 0 0 0 9px rgba(200, 157, 84, 0.55), var(--shadow-soft);
+}
+.visit-image {
+  box-shadow: 0 0 0 var(--s-75) var(--bg-page), 0 0 0 9px rgba(200, 157, 84, 0.55), var(--shadow-soft);
+}
+.booking-container {
+  box-shadow: 0 0 0 1px rgba(200, 157, 84, 0.4), var(--shadow-float);
+}
+.site-footer { border-top: 1px solid rgba(200, 157, 84, 0.35); }
+
+/* ---------- 10. OPENING HOURS PILL: selector fix + token spacing ----------
+   React writes inline colours as "rgba(0, 0, 0, 0.3)" (with spaces), so the
+   original selector never matched. Both spellings are covered here.
+   Best long term fix: give that div a class (for example .hours-card). */
+.booking-section > .text-center > div[style*='rgba(0, 0, 0, 0.3)'],
+.booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'],
+.hours-card {
+  padding: var(--s-200) var(--s-400) !important;
+  border: 1px solid rgba(200, 157, 84, 0.5);
+  border-radius: var(--r-xl) !important;
+  background: #0a2f25 !important;
+  color: #fbf6ea !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0, 0, 0, 0.3)'],
+html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'],
+html[data-theme='dark'] .hours-card {
+  background: #1f1f1f !important;
+  color: #e1bd7c !important;
+  border-color: var(--line-strong);
+}
+
+/* ---------- 11. STAFF DASHBOARD: snap off-scale values to the tokens ---------- */
+.admin-section-tabs { gap: var(--s-50); padding: var(--s-50); }
+.admin-section-tabs .btn-admin-tab { min-height: 40px; padding: var(--s-75) var(--s-200); }
+.admin-toolbar .btn { min-height: 40px; padding: var(--s-75) var(--s-100); font-size: 0.875rem; line-height: 1.25rem; }
+.metric-tile { padding: var(--s-100) var(--s-300); }
+.metric-label { font-size: 0.75rem; line-height: 1rem; }
+.metric-value { font-size: 1.5rem; line-height: 2rem; }
+.floor-table-tile { gap: var(--s-25); padding: var(--s-100); }
+.floor-table-hint { margin-top: var(--s-75); padding-top: var(--s-75); }
+.admin-card { padding: var(--s-200) var(--s-300); }
+.card-time { font-size: 1.125rem; line-height: 1.75rem; }
+@media (max-width: 768px) {
+  .admin-toolbar .btn,
+  .admin-toolbar .btn-admin-tab { flex: 1 1 calc(50% - var(--s-75)); font-size: 0.875rem; }
+}
+
+/* ---------- 12. REDUCED MOTION ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  .hero-section::after { display: none; }
+  .image-band img { animation: none; inset: 0; height: 100%; }
+  .btn-primary::after,
+  html[data-theme='dark'] .btn-emerald::after { display: none; }
+}
+
+/* ==========================================================================
+   STAFF LOGIN PATTERNED BACKDROP, PASSWORD TOGGLE & STRENGTH CHECKLIST
+   ========================================================================== */
+
+   .staff-login-shell {
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: var(--s-900) var(--s-200) var(--s-600);
+    background-color: #0a2f25;
+    background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.18' stroke-width='1'%3E%3Cpath d='M28 0L56 28L28 56L0 28Z'/%3E%3Cpath d='M28 10L46 28L28 46L10 28Z' stroke-opacity='0.12'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  
+  html[data-theme='dark'] .staff-login-shell {
+    background-color: #131209;
+    background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M28 0L56 28L28 56L0 28Z'/%3E%3Cpath d='M28 10L46 28L28 46L10 28Z' stroke-opacity='0.09'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  
+  .staff-login-card {
+    width: min(100%, 440px);
+    padding: var(--s-400);
+    border: 1px solid rgba(200, 157, 84, 0.4);
+    border-radius: var(--r-2xl);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-float);
+    animation: popIn var(--dur-base) var(--ease) both;
+  }
+  
+  .password-field-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .password-field-input {
+    padding-right: 48px !important;
+  }
+  
+  .password-toggle-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-lg);
+    color: var(--text-2);
+    transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+  }
+  
+  .password-toggle-btn:hover {
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+  }
+  
+  .pw-rules-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-50) var(--s-100);
+    margin-top: var(--s-50);
+    padding: var(--s-75) var(--s-100);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--bg-raised);
+    font: var(--t-caption-4);
+    color: var(--text-2);
+  }
+  
+  .pw-rules-list li {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    transition: color var(--dur-fast) var(--ease);
+  }
+  
+  .pw-rules-list li.is-met {
+    color: var(--accent-text);
+    font-weight: 600;
+  }
