@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
@@ -33,6 +34,9 @@ export function BlogPage({ posts, onBackHome }) {
 
   useEffect(() => {
     if (!lightboxState) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const onKeyDown = (e) => {
       if (e.key === 'Escape') setLightboxState(null);
       if (e.key === 'ArrowRight' && lightboxState.items.length > 1) {
@@ -42,8 +46,12 @@ export function BlogPage({ posts, onBackHome }) {
         setLightboxState(prev => ({ ...prev, index: (prev.index - 1 + prev.items.length) % prev.items.length }));
       }
     };
+
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [lightboxState]);
 
   const activePhoto = lightboxState ? lightboxState.items[lightboxState.index] : null;
@@ -139,7 +147,7 @@ export function BlogPage({ posts, onBackHome }) {
         </>
       )}
 
-      {activePhoto && (
+      {activePhoto && createPortal(
         <div className="blog-lightbox-overlay" role="dialog" aria-modal="true" onClick={() => setLightboxState(null)}>
           <div className="blog-lightbox-frame" onClick={e => e.stopPropagation()}>
             <button
@@ -199,7 +207,8 @@ export function BlogPage({ posts, onBackHome }) {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -465,10 +474,9 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
         </div>
       </form>
 
-      {/* PUBLISHED POSTS LIST */}
       <div className="cms-section-label">Published posts ({posts.length})</div>
       {posts.length === 0 ? (
-        <div className="promo-admin-card" style={{ textAlign: 'center', color: 'var(--fg-secondary)' }}>
+        <div className="promo-admin-card" style={{ textAlign: 'center', color: 'var(--text-2, var(--text-muted))' }}>
           No blog posts published yet. Add your first set of food or restaurant photos above.
         </div>
       ) : (

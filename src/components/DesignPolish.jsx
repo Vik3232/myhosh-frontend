@@ -95,7 +95,7 @@ export function TaglineReveal({
               key={`${word}-${idx}`}
               className={`tagline-reveal-word ${idx < litCount ? 'is-lit' : ''}`}
             >
-              {word}
+              {word}{idx < words.length - 1 ? ' ' : ''}
             </span>
           ))}
         </p>

@@ -1346,3 +1346,20 @@ html[data-theme='light'] .mobile-drawer-item[style*='gold-pale'] {
 .blog-lightbox-img {
   max-height: 64svh;
 }
+/* Keep fixed overlays locked to the exact viewport without transform shifts */
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.time-sheet-backdrop,
+.modal-overlay,
+.lightbox-overlay,
+.blog-lightbox-overlay,
+.poster-modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  animation: backdropFade var(--dur-fast) var(--ease) both;
+}
