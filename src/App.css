@@ -1496,41 +1496,25 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   .admin-card { padding: var(--s-200); }
   .btn { white-space: normal; text-align: center; }
 }
-/* DARK MODE: Solid Brushed Gold with Dark Engraved Lattice */
+/* DARK MODE: Smoked Antique Gold with Visible Gold Lattice */
 html[data-theme='dark'] {
-  --pattern-gold-engraved: url("data:image/svg+xml,%3Csvg width='44' height='44' viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23131209' stroke-opacity='0.16' stroke-width='1'%3E%3Cpath d='M22 0L44 22L22 44L0 22Z'/%3E%3Ccircle cx='22' cy='22' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  --pattern-gold-band: url("data:image/svg+xml,%3Csvg width='44' height='44' viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.22' stroke-width='1'%3E%3Cpath d='M22 0L44 22L22 44L0 22Z'/%3E%3Ccircle cx='22' cy='22' r='3'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 html[data-theme='dark'] .feature-strip,
 html[data-theme='dark'] .booking-section {
-  background-color: #c89d54;
-  background-image: var(--pattern-gold-engraved);
-  border-top: 1px solid rgba(19, 18, 9, 0.28);
-  border-bottom: 1px solid rgba(19, 18, 9, 0.28);
+  background-color: #2a2112;
+  background-image: var(--pattern-gold-band);
+  border-top: 1px solid rgba(200, 157, 84, 0.35);
+  border-bottom: 1px solid rgba(200, 157, 84, 0.35);
 }
 
-/* Dark cards float cleanly above the brushed gold band */
 html[data-theme='dark'] .feature-item {
   background-color: #181818;
-  border-color: rgba(19, 18, 9, 0.35);
-  box-shadow: 0 14px 32px rgba(19, 18, 9, 0.32);
-}
-
-/* Invert heading & diamond divider to obsidian so contrast stays AAA (7.4:1) */
-html[data-theme='dark'] .booking-section-title,
-html[data-theme='dark'] .booking-section > .text-center h2 {
-  color: #131209 !important;
-}
-
-html[data-theme='dark'] .booking-section .gold-divider::before,
-html[data-theme='dark'] .booking-section .gold-divider::after,
-html[data-theme='dark'] .booking-section .gold-divider span {
-  background: #131209;
-  opacity: 0.75;
+  border-color: rgba(200, 157, 84, 0.32);
 }
 
 html[data-theme='dark'] .booking-section > .text-center > div[style*='rgba(0,0,0,0.3)'] {
-  background: #131209 !important;
-  color: #f4f1ea !important;
-  border-color: rgba(19, 18, 9, 0.5);
+  background: #181818 !important;
+  border-color: rgba(200, 157, 84, 0.45);
 }
