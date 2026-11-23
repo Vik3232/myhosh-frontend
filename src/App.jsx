@@ -5,6 +5,12 @@ import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
 import { BlogPage, AdminBlogManager } from './components/BlogSection';
 import { AdminSiteContentManager, EventPosterModal, DEFAULT_SITE_CONTENT } from './components/SiteContentManager';
+import {
+  PasswordInput,
+  PasswordStrengthChecklist,
+  EditStaffModal,
+  isPasswordStrong
+} from './components/StaffAuthUI';
 
 const API_BASE = 'https://myhosh-backend.onrender.com';
 
@@ -156,6 +162,8 @@ function App() {
   const [newStaffRole, setNewStaffRole] = useState('STAFF');
   const [staffRegMessage, setStaffRegMessage] = useState('');
   const [staffList, setStaffList] = useState([]);
+  const [editingStaff, setEditingStaff] = useState(null);
+  const [showForgotHelp, setShowForgotHelp] = useState(false);
 
   // Menu & Category Tabs
   const [menuItems, setMenuItems] = useState([]);
@@ -904,10 +912,23 @@ function App() {
     }
   };
 
+  const loadStaffList = async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/staff`, { headers: getStaffHeaders(false) });
+      if (r.ok) setStaffList(await r.json());
+    } catch (err) {
+      console.error('Error loading staff list:', err);
+    }
+  };
+
   const handleCreateStaff = async (e) => {
     e.preventDefault();
     if (isProcessing) return;
     setStaffRegMessage('');
+    if (!isPasswordStrong(newStaffPassword)) {
+      setStaffRegMessage('Error: Password must be 8+ characters with uppercase, lowercase, a number, and a symbol (e.g. @, !, #).');
+      return;
+    }
     setLoadingLabel('Creating staff account...');
     setIsProcessing(true);
     try {
@@ -918,6 +939,7 @@ function App() {
       if (response.ok) {
         setStaffRegMessage(`Account created for ${newStaffUsername} (${newStaffRole}).`);
         setNewStaffUsername(''); setNewStaffPassword(''); setNewStaffRole('STAFF');
+        await loadStaffList();
       } else {
         setStaffRegMessage(`Error: ${(await response.text()) || 'Could not create user.'}`);
       }
@@ -1349,52 +1371,55 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
       {view === 'blog' ? (
         <BlogPage posts={blogPosts} onBackHome={navigateHome} />
       ) : view === 'admin' ? (
-        <div className="admin-view">
+        <div className={isAuthenticated ? 'admin-view' : 'staff-login-shell'}>
           <LoadingOverlay show={isProcessing || isLoggingIn} label={isLoggingIn ? 'Signing into Staff Gateway...' : loadingLabel} fullscreen />
 
           {!isAuthenticated ? (
-            <div className="fade-in" style={{ maxWidth: '400px', margin: '10vh auto 0', padding: '40px 30px', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.1)', textAlign: 'center', boxShadow: 'var(--shadow-soft)' }}>
-              <h2 style={{ color: 'var(--clr-emerald)', margin: '0 0 10px 0' }}>Staff Gateway</h2>
-              <p style={{ color: 'var(--clr-grey)', marginBottom: '26px', fontSize: '0.9rem' }}>Authorized personnel only.</p>
-              <form onSubmit={handleAdminLogin}>
-                <div style={{ marginBottom: '15px' }}>
-                  <input
-                    type="password"
-                    placeholder="Staff Access PIN"
-                    value={loginGatePin}
-                    onChange={e => setLoginGatePin(e.target.value)}
-                    autoComplete="off"
-                    className="admin-input"
-                    style={{ width: '100%', textAlign: 'center' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                  <input
-                    type="text"
-                    placeholder="Staff Username"
-                    value={loginUsername}
-                    onChange={e => setLoginUsername(e.target.value)}
-                    required
-                    autoComplete="off"
-                    className="admin-input"
-                    style={{ width: '100%', textAlign: 'center' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '25px' }}>
-                  <input
-                    type="password"
-                    placeholder="Staff Password"
-                    value={loginPassword}
-                    onChange={e => setLoginPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                    className="admin-input"
-                    style={{ width: '100%', textAlign: 'center' }}
-                  />
-                </div>
-                {loginError && <div style={{ color: 'var(--clr-error)', marginBottom: '15px', fontSize: '0.9rem' }}>{loginError}</div>}
-                <button type="submit" disabled={isLoggingIn} className="btn btn-primary" style={{ width: '100%' }}>Access System</button>
+            <div className="staff-login-card">
+              <h2>Staff Gateway</h2>
+              <p className="staff-login-subtitle">Authorized MyHosh personnel only.</p>
+              <form onSubmit={handleAdminLogin} className="staff-login-form">
+                <PasswordInput
+                  placeholder="Staff Access PIN"
+                  value={loginGatePin}
+                  onChange={e => setLoginGatePin(e.target.value)}
+                  autoComplete="off"
+                />
+                <input
+                  type="text"
+                  placeholder="Staff Username"
+                  value={loginUsername}
+                  onChange={e => setLoginUsername(e.target.value)}
+                  required
+                  autoComplete="username"
+                  className="admin-input"
+                />
+                <PasswordInput
+                  placeholder="Staff Password"
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+                {loginError && <div className="cms-status cms-status--error">{loginError}</div>}
+                <button type="submit" disabled={isLoggingIn} className="btn btn-primary" style={{ width: '100%', minHeight: '48px' }}>
+                  Access System
+                </button>
               </form>
+
+              <button
+                type="button"
+                className="forgot-help-btn"
+                onClick={() => setShowForgotHelp(prev => !prev)}
+                aria-expanded={showForgotHelp}
+              >
+                Forgot password or locked out?
+              </button>
+              {showForgotHelp && (
+                <div className="forgot-help-box" role="note">
+                  For UK GDPR security, staff passwords are encrypted and cannot be retrieved. Ask an <strong>Admin / Manager</strong> to open <strong>Staff Accounts → Edit Login</strong> to set a new password for you.
+                </div>
+              )}
             </div>
           ) : (
             <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -1463,7 +1488,10 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                       type="button"
                       role="tab"
                       aria-selected={activeAdminTab === 'staff'}
-                      onClick={() => setActiveAdminTab('staff')}
+                      onClick={() => {
+                        setActiveAdminTab('staff');
+                        loadStaffList();
+                      }}
                       className={`btn-admin-tab ${activeAdminTab === 'staff' ? 'active' : ''}`}
                     >
                       Staff Accounts
@@ -1822,28 +1850,45 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                 />
               )}
 
-              {/* TAB 4: STAFF ACCOUNTS (Standalone view) */}
-              {activeAdminTab === 'staff' && currentUser?.role === 'ADMIN' && (
+         {/* TAB 4: STAFF ACCOUNTS (Standalone view) */}
+         {activeAdminTab === 'staff' && currentUser?.role === 'ADMIN' && (
                 <div style={{ backgroundColor: 'var(--clr-marble)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(27,26,23,0.05)', boxShadow: 'var(--shadow-soft)' }}>
                   <h3 style={{ marginTop: 0, color: 'var(--clr-emerald)', fontSize: '1.2rem' }}>Admin Control: Register &amp; Manage Staff</h3>
-                  <form onSubmit={handleCreateStaff} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Username</label>
-                      <input type="text" required value={newStaffUsername} onChange={e => setNewStaffUsername(e.target.value)} className="admin-input" style={{ width: '100%' }} />
+                  <form onSubmit={handleCreateStaff} style={{ display: 'grid', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                      <div style={{ flex: '1 1 200px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Username</label>
+                        <input type="text" required minLength={3} value={newStaffUsername} onChange={e => setNewStaffUsername(e.target.value)} className="admin-input" style={{ width: '100%' }} />
+                      </div>
+                      <div style={{ flex: '1 1 240px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Strong Password</label>
+                        <PasswordInput
+                          value={newStaffPassword}
+                          onChange={e => setNewStaffPassword(e.target.value)}
+                          placeholder="e.g. MyHosh@2026"
+                          autoComplete="new-password"
+                          required
+                        />
+                      </div>
+                      <div style={{ flex: '0 0 150px' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Role</label>
+                        <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value)} className="admin-input" style={{ width: '100%' }}>
+                          <option value="STAFF">STAFF</option>
+                          <option value="ADMIN">ADMIN</option>
+                        </select>
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isProcessing || !isPasswordStrong(newStaffPassword)}
+                        className="btn btn-primary"
+                        style={{ padding: '12px 20px' }}
+                      >
+                        Create
+                      </button>
                     </div>
-                    <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Password</label>
-                      <input type="password" required value={newStaffPassword} onChange={e => setNewStaffPassword(e.target.value)} className="admin-input" style={{ width: '100%' }} />
-                    </div>
-                    <div style={{ flex: '0 0 150px' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--clr-grey)' }}>Role</label>
-                      <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value)} className="admin-input" style={{ width: '100%' }}>
-                        <option value="STAFF">STAFF</option>
-                        <option value="ADMIN">ADMIN</option>
-                      </select>
-                    </div>
-                    <button type="submit" disabled={isProcessing} className="btn btn-primary" style={{ padding: '12px 20px' }}>Create</button>
+                    <PasswordStrengthChecklist password={newStaffPassword} />
                   </form>
+
                   {staffRegMessage && (
                     <div style={{ marginTop: '12px', fontSize: '0.9rem', color: staffRegMessage.startsWith('Error') ? 'var(--clr-error)' : 'var(--clr-emerald)' }}>
                       {staffRegMessage}
@@ -1855,43 +1900,62 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                       <strong style={{ fontSize: '0.92rem' }}>Existing Staff Accounts</strong>
                       <button
                         type="button"
-                        onClick={async () => {
-                          const r = await fetch(`${API_BASE}/api/staff`, { headers: getStaffHeaders(false) });
-                          if (r.ok) setStaffList(await r.json());
-                        }}
+                        onClick={loadStaffList}
                         className="btn btn-secondary"
                         style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                       >
-                        Load Staff List
+                        Refresh Staff List
                       </button>
                     </div>
                     {staffList.map(stf => (
-                      <div key={stf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(27,26,23,0.06)' }}>
+                      <div key={stf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '10px 0', borderBottom: '1px solid rgba(27,26,23,0.06)' }}>
                         <span><strong>{stf.username}</strong> ({stf.role})</span>
-                        <button
-                          type="button"
-                          disabled={stf.username === currentUser?.username || isProcessing}
-                          onClick={async () => {
-                            if (!window.confirm(`Remove staff user "${stf.username}" and revoke active sessions?`)) return;
-                            setLoadingLabel('Removing staff account...');
-                            setIsProcessing(true);
-                            try {
-                              const res = await fetch(`${API_BASE}/api/staff/${stf.id}`, { method: 'DELETE', headers: getStaffHeaders(false) });
-                              const txt = await res.text();
-                              if (res.ok) setStaffList(prev => prev.filter(x => x.id !== stf.id));
-                              alert(txt);
-                            } finally {
-                              setIsProcessing(false);
-                            }
-                          }}
-                          className="btn"
-                          style={{ background: 'rgba(179, 64, 47, 0.12)', color: 'var(--clr-error)', padding: '6px 12px', fontSize: '0.8rem' }}
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            disabled={isProcessing}
+                            onClick={() => setEditingStaff(stf)}
+                            className="btn btn-secondary"
+                            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                          >
+                            Edit Login
+                          </button>
+                          <button
+                            type="button"
+                            disabled={stf.username === currentUser?.username || isProcessing}
+                            onClick={async () => {
+                              if (!window.confirm(`Remove staff user "${stf.username}" and revoke active sessions?`)) return;
+                              setLoadingLabel('Removing staff account...');
+                              setIsProcessing(true);
+                              try {
+                                const res = await fetch(`${API_BASE}/api/staff/${stf.id}`, { method: 'DELETE', headers: getStaffHeaders(false) });
+                                const txt = await res.text();
+                                if (res.ok) setStaffList(prev => prev.filter(x => x.id !== stf.id));
+                                alert(txt);
+                              } finally {
+                                setIsProcessing(false);
+                              }
+                            }}
+                            className="btn"
+                            style={{ background: 'rgba(179, 64, 47, 0.12)', color: 'var(--clr-error)', padding: '6px 12px', fontSize: '0.8rem' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
+
+                  {editingStaff && (
+                    <EditStaffModal
+                      key={editingStaff.id}
+                      staff={editingStaff}
+                      apiBase={API_BASE}
+                      getStaffHeaders={getStaffHeaders}
+                      onClose={() => setEditingStaff(null)}
+                      onSaved={loadStaffList}
+                    />
+                  )}
                 </div>
               )}
             </div>

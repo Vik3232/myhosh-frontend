@@ -1850,3 +1850,130 @@ html[data-theme='dark'] .cms-upload-btn:hover { background: var(--clr-gold-soft)
   .myhosh-ring-inner { animation: pulse 1.4s var(--ease) infinite !important; }
   .mobile-reserve-bar { transition-duration: 240ms; }
 }
+/* ---------- 19. STAFF LOGIN PATTERN, PASSWORD TOGGLE & STRENGTH RULES ---------- */
+.staff-login-shell {
+  min-height: 100svh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--s-900) var(--s-200) var(--s-600);
+  background-color: #0a2f25;
+  background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.18' stroke-width='1'%3E%3Cpath d='M28 0L56 28L28 56L0 28Z'/%3E%3Cpath d='M28 10L46 28L28 46L10 28Z' stroke-opacity='0.12'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+html[data-theme='dark'] .staff-login-shell {
+  background-color: #131209;
+  background-image: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23C89D54' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M28 0L56 28L28 56L0 28Z'/%3E%3Cpath d='M28 10L46 28L28 46L10 28Z' stroke-opacity='0.09'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.staff-login-card {
+  width: min(100%, 420px);
+  padding: var(--s-400) var(--s-300);
+  border: 1px solid rgba(200, 157, 84, 0.45);
+  border-radius: var(--r-2xl);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-float);
+  text-align: center;
+  animation: popIn var(--dur-base) var(--ease) both;
+}
+
+.staff-login-card h2 {
+  margin-bottom: var(--s-75);
+  font: var(--t-h5);
+  color: var(--accent-text);
+}
+
+.staff-login-subtitle {
+  margin-bottom: var(--s-300);
+  font: var(--t-body-6);
+  color: var(--text-2);
+}
+
+.staff-login-form {
+  display: grid;
+  gap: var(--s-200);
+}
+
+.password-field-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-field-input {
+  width: 100%;
+  padding-right: 48px !important;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-lg);
+  color: var(--text-2);
+  transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+
+.password-toggle-btn:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.pw-rules-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-50) var(--s-100);
+  margin-top: var(--s-75);
+  padding: var(--s-75) var(--s-100);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+  text-align: left;
+  color: var(--text-2);
+}
+
+.pw-rules-list li {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.1rem;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.pw-rules-list li.is-met {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.forgot-help-btn {
+  margin-top: var(--s-200);
+  padding: var(--s-50) var(--s-75);
+  font: var(--t-caption-1);
+  color: var(--text-2);
+  text-decoration: underline;
+  text-decoration-color: var(--clr-gold);
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.forgot-help-btn:hover {
+  color: var(--accent-text);
+}
+
+.forgot-help-box {
+  margin-top: var(--s-100);
+  padding: var(--s-100) var(--s-200);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+  text-align: left;
+  font: var(--t-caption-2);
+  color: var(--text-2);
+  animation: fadeIn var(--dur-fast) var(--ease) both;
+}
