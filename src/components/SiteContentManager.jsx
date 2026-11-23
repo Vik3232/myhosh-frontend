@@ -99,10 +99,7 @@ export function EventPosterModal({ siteContent, forceOpen = false, onForceClose 
             src={siteContent.posterImageUrl}
             alt={siteContent.posterTitle || 'MyHosh special event poster'}
           />
-          <span className="poster-book-bar">
-            <span className="poster-book-bar-text">Click here to book</span>
-            <span className="poster-book-bar-arrow" aria-hidden="true">&rarr;</span>
-          </span>
+          <span className="poster-book-text">Reserve your table</span>
         </a>
       </div>
     </div>,
