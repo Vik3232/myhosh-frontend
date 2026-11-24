@@ -4,92 +4,184 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Primary SEO -->
+    <title>MyHosh Salisbury | Authentic Turkish Restaurant &amp; Charcoal Grill</title>
+    <meta
+      name="description"
+      content="Dine at MyHosh, an authentic Turkish restaurant at 99 Fisherton Street, Salisbury (SP2 7SP). Live charcoal grill, fresh daily meze, vegetarian options, and online table reservations."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <link rel="canonical" href="https://myhosh-salisbury.co.uk/" />
 
-    <title>MyHosh Salisbury | Charcoal Grill and Fresh Meze</title>
-    <meta name="description" content="Reserve a table at MyHosh on Fisherton Street, Salisbury. Charcoal roasted meats, fresh daily meze, and warm Turkish hospitality." />
-    <meta property="og:title" content="MyHosh Salisbury | Charcoal Grill and Fresh Meze" />
-    <meta property="og:description" content="Book your table online at MyHosh, 99 Fisherton Street, Salisbury." />
-    <meta property="og:image" content="/images/meze-spread.webp" />
-    <meta property="og:type" content="website" />
+    <!-- Local Geo Signals -->
+    <meta name="geo.region" content="GB-WIL" />
+    <meta name="geo.placename" content="Salisbury, Wiltshire" />
+    <meta name="geo.position" content="51.0705;-1.8030" />
+    <meta name="ICBM" content="51.0705, -1.8030" />
+    <meta name="theme-color" content="#0a2f25" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="canonical" href="https://myhosh-salisbury.co.uk/" />
 
-
+    <!-- Favicons & App Manifest -->
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/web-app-manifest-192x192.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    
-    
-    <!-- Open Graph / WhatsApp / Facebook Link Preview -->
+
+    <!-- Open Graph (Single Deduplicated Set with Absolute URLs) -->
     <meta property="og:type" content="restaurant.restaurant" />
     <meta property="og:site_name" content="MyHosh Salisbury" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:url" content="https://myhosh-salisbury.co.uk/" />
     <meta property="og:title" content="MyHosh Salisbury | Authentic Turkish Restaurant &amp; Charcoal Grill" />
     <meta
       property="og:description"
-      content="Charcoal grill, fresh meze, and warm Turkish hospitality at 99 Fisherton Street, Salisbury. Reserve your table online."
+      content="Authentic Turkish charcoal grill, fresh cold and hot meze, and warm hospitality at 99 Fisherton Street, Salisbury SP2 7SP. Reserve your table online."
     />
-    <meta property="og:url" content="https://myhosh-salisbury.co.uk/" />
     <meta property="og:image" content="https://myhosh-salisbury.co.uk/images/meze-spread.webp" />
-    <meta property="og:locale" content="en_GB" />
+    <meta property="og:image:alt" content="Turkish meze platter and charcoal grill dishes at MyHosh Salisbury" />
 
     <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="MyHosh Salisbury | Authentic Turkish Restaurant" />
-    <meta name="twitter:description" content="Authentic Turkish charcoal grill &amp; fresh meze in Salisbury. Book online." />
+    <meta name="twitter:title" content="MyHosh Salisbury | Authentic Turkish Restaurant &amp; Charcoal Grill" />
+    <meta
+      name="twitter:description"
+      content="Charcoal roasted meats, fresh daily meze, and Turkish hospitality on Fisherton Street, Salisbury. Reserve online."
+    />
     <meta name="twitter:image" content="https://myhosh-salisbury.co.uk/images/meze-spread.webp" />
 
-    <!-- Schema.org Local Restaurant Structured Data -->
+    <!-- Schema.org Entity Graph (SEO + Local Pack + GEO/AEO) -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "Restaurant",
-        "name": "MyHosh Salisbury",
-        "url": "https://myhosh-salisbury.co.uk/",
-        "logo": "https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png",
-        "image": [
-          "https://myhosh-salisbury.co.uk/images/meze-spread.webp",
-          "https://myhosh-salisbury.co.uk/images/interior.webp",
-          "https://myhosh-salisbury.co.uk/images/storefront.webp"
-        ],
-        "telephone": "+44 7853404534",
-        "priceRange": "££",
-        "servesCuisine": ["Turkish", "Mediterranean", "Charcoal Grill"],
-        "acceptsReservations": "https://myhosh-salisbury.co.uk/#reserve",
-        "menu": "https://myhosh-salisbury.co.uk/#menu",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "99 Fisherton Street",
-          "addressLocality": "Salisbury",
-          "addressRegion": "Wiltshire",
-          "postalCode": "SP2 7SP",
-          "addressCountry": "GB"
-        },
-        "openingHoursSpecification": [
+        "@graph": [
           {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": ["Monday", "Wednesday", "Thursday", "Friday"],
-            "opens": "16:00",
-            "closes": "22:30"
+            "@type": "WebSite",
+            "@id": "https://myhosh-salisbury.co.uk/#website",
+            "url": "https://myhosh-salisbury.co.uk/",
+            "name": "MyHosh Salisbury",
+            "inLanguage": "en-GB",
+            "publisher": {
+              "@id": "https://myhosh-salisbury.co.uk/#restaurant"
+            }
           },
           {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Saturday",
-            "opens": "12:00",
-            "closes": "22:30"
-          },
-          {
-            "@type": "OpeningHoursSpecification",
-            "dayOfWeek": "Sunday",
-            "opens": "12:00",
-            "closes": "22:00"
+            "@type": "Restaurant",
+            "@id": "https://myhosh-salisbury.co.uk/#restaurant",
+            "name": "MyHosh Salisbury",
+            "alternateName": ["Myhosh Turkish Restaurant", "MyHosh Turkish Grill Salisbury"],
+            "description": "Authentic Turkish and Mediterranean restaurant at 99 Fisherton Street in Salisbury, Wiltshire, serving charcoal grilled skewers, fresh daily cold and hot meze, sharing platters, and vegetarian dishes.",
+            "url": "https://myhosh-salisbury.co.uk/",
+            "telephone": "+447853404534",
+            "priceRange": "££",
+            "currenciesAccepted": "GBP",
+            "paymentAccepted": "Cash, Credit Card, Debit Card",
+            "servesCuisine": ["Turkish", "Mediterranean", "Charcoal Grill", "Middle Eastern"],
+            "logo": "https://myhosh-salisbury.co.uk/images/myhosh-salisbury-logo-horizontal-transparent.png",
+            "image": [
+              "https://myhosh-salisbury.co.uk/images/meze-spread.webp",
+              "https://myhosh-salisbury.co.uk/images/charcoal-grill.webp",
+              "https://myhosh-salisbury.co.uk/images/interior.webp",
+              "https://myhosh-salisbury.co.uk/images/storefront.webp"
+            ],
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "99 Fisherton Street",
+              "addressLocality": "Salisbury",
+              "addressRegion": "Wiltshire",
+              "postalCode": "SP2 7SP",
+              "addressCountry": "GB"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": 51.0705,
+              "longitude": -1.8030
+            },
+            "hasMap": "https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP",
+            "areaServed": [
+              { "@type": "City", "name": "Salisbury" },
+              { "@type": "AdministrativeArea", "name": "Wiltshire" }
+            ],
+            "openingHoursSpecification": [
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": ["Monday", "Wednesday", "Thursday", "Friday"],
+                "opens": "16:00",
+                "closes": "22:30"
+              },
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": "Saturday",
+                "opens": "12:00",
+                "closes": "22:30"
+              },
+              {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": "Sunday",
+                "opens": "12:00",
+                "closes": "22:00"
+              }
+            ],
+            "acceptsReservations": true,
+            "potentialAction": {
+              "@type": "ReserveAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://myhosh-salisbury.co.uk/#reserve",
+                "inLanguage": "en-GB",
+                "actionPlatform": [
+                  "http://schema.org/DesktopWebPlatform",
+                  "http://schema.org/MobileWebPlatform"
+                ]
+              },
+              "result": {
+                "@type": "FoodEstablishmentReservation",
+                "name": "Table Reservation at MyHosh Salisbury"
+              }
+            },
+            "hasMenu": {
+              "@type": "Menu",
+              "name": "MyHosh Salisbury Turkish Menu",
+              "url": "https://myhosh-salisbury.co.uk/#menu",
+              "hasMenuSection": [
+                {
+                  "@type": "MenuSection",
+                  "name": "Signature Sharing Platters",
+                  "hasMenuItem": [
+                    {
+                      "@type": "MenuItem",
+                      "name": "Cold Meze Platter",
+                      "description": "Humus, Cacik, Kisir, Stuffed Vine Leaves, Beetroot Yoghurt, and Aubergine Napolitana",
+                      "offers": { "@type": "Offer", "price": "16.95", "priceCurrency": "GBP" }
+                    },
+                    {
+                      "@type": "MenuItem",
+                      "name": "Hot Meze Platter",
+                      "description": "Borek, Calamari, Whitebait, Halloumi Cheese, Falafel, and Sucuk",
+                      "offers": { "@type": "Offer", "price": "17.95", "priceCurrency": "GBP" }
+                    },
+                    {
+                      "@type": "MenuItem",
+                      "name": "Grill Sharing Platter (For 3 to 4 People)",
+                      "description": "Selection of charcoal grill meats, meze, rice, bulgur, salad, and chips",
+                      "offers": { "@type": "Offer", "price": "79.95", "priceCurrency": "GBP" }
+                    }
+                  ]
+                }
+              ]
+            },
+            "sameAs": [
+              "https://www.ubereats.com/gb/store/myhosh-turkish-restaurant/UgVl1tf0Q8qZ2kdKrVf09A",
+              "https://www.just-eat.co.uk/restaurants-myhosh--authentic-turkish-restaurant-salisbury/menu"
+            ]
           }
         ]
       }
@@ -97,6 +189,22 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Crawl fallback for non-JS bots & browsers -->
+    <noscript>
+      <main>
+        <h1>MyHosh Salisbury | Authentic Turkish Restaurant and Charcoal Grill</h1>
+        <p>
+          MyHosh is a Turkish and Mediterranean restaurant located at 99 Fisherton Street, Salisbury, Wiltshire SP2 7SP.
+          We serve live charcoal grilled meats and skewers, fresh daily cold and hot meze, sharing platters, and vegetarian options.
+        </p>
+        <h2>Opening Hours</h2>
+        <p>Monday, Wednesday, Thursday, Friday: 16:00 to 22:30. Saturday: 12:00 to 22:30. Sunday: 12:00 to 22:00. Closed Tuesdays.</p>
+        <h2>Reservations and Contact</h2>
+        <p>Book online at myhosh-salisbury.co.uk or call +44 7853 404534 for table bookings and group events.</p>
+      </main>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
