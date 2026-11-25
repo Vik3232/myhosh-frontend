@@ -175,7 +175,7 @@ function App() {
   const [partySize, setPartySize] = useState(2);
   const [requests, setRequests] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-
+  const [reviewConsent, setReviewConsent] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isTimeSheetOpen, setIsTimeSheetOpen] = useState(false);
@@ -911,9 +911,9 @@ function App() {
       bookingTime: `${time}:00`,
       partySize: parseInt(partySize, 10),
       specialRequests: requests,
-      idempotencyKey: idempotencyKeyRef.current
+      idempotencyKey: idempotencyKeyRef.current,
+      reviewConsent: Boolean(email.trim() && reviewConsent)
     };
-
     try {
       const response = await fetch(`${API_BASE}/api/bookings`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newBooking)
@@ -2478,6 +2478,20 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                               Privacy Policy
                             </button>
                             {' '}(six month UK GDPR automatic deletion; click to view or save as PDF).
+                          </span>
+                        </label>
+                      </div>
+
+                      <div className="form-group full-width" style={{ marginTop: '2px' }}>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                          <input
+                            type="checkbox"
+                            checked={reviewConsent}
+                            onChange={e => setReviewConsent(e.target.checked)}
+                            style={{ marginTop: '3px' }}
+                          />
+                          <span>
+                            Optional: Send me a one time email after my visit inviting me to leave a Google review for MyHosh Salisbury (no marketing lists; requires an email above).
                           </span>
                         </label>
                       </div>
