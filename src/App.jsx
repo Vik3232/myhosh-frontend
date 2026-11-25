@@ -5,6 +5,8 @@ import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
 import { BlogPage, AdminBlogManager } from './components/BlogSection';
 import { AdminSiteContentManager, EventPosterModal, DEFAULT_SITE_CONTENT } from './components/SiteContentManager';
+import { Download, Mail, UserPlus } from 'lucide-react';
+import { Toast } from './components/Toast';
 import {
   PasswordInput,
   PasswordStrengthChecklist,
@@ -178,6 +180,16 @@ function App() {
   const [reviewConsent, setReviewConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [exportingMarketing, setExportingMarketing] = useState(false);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  const showToast = (message, type = 'error') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ message: String(message || 'Something went wrong.'), type });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 4500);
+  };
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isTimeSheetOpen, setIsTimeSheetOpen] = useState(false);
@@ -664,7 +676,7 @@ function App() {
     const currentTimeStr = `${londonParts.find(p => p.type === 'hour')?.value}:${londonParts.find(p => p.type === 'minute')?.value}`;
 
     if (dayOfWeek === 2) {
-      alert('We are closed on Tuesdays. Walk-ins cannot be seated today.');
+      showToast('We are closed on Tuesdays. Walk-ins cannot be seated today.');
       return;
     }
     let minTime = '16:00';
@@ -673,11 +685,11 @@ function App() {
     if (dayOfWeek === 0) maxTime = '20:45';
 
     if (currentTimeStr < minTime || currentTimeStr > maxTime) {
-      alert(`Walk-ins can only be seated during today's active business hours (${minTime} - ${maxTime}).`);
+      showToast(`Walk-ins can only be seated during today's active business hours (${minTime} - ${maxTime}).`);
       return;
     }
     if (!walkInDetails.tableId) {
-      alert("Please select a table, 'Custom Table', or 'Table Not Sure Yet'.");
+      showToast("Please select a table, 'Custom Table', or 'Table Not Sure Yet'.");
       return;
     }
 
@@ -716,10 +728,10 @@ function App() {
         setWalkInDetails({ guestName: '', phone: '', partySize: 2, tableId: '', customLocation: '', notes: '' });
         await fetchBookings();
       } else {
-        alert((await response.text()) || 'That table is currently occupied! Please select another.');
+        showToast((await response.text()) || 'That table is currently occupied! Please select another.');
       }
     } catch (_) {
-      alert('Network error while seating walk-in.');
+      showToast('Network error while seating walk-in.');
     } finally {
       setIsProcessing(false);
     }
@@ -729,7 +741,7 @@ function App() {
     e.preventDefault();
     const staffDayOfWeek = new Date(`${staffBookingData.date}T00:00:00`).getDay();
     if (staffDayOfWeek === 2) {
-      alert('We are closed on Tuesdays. Please select another day.');
+      showToast('We are closed on Tuesdays. Please select another day.');
       return;
     }
     let minTime = '16:00';
@@ -737,17 +749,17 @@ function App() {
     if (staffDayOfWeek === 0 || staffDayOfWeek === 6) minTime = '12:00';
     if (staffDayOfWeek === 0) maxTime = '20:45';
     if (staffBookingData.time < minTime || staffBookingData.time > maxTime) {
-      alert(`Reservations for this day must be between ${minTime} and ${maxTime}.`);
+      showToast(`Reservations for this day must be between ${minTime} and ${maxTime}.`, 'error');
       return;
     }
 
     if (!staffBookingData.tableId) {
-      alert("Please select a table, 'Custom Table', or 'Table Not Sure Yet'.");
+      showToast("Please select a table, 'Custom Table', or 'Table Not Sure Yet'.", 'error');
       return;
     }
 
     let restaurantTablePayload = null;
-    let staffNoteText = null;
+    let staffNoteText = null;   
 
     if (staffBookingData.tableId === 'OTHER') {
       const loc = staffBookingData.customLocation?.trim() || 'Other';
@@ -782,12 +794,14 @@ function App() {
         setShowStaffBookingModal(false);
         setStaffBookingData({ fullName: '', email: '', phone: '', date: londonTodayStr, time: '19:00', partySize: 2, tableId: '', customLocation: '', requests: '' });
         await fetchBookings();
-        alert('Reservation manually added to the system.');
+        showToast('Reservation manually added to the system.', 'success');
+
+
       } else {
-        alert(`Failed to add booking: ${await response.text()}`);
+        showToast(`Failed to add booking: ${await response.text()}`, 'error');
       }
     } catch (_) {
-      alert('Network error. Could not connect to server.');
+      showToast('Network error. Could not connect to server.', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -802,7 +816,7 @@ function App() {
 
   const handleExportCSV = () => {
     if (displayedBookings.length === 0) {
-      alert('No bookings to export for this view.');
+      showToast('No bookings to export for this view.', 'info');
       return;
     }
     const headers = ['ID', 'Guest Name', 'Email', 'Phone', 'Date', 'Time', 'Party Size', 'Table', 'Status'];
@@ -827,6 +841,7 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    showToast('Bookings exported successfully.', 'success');
   };
 
   const handleExportMarketingCSV = async () => {
@@ -838,7 +853,7 @@ function App() {
       });
       if (!res.ok) {
         const errText = await res.text();
-        alert(errText || 'Failed to export marketing opt-ins.');
+        showToast(errText || 'Failed to export marketing opt-ins.', 'error');
         return;
       }
       const blob = await res.blob();
@@ -851,7 +866,7 @@ function App() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch {
-      alert('Network error while exporting marketing opt-ins.');
+      showToast('Network error while exporting marketing opt-ins.', 'error');
     } finally {
       setExportingMarketing(false);
     }
@@ -1060,10 +1075,10 @@ function App() {
         setCancelModalBooking(null);
         setCustomReasonText('');
       } else {
-        alert('Failed to process cancellation.');
+        showToast('Failed to process cancellation.', 'error');
       }
     } catch (_) {
-      alert('Network error processing cancellation.');
+      showToast('Network error processing cancellation.', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -1099,7 +1114,7 @@ function App() {
     if (!editModalBooking) return;
     const parsed = parseInt(modalPartySize, 10);
     if (!Number.isFinite(parsed) || parsed < 1 || parsed > 50) {
-      alert('Enter a guest count between 1 and 50.');
+      showToast('Enter a guest count between 1 and 50.', 'error');
       return;
     }
     try {
@@ -1114,10 +1129,10 @@ function App() {
         setEditModalBooking(updated);
         setModalSaveFeedback(`Guest count updated to ${parsed}.`);
       } else {
-        alert((await response.text()) || 'Could not update guest count.');
+        showToast((await response.text()) || 'Could not update guest count.', 'error');
       }
     } catch (_) {
-      alert('Network error updating guest count.');
+      showToast('Network error updating guest count.', 'error');
     }
   };
 
@@ -1136,10 +1151,10 @@ const handleModalTimeChange = async () => {
         setModalTime((updated.bookingTime || modalTime).slice(0, 5));
         setModalSaveFeedback(`Sitting time updated to ${(updated.bookingTime || modalTime).slice(0, 5)}.`);
       } else {
-        alert((await response.text()) || `Could not update sitting time (HTTP ${response.status}).`);
+        showToast((await response.text()) || `Could not update sitting time (HTTP ${response.status}).`, 'error');
       }
     } catch (_) {
-      alert('Network error updating sitting time.');
+      showToast('Network error updating sitting time.', 'error');
     }
   };
 
@@ -1155,10 +1170,10 @@ const handleModalTimeChange = async () => {
         setEditModalBooking(updated);
         setModalSaveFeedback('Table updated.');
       } else {
-        alert(`Could not reassign table: ${await response.text()}`);
+        showToast(`Could not reassign table: ${await response.text()}`, 'error');
       }
     } catch (_) {
-      alert('Network error reassigning table.');
+      showToast('Network error reassigning table.', 'error');
     }
   };
 
@@ -1654,24 +1669,29 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                         <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={handleExportCSV} className="btn btn-secondary">Export CSV</button>
+                        <button type="button" onClick={handleExportCSV} className="btn btn-secondary btn-inline-icon">
+                          <Download size={15} aria-hidden="true" />
+                          <span>Export CSV</span>
+                        </button>
                         {currentUser?.role === 'ADMIN' && (
                           <button
                             type="button"
                             onClick={handleExportMarketingCSV}
                             disabled={exportingMarketing}
-                            className="btn btn-secondary"
+                            className="btn btn-secondary btn-inline-icon"
                             title="UK GDPR compliant export: Name, Email & Consent Timestamp only"
                           >
-                            {exportingMarketing ? 'Exporting...' : 'Marketing Opt-Ins CSV'}
+                            <Mail size={15} aria-hidden="true" />
+                            <span>{exportingMarketing ? 'Exporting...' : 'Marketing Opt-Ins CSV'}</span>
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => setShowWalkInModal(true)}
-                          className="btn btn-secondary"
+                          className="btn btn-secondary btn-inline-icon"
                         >
-                          + Walk-In
+                          <UserPlus size={15} aria-hidden="true" />
+                          <span>Walk-In</span>
                         </button>
                         <button
                           type="button"
@@ -1752,9 +1772,9 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                           Live Floor Status ({floorPlanDate}) — Tap any table to manage
                         </h3>
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--clr-grey)' }}>
-                          <span>🟢 Free</span>
-                          <span>🟡 Reserved Later</span>
-                          <span>🔴 Seated / Late</span>
+                        <span className="legend-item"><span className="status-dot status-dot-free" aria-hidden="true" /> Free</span>
+                          <span className="legend-item"><span className="status-dot status-dot-reserved" aria-hidden="true" /> Reserved Later</span>
+                          <span className="legend-item"><span className="status-dot status-dot-occupied" aria-hidden="true" /> Seated / Late</span>
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
@@ -1913,7 +1933,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                                   onClick={async () => {
                                     const numVal = Number(menuDraft.price);
                                     if (!Number.isFinite(numVal) || numVal < 0) {
-                                      alert('Enter a valid non-negative price.');
+                                      showToast('Enter a valid non-negative price.', 'error');
                                       return;
                                     }
                                     setLoadingLabel('Updating dish...');
@@ -1929,7 +1949,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                                         setEditingMenuId(null);
                                         loadMenuData(true);
                                       } else {
-                                        alert(await res.text());
+                                        showToast(await res.text());
                                       }
                                     } finally {
                                       setIsProcessing(false);
@@ -2086,7 +2106,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                                 const res = await fetch(`${API_BASE}/api/staff/${stf.id}`, { method: 'DELETE', headers: getStaffHeaders(false) });
                                 const txt = await res.text();
                                 if (res.ok) setStaffList(prev => prev.filter(x => x.id !== stf.id));
-                                alert(txt);
+                                showToast(txt, 'error');
                               } finally {
                                 setIsProcessing(false);
                               }
@@ -3049,10 +3069,10 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                             setDeleteCustomerStep(0);
                             setEditModalBooking(null);
                           } else {
-                            alert((await res.text()) || 'Could not delete customer data.');
+                            showToast((await res.text()) || 'Could not delete customer data.');
                           }
                         } catch (_) {
-                          alert('Network error while deleting customer data.');
+                          showToast('Network error while deleting customer data.');
                         } finally {
                           setIsProcessing(false);
                         }
@@ -3175,6 +3195,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
 
 {/* --- EVENT POSTER POPUP (Controlled by Admin) --- */}
 {isOnCustomerHome && <EventPosterModal siteContent={siteContent} />}
+<Toast toast={toast} onClose={() => setToast(null)} />
       {/* --- POPUP 6: TERMS & CONDITIONS / PRIVACY POLICY (WITH PDF EXPORT) --- */}
       <LegalModals activeModal={legalModal} onClose={() => setLegalModal(null)} />
     </>

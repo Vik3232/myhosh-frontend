@@ -1,5 +1,6 @@
-const LAST_UPDATED = 'November 2026';
 
+import { FileDown, X } from 'lucide-react';
+const LAST_UPDATED = 'November 2026';
 const PRIVACY_SECTIONS = [
   {
     heading: '1. Personal Data We Collect',
@@ -206,7 +207,7 @@ export function LegalModals({ activeModal, onClose }) {
             onClick={onClose}
             style={{ fontSize: '1.25rem', padding: '6px 10px' }}
           >
-            ✕
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -227,8 +228,9 @@ export function LegalModals({ activeModal, onClose }) {
         </div>
 
         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-          <button type="button" onClick={handleSaveAsPdf} className="btn btn-secondary">
-            Save / Print as PDF
+        <button type="button" onClick={handleSaveAsPdf} className="btn btn-secondary btn-inline-icon">
+            <FileDown size={16} aria-hidden="true" />
+            <span>Save / Print as PDF</span>
           </button>
           <button type="button" onClick={onClose} className="btn btn-primary">
             Close
