@@ -176,6 +176,8 @@ function App() {
   const [requests, setRequests] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [reviewConsent, setReviewConsent] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [exportingMarketing, setExportingMarketing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isTimeSheetOpen, setIsTimeSheetOpen] = useState(false);
@@ -827,6 +829,34 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportMarketingCSV = async () => {
+    if (currentUser?.role !== 'ADMIN' || exportingMarketing) return;
+    setExportingMarketing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/bookings/marketing-export`, {
+        headers: getStaffHeaders(false)
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        alert(errText || 'Failed to export marketing opt-ins.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `myhosh-marketing-optins-${londonTodayStr}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Network error while exporting marketing opt-ins.');
+    } finally {
+      setExportingMarketing(false);
+    }
+  };
+
   const numGuestsParsed = parseInt(partySize, 10) || 2;
   const availableTables = getEligibleCustomerTables(numGuestsParsed, date, time);
 
@@ -912,7 +942,8 @@ function App() {
       partySize: parseInt(partySize, 10),
       specialRequests: requests,
       idempotencyKey: idempotencyKeyRef.current,
-      reviewConsent: Boolean(email.trim() && reviewConsent)
+      reviewConsent: Boolean(email.trim() && reviewConsent),
+      marketingConsent: Boolean(email.trim() && marketingConsent)
     };
     try {
       const response = await fetch(`${API_BASE}/api/bookings`, {
@@ -933,7 +964,7 @@ function App() {
         setIsSuccess(true);
         setMessage('');
         idempotencyKeyRef.current = null;
-        setFullName(''); setEmail(''); setPhone(''); setRequests(''); setAcceptedTerms(false);
+        setFullName(''); setEmail(''); setPhone(''); setRequests(''); setAcceptedTerms(false); setReviewConsent(false); setMarketingConsent(false);
       } else {
         const errorText = await response.text();
         setIsSuccess(false);
@@ -1624,6 +1655,17 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={handleExportCSV} className="btn btn-secondary">Export CSV</button>
+                        {currentUser?.role === 'ADMIN' && (
+                          <button
+                            type="button"
+                            onClick={handleExportMarketingCSV}
+                            disabled={exportingMarketing}
+                            className="btn btn-secondary"
+                            title="UK GDPR compliant export: Name, Email & Consent Timestamp only"
+                          >
+                            {exportingMarketing ? 'Exporting...' : 'Marketing Opt-Ins CSV'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setShowWalkInModal(true)}
@@ -2490,14 +2532,30 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                             onChange={e => setReviewConsent(e.target.checked)}
                             style={{ marginTop: '3px' }}
                           />
+                         <span>
+                            Optional: Send me a one time email after my visit inviting me to leave a Google review for MyHosh Salisbury (requires an email above).
+                          </span>
+                        </label>
+                      </div>
+
+                      <div className="form-group full-width" style={{ marginTop: '2px' }}>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
+                          <input
+                            type="checkbox"
+                            checked={marketingConsent}
+                            onChange={e => setMarketingConsent(e.target.checked)}
+                            style={{ marginTop: '3px' }}
+                          />
                           <span>
-                            Optional: Send me a one time email after my visit inviting me to leave a Google review for MyHosh Salisbury (no marketing lists; requires an email above).
+                            Optional: Keep me updated by email with seasonal menus, events, and offers from MyHosh Salisbury (you can unsubscribe at any time; requires an email above).
                           </span>
                         </label>
                       </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '20px' }} disabled={isProcessing}>
+                    <button type="submit" className="btn btn-primary"
+                         
+                          style={{ width: '100%', marginTop: '20px' }} disabled={isProcessing}>
                       Reserve a Table
                     </button>
                   </form>
