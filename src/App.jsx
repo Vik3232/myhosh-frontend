@@ -857,8 +857,11 @@ function App() {
     if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
     return `"${str.replace(/"/g, '""')}"`;
   };
-
   const handleExportCSV = () => {
+    if (currentUser?.role !== 'ADMIN') {
+      showToast('Only a manager (ADMIN) can export reservation CSVs.', 'error');
+      return;
+    }
     if (displayedBookings.length === 0) {
       showToast('No bookings to export for this view.', 'info');
       return;
@@ -1369,7 +1372,9 @@ const handleModalTimeChange = async () => {
   const visibleAdminDishes = menuItems.filter(m => m.category === currentAdminCat);
 
   const selectedFloorInfo = selectedFloorTable ? getTableFloorInfo(selectedFloorTable) : null;
-  const isOnCustomerHome = view !== 'blog' && view !== 'admin';
+  const isOnCustomerHome = view === 'customer';
+  const showPublicNav = view !== 'admin';
+  const isSubpage = view === 'gallery' || view === 'blog';
   useScrollReveal(view);
   const activeHeroSlides = [1, 2, 3]
   .filter(n => siteContent[`slide${n}Enabled`])
@@ -1437,7 +1442,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
     <>
       <a href="#main-content" className="skip-link">Skip to content</a>
 
-<header className="site-header">
+      <header className={`site-header${isSubpage ? ' site-header--subpage' : ''}`}>
   <div className="brand-logo" onClick={navigateHome} style={{ cursor: 'pointer' }}>
     <span className="brand-logo-badge">
       <img
@@ -1448,7 +1453,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
   </div>
 
   <nav className="nav-links">
-    {isOnCustomerHome ? (
+    {showPublicNav ? (
       <>
         <a href="#menu" className="nav-link">Menu</a>
         <a href="#space" className="nav-link">Our space</a>
@@ -1457,6 +1462,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
           type="button"
           onClick={navigateGallery}
           className="nav-link"
+          aria-current={view === 'gallery' ? 'page' : undefined}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
         >
           Gallery
@@ -1465,6 +1471,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
           type="button"
           onClick={navigateBlog}
           className="nav-link"
+          aria-current={view === 'blog' ? 'page' : undefined}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
         >
           Blog
@@ -1527,7 +1534,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
 </header>
 
 <div className={`mobile-drawer ${isMobileMenuOpen ? 'is-open' : ''}`} aria-hidden={!isMobileMenuOpen}>
-  {isOnCustomerHome ? (
+{showPublicNav ? (
     <>
       <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '60ms' }}>Menu</a>
       <a href="#space" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '120ms' }}>Our space</a>
@@ -1719,26 +1726,35 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                 <>
                   <div className="admin-toolbar">
                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
                         <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Upcoming &amp; Today</button>
-                        <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
+                        {currentUser?.role === 'ADMIN' && (
+                          <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={handleExportCSV} className="btn btn-secondary btn-inline-icon">
-                          <Download size={15} aria-hidden="true" />
-                          <span>Export CSV</span>
-                        </button>
                         {currentUser?.role === 'ADMIN' && (
-                          <button
-                            type="button"
-                            onClick={handleExportMarketingCSV}
-                            disabled={exportingMarketing}
-                            className="btn btn-secondary btn-inline-icon"
-                            title="UK GDPR compliant export: Name, Email & Consent Timestamp only"
-                          >
-                            <Mail size={15} aria-hidden="true" />
-                            <span>{exportingMarketing ? 'Exporting...' : 'Marketing Opt-Ins CSV'}</span>
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleExportCSV}
+                              className="btn btn-secondary btn-inline-icon"
+                              title="Operational booking export for the current view (not for marketing)"
+                            >
+                              <Download size={15} aria-hidden="true" />
+                              <span>Reservations CSV</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleExportMarketingCSV}
+                              disabled={exportingMarketing}
+                              className="btn btn-secondary btn-inline-icon"
+                              title="UK GDPR compliant export: Opted-in Name, Email & Consent Timestamp only"
+                            >
+                              <Mail size={15} aria-hidden="true" />
+                              <span>{exportingMarketing ? 'Exporting...' : 'Marketing Opt-Ins CSV'}</span>
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"

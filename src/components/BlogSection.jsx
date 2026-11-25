@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -21,6 +20,11 @@ const BENTO_SLOTS = [
 
 const isGridPost = (post) =>
   (post?.category || '').trim().toLowerCase() === GALLERY_GRID_CATEGORY.toLowerCase();
+
+const isSafeImageUrl = (url = '') => {
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) || trimmed.startsWith('/');
+};
 
 function PhotoLightbox({ lightboxState, setLightboxState }) {
   useEffect(() => {
@@ -263,6 +267,7 @@ export function BlogPage({ posts, onBackHome, onOpenGallery }) {
     </div>
   );
 }
+
 export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh }) {
   const editorRef = useRef(null);
   const [editingPostId, setEditingPostId] = useState(null);
@@ -300,7 +305,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
     setPhotos(Array.isArray(post.imageUrls) ? [...post.imageUrls] : []);
     setManualUrlInput('');
     setStatusType('info');
-    setStatusMsg(`Editing "${post.title}". You can switch its placement or edit photos below, then click Save changes.`);
+    setStatusMsg(`Editing "${post.title}". You can switch its page placement or edit photos below, then click Save changes.`);
     editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -350,6 +355,11 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
   const handleAddManualUrl = () => {
     const trimmed = manualUrlInput.trim();
     if (!trimmed) return;
+    if (!isSafeImageUrl(trimmed)) {
+      setStatusType('error');
+      setStatusMsg('Image URL must start with https://, http://, or /');
+      return;
+    }
     setPhotos(prev => [...prev, trimmed]);
     setManualUrlInput('');
   };
@@ -380,8 +390,8 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
           wasEditing
             ? 'Updated successfully.'
             : placement === 'grid'
-              ? 'Photos published to the Top Photo Grid only.'
-              : 'Story published to the Blog Cards only.'
+              ? 'Photos published to the Gallery page (/gallery).'
+              : 'Story published to the Blog page (/blog).'
         );
         await onRefresh();
       } else {
@@ -415,12 +425,12 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
             {editingPostId ? 'Edit gallery or blog entry' : 'Add gallery photos or blog story'}
           </h3>
           <p className="cms-subtitle">
-            Choose whether photos appear in the Top Photo Grid (Bento mosaic) or as a Blog Story Card below. Photos never duplicate between the two.
+            Choose whether entries appear on the Gallery page (/gallery) or the Blog page (/blog). Photos never duplicate between the two.
           </p>
         </div>
         <div className="cms-header-badges">
-          <span className="cms-pill cms-pill--gold">{gridCount} photo grid {gridCount === 1 ? 'set' : 'sets'}</span>
-          <span className="cms-pill cms-pill--emerald">{storyCount} blog {storyCount === 1 ? 'card' : 'cards'}</span>
+          <span className="cms-pill cms-pill--gold">{gridCount} gallery {gridCount === 1 ? 'set' : 'sets'}</span>
+          <span className="cms-pill cms-pill--emerald">{storyCount} blog {storyCount === 1 ? 'story' : 'stories'}</span>
           {editingPostId && (
             <button type="button" onClick={resetForm} className="btn btn-secondary" style={{ minHeight: '32px', padding: '4px 12px', fontSize: '13px' }}>
               Create new instead
@@ -430,7 +440,6 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
       </div>
 
       <form onSubmit={handleSavePost} className="promo-admin-card cms-form-stack">
-        {/* Clear Placement Toggle: Top Bento Grid vs Blog Story Card */}
         <div className="cms-field">
           <label>Where should these photos appear?</label>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -439,14 +448,14 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
               onClick={() => setPlacement('grid')}
               className={`btn-admin-tab ${placement === 'grid' ? 'active' : ''}`}
             >
-              Top Photo Grid only (Bento)
+              Gallery Page (/gallery)
             </button>
             <button
               type="button"
               onClick={() => setPlacement('story')}
               className={`btn-admin-tab ${placement === 'story' ? 'active' : ''}`}
             >
-              Blog Story Card only
+              Blog Page (/blog)
             </button>
           </div>
         </div>
@@ -532,7 +541,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
                     className="cms-thumb-delete"
                     title="Delete this photo"
                   >
-                    ✕
+                    <X size={14} aria-hidden="true" />
                   </button>
                 </div>
               ))}
@@ -560,8 +569,8 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
                 : editingPostId
                   ? `Save changes (${photos.length} ${photos.length === 1 ? 'photo' : 'photos'})`
                   : placement === 'grid'
-                    ? `Publish to Photo Grid (${photos.length})`
-                    : `Publish Blog Card (${photos.length})`}
+                    ? `Publish to Gallery (${photos.length})`
+                    : `Publish to Blog (${photos.length})`}
             </button>
           </div>
         </div>
@@ -570,7 +579,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
       <div className="cms-section-label">Published entries ({posts.length})</div>
       {posts.length === 0 ? (
         <div className="promo-admin-card" style={{ textAlign: 'center', color: 'var(--text-2, var(--text-muted))' }}>
-          No entries published yet. Add photos to the Top Photo Grid or publish your first Blog Story Card above.
+          No entries published yet. Add photos to the Gallery page or publish your first Blog story above.
         </div>
       ) : (
         <div className="cms-post-list">
@@ -593,7 +602,7 @@ export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh })
                 <div className="cms-post-info">
                   <div className="cms-post-meta">
                     <span className={`cms-pill ${entryIsGrid ? 'cms-pill--gold' : 'cms-pill--emerald'}`}>
-                      {entryIsGrid ? 'Top Photo Grid' : `Blog Card · ${p.category || 'Journal'}`}
+                      {entryIsGrid ? 'Gallery Page' : `Blog · ${p.category || 'Journal'}`}
                     </span>
                     <span className="cms-post-date">
                       {new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
