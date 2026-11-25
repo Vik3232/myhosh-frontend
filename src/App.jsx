@@ -19,7 +19,34 @@ const STAFF_SECRET_HASH = '#staff-portal-99';
 
 // Swap GOOGLE_REVIEW_URL to https://search.google.com/local/writereview?placeid=YOUR_CHIJ_PLACE_ID once ready
 const GOOGLE_MAPS_URL = 'https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP';
-const GOOGLE_REVIEW_URL = 'https://www.google.com/maps/search/?api=1&query=MyHosh+99+Fisherton+Street+Salisbury+SP2+7SP';
+const GOOGLE_REVIEW_URL = 'https://search.google.com/local/writereview?placeid=ChIJid9eqcjrc0gRejtjRW2CRaE';
+
+const FEATURED_GOOGLE_REVIEWS = [
+  {
+    id: 'liz-butler',
+    author: 'Liz Butler',
+    badge: 'Local Guide · Google',
+    context: 'Group dinner',
+    quote:
+      'Fantastic visit to this gem of a restaurant last week. They accommodated our large group perfectly. The food was delicious and plentiful. Staff were attentive and friendly. Everyone should come and eat here!'
+  },
+  {
+    id: 's-s',
+    author: 'S. S.',
+    badge: 'Local Guide · Google',
+    context: 'Dinner',
+    quote:
+      'Had an excellent meal here and left stuffed with delicious food! As well as the dishes we ordered, there was tasty fresh bread, a lovely juicy salad and a yoghurt dip, with a piece of baklava each at the end, so we had a wonderful feast! The staff were very friendly and attentive.'
+  },
+  {
+    id: 'christine-shakespeare',
+    author: 'Christine Shakespeare',
+    badge: 'Google Review',
+    context: 'Dinner',
+    quote:
+      'Food was so tasty. Service was attentive and portions very generous. Loved it.'
+  }
+];
 
 const getLondonDateStr = (d = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -2036,8 +2063,11 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                 </div>
               </>
             )}
-<div className="hero-content fade-in">
-              <span className="hero-proof-chip">99 Fisherton Street, Salisbury</span>
+             <div className="hero-content fade-in">
+              <a href="#reviews" className="hero-proof-chip">
+                <span className="hero-proof-star" aria-hidden="true">★</span>
+                <span>5.0 on Google (293 reviews) · 99 Fisherton Street, Salisbury</span>
+              </a>
               <h1>{currentHeroSlide.headline}</h1>
               {currentHeroSlide.subheadline && <p>{currentHeroSlide.subheadline}</p>}
               <div className="hero-actions">
@@ -2154,7 +2184,6 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
               <p>Settle into our emerald velvet chairs, dine on white marble tables, and let our warm, candlelit ambience transport you to the heart of Turkey.</p>
             </div>
           </section>
-
           <section className="image-band">
             <img
               src="/images/charcoal-grill.webp"
@@ -2164,6 +2193,72 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
             />
             <div className="overlay"></div>
             <h2>From the Charcoal Grill</h2>
+          </section>
+
+          <section id="reviews" className="reviews-section" data-reveal>
+            <div className="reviews-header">
+              <div className="reviews-header-copy">
+                <span className="reviews-eyebrow">Guest reviews</span>
+                <h2>Loved across Salisbury</h2>
+              </div>
+
+              <div className="reviews-rating-badge" aria-label="Rated 5.0 out of 5 from 293 Google reviews">
+                <span className="reviews-score">5.0</span>
+                <div className="reviews-rating-meta">
+                  <div className="reviews-stars" aria-hidden="true">
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <span className="reviews-count">Based on 293 Google reviews</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="reviews-grid">
+              {FEATURED_GOOGLE_REVIEWS.map(review => (
+                <article key={review.id} className="review-card">
+                  <div className="review-card-top">
+                    <div className="reviews-stars" aria-label="5 out of 5 stars">
+                      {[0, 1, 2, 3, 4].map(i => (
+                        <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="review-context">{review.context}</span>
+                  </div>
+
+                  <blockquote className="review-quote">“{review.quote}”</blockquote>
+
+                  <footer className="review-author">
+                    <strong>{review.author}</strong>
+                    <span>{review.badge}</span>
+                  </footer>
+                </article>
+              ))}
+            </div>
+
+            <div className="reviews-actions">
+              <a
+                href={GOOGLE_MAPS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary"
+              >
+                Read all 293 reviews on Google
+              </a>
+              <a
+                href={GOOGLE_REVIEW_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-emerald"
+              >
+                Leave a Google review
+              </a>
+            </div>
           </section>
 
           <section id="reserve" className="booking-section" data-reveal>

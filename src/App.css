@@ -413,7 +413,126 @@
   .image-band img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; }
   .image-band .overlay { position: absolute; inset: 0; z-index: -1; background: rgba(19, 18, 9, 0.52); }
   .image-band h2 { margin: 0; padding: 0 var(--s-300); text-align: center; color: #fff; }
-  
+  /* ---------- 10b. GUEST REVIEWS (SOCIAL PROOF) ---------- */
+.hero-proof-star { color: var(--clr-gold); margin-right: var(--s-50); }
+
+.reviews-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-900) var(--s-300);
+}
+
+.reviews-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-300);
+  margin-bottom: var(--s-500);
+}
+
+.reviews-header-copy h2 { margin-bottom: 0; }
+
+.reviews-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-100);
+  margin-bottom: var(--s-100);
+  font: var(--t-caption-1);
+  color: var(--gold-text);
+}
+.reviews-eyebrow::before {
+  content: '';
+  width: var(--s-400);
+  height: 1px;
+  background: var(--clr-gold);
+}
+
+.reviews-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-200);
+  padding: var(--s-100) var(--s-300);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2xl);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.reviews-score {
+  font-family: var(--font-mono);
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-text);
+}
+
+.reviews-rating-meta { display: grid; gap: var(--s-25); }
+.reviews-stars { display: inline-flex; align-items: center; gap: var(--s-25); color: var(--clr-gold); }
+.reviews-count { font: var(--t-caption-2); color: var(--text-2); }
+
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--s-300);
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-200);
+  padding: var(--s-300);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2xl);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--dur-base) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+@media (hover: hover) {
+  .review-card:hover { transform: translateY(-3px); border-color: var(--clr-gold); }
+}
+
+.review-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-100);
+}
+
+.review-context {
+  padding: var(--s-25) var(--s-100);
+  border-radius: var(--r-full);
+  background: var(--bg-raised);
+  font: var(--t-caption-4);
+  color: var(--text-2);
+}
+
+.review-quote {
+  flex: 1;
+  font: var(--t-body-3);
+  font-style: normal;
+  color: var(--text);
+  text-wrap: pretty;
+}
+
+.review-author {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-25);
+  padding-top: var(--s-200);
+  border-top: 1px solid var(--line);
+}
+.review-author strong { font: var(--t-body-4); color: var(--text); }
+.review-author span { font: var(--t-caption-4); color: var(--text-2); }
+
+.reviews-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-200);
+  margin-top: var(--s-400);
+}
   /* ---------- 11. BOOKING (DEEP EMERALD IN LIGHT, FLAT #181818 IN DARK) ---------- */
   .booking-section { padding: var(--s-900) var(--s-300); background-color: var(--bg-band); background-image: var(--pattern-lattice); border-top: 1px solid rgba(200, 157, 84, 0.32); border-bottom: 1px solid rgba(200, 157, 84, 0.32); }
   .booking-section-title, .booking-section > .text-center h2 { color: #fbf6ea !important; }
@@ -841,6 +960,13 @@
     h2 { margin-bottom: var(--s-100); }
   
     .time-sheet-backdrop, .modal-overlay, .lightbox-overlay, .blog-lightbox-overlay, .poster-modal-overlay { width: 100%; padding: var(--s-100); }
+  
+    /* Reviews mobile */
+  .reviews-section { padding: var(--s-600) var(--s-200); }
+  .reviews-header { margin-bottom: var(--s-300); gap: var(--s-200); }
+  .reviews-rating-badge { width: 100%; justify-content: flex-start; }
+  .reviews-grid { gap: var(--s-200); }
+  .reviews-actions .btn { width: 100%; }
   
     /* Header */
     .site-header { top: max(var(--s-100), env(safe-area-inset-top)); width: calc(100% - var(--s-300)); max-width: none; justify-content: space-between; gap: var(--s-100); padding: var(--s-50) var(--s-75) var(--s-50) var(--s-100); border-radius: var(--r-xl); }
