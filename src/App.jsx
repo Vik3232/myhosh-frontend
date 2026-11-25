@@ -1992,12 +1992,15 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
         </div>
       ) : (
         <main id="main-content" className="customer-view">
-         <section id="hero" className="hero-section">
+        <section id="hero" className="hero-section">
             <img
               key={currentHeroSlide.imageUrl}
               src={currentHeroSlide.imageUrl}
-              alt={currentHeroSlide.headline}
-              className="hero-bg fade-in"
+              alt={`${currentHeroSlide.headline} at MyHosh Turkish Restaurant in Salisbury`}
+              className="hero-bg"
+              loading="eager"
+              fetchPriority="high"
+              decoding="sync"
             />
             <div className="hero-overlay"></div>
 
@@ -2135,9 +2138,15 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
 
           <TaglineReveal />
 
-       <section id="space" className="space-section" data-reveal>
+          <section id="space" className="space-section" data-reveal>
             <div className="arch-image-container">
-              <img src="/images/interior.webp" alt="MyHosh Interior" className="arch-mask" loading="lazy" />
+              <img
+                src="/images/interior.webp"
+                alt="Emerald velvet seating and candlelit marble tables inside MyHosh Turkish Restaurant in Salisbury"
+                className="arch-mask"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
             <div className="space-content">
               <h2>An Elegant Atmosphere</h2>
@@ -2147,7 +2156,12 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
           </section>
 
           <section className="image-band">
-            <img src="/images/charcoal-grill.webp" alt="Charcoal Grill" loading="lazy" />
+            <img
+              src="/images/charcoal-grill.webp"
+              alt="Turkish charcoal grill cooking skewered meats at MyHosh Salisbury"
+              loading="lazy"
+              decoding="async"
+            />
             <div className="overlay"></div>
             <h2>From the Charcoal Grill</h2>
           </section>
@@ -2165,7 +2179,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
             </div>
 
             <div className="booking-container">
-              <img src="/images/interior.webp" className="booking-image-side" alt="Interior Setting" loading="lazy" />
+              <img src="/images/interior.webp" className="booking-image-side" alt="" aria-hidden="true" loading="lazy" decoding="async" />
 
               <div className="booking-form-content">
                 <LoadingOverlay show={isProcessing} label={loadingLabel} />
@@ -2318,8 +2332,14 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
             </div>
           </section>
 
-        <section id="visit" className="visit-section" data-reveal>
-            <img src="/images/storefront.webp" alt="MyHosh Storefront" className="visit-image" loading="lazy" />
+          <section id="visit" className="visit-section" data-reveal>
+            <img
+              src="/images/storefront.webp"
+              alt="MyHosh Turkish Restaurant storefront at 99 Fisherton Street, Salisbury SP2 7SP"
+              className="visit-image"
+              loading="lazy"
+              decoding="async"
+            />
             <div className="visit-details">
               <h2>Visit Us</h2>
               <div className="gold-divider" style={{ justifyContent: 'flex-start', margin: '15px 0' }}><span></span></div>
@@ -2352,19 +2372,32 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
 
           <footer className="site-footer">
             <div className="footer-logo">MYHOSH</div>
+
+            <address className="footer-nap">
+              <p className="footer-nap-name">MyHosh Salisbury · Authentic Turkish Restaurant &amp; Charcoal Grill</p>
+              <p>
+                99 Fisherton Street, Salisbury, Wiltshire SP2 7SP ·{' '}
+                <a href={clientTelHref} className="footer-nap-phone">{clientPhoneNumber}</a>
+              </p>
+              <p className="footer-nap-hours">
+                Mon, Wed, Thu, Fri 16:00 to 22:30 · Sat 12:00 to 22:30 · Sun 12:00 to 22:00 · Closed Tuesdays
+              </p>
+            </address>
+
             <div className="footer-links">
               <a href="#hero">Home</a>
               <a href="#menu">Menu</a>
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
-              <button type="button" onClick={navigateBlog} style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer', padding: 0 }}>Gallery &amp; Blog</button>
+              <button type="button" onClick={navigateBlog}>Gallery &amp; Blog</button>
             </div>
+
             <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
               <span>&copy; {new Date().getFullYear()} MyHosh Salisbury. All rights reserved.</span>
-              <button type="button" onClick={() => setLegalModal('privacy')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setLegalModal('privacy')} className="footer-legal-btn">
                 Privacy Policy
               </button>
-              <button type="button" onClick={() => setLegalModal('terms')} style={{ background: 'none', border: 'none', color: 'var(--clr-gold-pale)', textDecoration: 'underline', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setLegalModal('terms')} className="footer-legal-btn">
                 Terms &amp; Conditions
               </button>
             </div>
