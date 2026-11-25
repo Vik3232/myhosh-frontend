@@ -10,8 +10,8 @@ const PRIVACY_SECTIONS = [
         text: 'When you book a table, we collect your full name, UK mobile number, optional email address, reservation date and time, party size, and any special requests or allergy notes you provide.'
       },
       {
-        lead: 'Optional consent records:',
-        text: 'If you tick either optional checkbox (post visit Google review invitation or marketing updates), we store a separate record of each choice along with the exact date and time you gave consent, as required under UK GDPR Article 7.'
+        lead: 'Optional consent record:',
+        text: 'If you tick the optional email updates checkbox, we store a record of your opt in choice along with the exact date and time you gave consent, as required under UK GDPR Article 7.'
       }
     ]
   },
@@ -23,12 +23,8 @@ const PRIVACY_SECTIONS = [
         text: 'We process your booking details to confirm, manage, and honour your table reservation and to send essential booking confirmation or cancellation notices.'
       },
       {
-        lead: 'Post-Visit Review Invitation — Explicit Consent (UK GDPR Art. 6(1)(a) & PECR Reg 22):',
-        text: 'Only if you tick the optional review checkbox and provide an email address, we send a single, one time email approximately 3.5 hours after your visit is marked completed inviting you to leave an honest Google review.'
-      },
-      {
-        lead: 'Marketing & Offers — Separate Explicit Consent (UK GDPR Art. 6(1)(a) & PECR Reg 22):',
-        text: 'Only if you tick the separate optional marketing checkbox and provide an email address, we may send occasional emails about seasonal menus, events, and offers from MyHosh Salisbury. Opting in is never required to book a table, and we share only your name, email address, and consent timestamp for marketing (never your phone number or allergy notes).'
+        lead: 'Review Invitation & Marketing Updates — Explicit Consent (UK GDPR Art. 6(1)(a) & PECR Reg 22):',
+        text: 'Only if you tick the optional email updates checkbox and provide an email address, we may send (1) a one time email after some hours after your visit is marked completed inviting you to leave an honest Google review, and (2) occasional emails about seasonal menus, events, and offers from MyHosh Salisbury. Opting in is never required to book a table, and we export only your name, email address, and consent timestamp for marketing (never your phone number or allergy notes).'
       }
     ]
   },

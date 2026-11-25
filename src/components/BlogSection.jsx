@@ -1,5 +1,7 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
@@ -20,26 +22,7 @@ const BENTO_SLOTS = [
 const isGridPost = (post) =>
   (post?.category || '').trim().toLowerCase() === GALLERY_GRID_CATEGORY.toLowerCase();
 
-export function BlogPage({ posts, onBackHome }) {
-  const [lightboxState, setLightboxState] = useState(null);
-
-  // Strictly separate Bento Grid uploads from Editorial Blog Story cards (zero duplication)
-  const gridPosts = posts.filter(isGridPost);
-  const storyPosts = posts.filter(post => !isGridPost(post));
-
-  const gridPhotos = [];
-  gridPosts.forEach(post => {
-    (post.imageUrls || []).forEach((url, idx) => {
-      gridPhotos.push({
-        url,
-        title: post.title,
-        category: 'Gallery',
-        caption: post.content || '',
-        key: `${post.id}-${idx}`
-      });
-    });
-  });
-
+function PhotoLightbox({ lightboxState, setLightboxState }) {
   useEffect(() => {
     if (!lightboxState) return;
     const previousOverflow = document.body.style.overflow;
@@ -60,170 +43,226 @@ export function BlogPage({ posts, onBackHome }) {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [lightboxState]);
+  }, [lightboxState, setLightboxState]);
 
   const activePhoto = lightboxState ? lightboxState.items[lightboxState.index] : null;
+  if (!activePhoto) return null;
+
+  return createPortal(
+    <div className="blog-lightbox-overlay" role="dialog" aria-modal="true" onClick={() => setLightboxState(null)}>
+      <div className="blog-lightbox-frame" onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          className="blog-lightbox-close"
+          aria-label="Close photo viewer"
+          onClick={() => setLightboxState(null)}
+        >
+          <X size={20} aria-hidden="true" />
+        </button>
+
+        <div className="blog-lightbox-stage">
+          {lightboxState.items.length > 1 && (
+            <button
+              type="button"
+              className="blog-lightbox-nav blog-lightbox-nav--prev"
+              aria-label="Previous photo"
+              onClick={() =>
+                setLightboxState(prev => ({
+                  ...prev,
+                  index: (prev.index - 1 + prev.items.length) % prev.items.length
+                }))
+              }
+            >
+              <ChevronLeft size={24} aria-hidden="true" />
+            </button>
+          )}
+
+          <img src={activePhoto.url} alt={activePhoto.title || 'Gallery view'} className="blog-lightbox-img" />
+
+          {lightboxState.items.length > 1 && (
+            <button
+              type="button"
+              className="blog-lightbox-nav blog-lightbox-nav--next"
+              aria-label="Next photo"
+              onClick={() =>
+                setLightboxState(prev => ({
+                  ...prev,
+                  index: (prev.index + 1) % prev.items.length
+                }))
+              }
+            >
+              <ChevronRight size={24} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        <div className="blog-lightbox-meta">
+          <div>
+            <strong>{activePhoto.title}</strong>
+            {activePhoto.caption && <p>{activePhoto.caption}</p>}
+          </div>
+          {lightboxState.items.length > 1 && (
+            <span className="blog-lightbox-counter">
+              {lightboxState.index + 1} / {lightboxState.items.length}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export function GalleryPage({ posts, onBackHome, onOpenBlog }) {
+  const [lightboxState, setLightboxState] = useState(null);
+
+  const gridPosts = posts.filter(isGridPost);
+  const gridPhotos = [];
+  gridPosts.forEach(post => {
+    (post.imageUrls || []).forEach((url, idx) => {
+      gridPhotos.push({
+        url,
+        title: post.title,
+        category: 'Gallery',
+        caption: post.content || '',
+        key: `${post.id}-${idx}`
+      });
+    });
+  });
 
   return (
     <div className="subpage-shell fade-in">
       <div className="subpage-hero">
-        <h1>MyHosh journal and gallery</h1>
-        <p>Moments from our charcoal grill, fresh daily meze, and warm evenings on Fisherton Street.</p>
-        <button type="button" onClick={onBackHome} className="btn btn-secondary" style={{ marginTop: '16px' }}>
-          Return to restaurant
-        </button>
+        <h1>MyHosh gallery</h1>
+        <p>Moments from our open charcoal grill, fresh daily meze, and warm evenings on Fisherton Street.</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '16px' }}>
+          <button type="button" onClick={onBackHome} className="btn btn-secondary btn-inline-icon">
+            <ArrowLeft size={15} aria-hidden="true" />
+            <span>Return to restaurant</span>
+          </button>
+          {onOpenBlog && (
+            <button type="button" onClick={onOpenBlog} className="btn btn-primary">
+              Read our journal
+            </button>
+          )}
+        </div>
       </div>
 
-      {gridPhotos.length === 0 && storyPosts.length === 0 ? (
+      {gridPhotos.length === 0 ? (
         <div className="subpage-empty">
-          <p>Gallery stories and photos will appear here as soon as they are published.</p>
+          <p>Gallery photos will appear here as soon as they are published.</p>
         </div>
       ) : (
-        <>
-          {gridPhotos.length > 0 && (
-            <section className="bento-showcase" aria-label="Photo gallery mosaic">
-              <div className="bento-grid">
-                {gridPhotos.map((photo, idx) => (
-                  <button
-                    key={photo.key}
-                    type="button"
-                    className={BENTO_SLOTS[idx % BENTO_SLOTS.length]}
-                    onClick={() => setLightboxState({ items: gridPhotos, index: idx })}
-                    aria-label={`Open ${photo.title} photo ${idx + 1}`}
-                  >
-                    <img src={photo.url} alt={`${photo.title} gallery item ${idx + 1}`} loading="lazy" />
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {storyPosts.length > 0 && (
-            <div className="editorial-blog-grid">
-              {storyPosts.map(post => {
-                const postImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
-                const postItems = postImages.map(url => ({
-                  url,
-                  title: post.title,
-                  caption: post.content || ''
-                }));
-
-                return (
-                  <article key={post.id} className="editorial-blog-card">
-                    {postImages.length > 0 && (
-                      <button
-                        type="button"
-                        className="editorial-card-cover"
-                        onClick={() => setLightboxState({ items: postItems, index: 0 })}
-                        aria-label={`View ${post.title} cover photo`}
-                      >
-                        <img src={postImages[0]} alt={post.title} loading="lazy" />
-                        {postImages.length > 1 && (
-                          <span className="editorial-photo-count">{postImages.length} photos</span>
-                        )}
-                      </button>
-                    )}
-
-                    <div className="editorial-card-body">
-                      <div className="blog-post-meta">
-                        <span className="blog-category-badge">{post.category || 'Journal'}</span>
-                        <span>{new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                      </div>
-
-                      <h2 className="editorial-card-title">{post.title}</h2>
-                      {post.content && <p className="editorial-card-text">{post.content}</p>}
-
-                      {postImages.length > 1 && (
-                        <div className="editorial-thumb-strip">
-                          {postImages.map((url, idx) => (
-                            <button
-                              key={`${post.id}-thumb-${idx}`}
-                              type="button"
-                              className="editorial-thumb-btn"
-                              onClick={() => setLightboxState({ items: postItems, index: idx })}
-                              aria-label={`Open photo ${idx + 1} from ${post.title}`}
-                            >
-                              <img src={url} alt={`${post.title} ${idx + 1}`} loading="lazy" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-
-      {activePhoto && createPortal(
-        <div className="blog-lightbox-overlay" role="dialog" aria-modal="true" onClick={() => setLightboxState(null)}>
-          <div className="blog-lightbox-frame" onClick={e => e.stopPropagation()}>
-            <button
-              type="button"
-              className="blog-lightbox-close"
-              aria-label="Close photo viewer"
-              onClick={() => setLightboxState(null)}
-            >
-              ✕
-            </button>
-
-            <div className="blog-lightbox-stage">
-              {lightboxState.items.length > 1 && (
-                <button
-                  type="button"
-                  className="blog-lightbox-nav blog-lightbox-nav--prev"
-                  aria-label="Previous photo"
-                  onClick={() =>
-                    setLightboxState(prev => ({
-                      ...prev,
-                      index: (prev.index - 1 + prev.items.length) % prev.items.length
-                    }))
-                  }
-                >
-                  ‹
-                </button>
-              )}
-
-              <img src={activePhoto.url} alt={activePhoto.title || 'Gallery view'} className="blog-lightbox-img" />
-
-              {lightboxState.items.length > 1 && (
-                <button
-                  type="button"
-                  className="blog-lightbox-nav blog-lightbox-nav--next"
-                  aria-label="Next photo"
-                  onClick={() =>
-                    setLightboxState(prev => ({
-                      ...prev,
-                      index: (prev.index + 1) % prev.items.length
-                    }))
-                  }
-                >
-                  ›
-                </button>
-              )}
-            </div>
-
-            <div className="blog-lightbox-meta">
-              <div>
-                <strong>{activePhoto.title}</strong>
-                {activePhoto.caption && <p>{activePhoto.caption}</p>}
-              </div>
-              {lightboxState.items.length > 1 && (
-                <span className="blog-lightbox-counter">
-                  {lightboxState.index + 1} / {lightboxState.items.length}
-                </span>
-              )}
-            </div>
+        <section className="bento-showcase" aria-label="Photo gallery mosaic">
+          <div className="bento-grid">
+            {gridPhotos.map((photo, idx) => (
+              <button
+                key={photo.key}
+                type="button"
+                className={BENTO_SLOTS[idx % BENTO_SLOTS.length]}
+                onClick={() => setLightboxState({ items: gridPhotos, index: idx })}
+                aria-label={`Open ${photo.title} photo ${idx + 1}`}
+              >
+                <img src={photo.url} alt={`${photo.title} gallery item ${idx + 1}`} loading="lazy" />
+              </button>
+            ))}
           </div>
-        </div>,
-        document.body
+        </section>
       )}
+
+      <PhotoLightbox lightboxState={lightboxState} setLightboxState={setLightboxState} />
     </div>
   );
 }
 
+export function BlogPage({ posts, onBackHome, onOpenGallery }) {
+  const [lightboxState, setLightboxState] = useState(null);
+
+  const storyPosts = posts.filter(post => !isGridPost(post));
+
+  return (
+    <div className="subpage-shell fade-in">
+      <div className="subpage-hero">
+        <h1>MyHosh journal</h1>
+        <p>Stories from our kitchen, seasonal Turkish dishes, and local evenings in Salisbury.</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '16px' }}>
+          <button type="button" onClick={onBackHome} className="btn btn-secondary btn-inline-icon">
+            <ArrowLeft size={15} aria-hidden="true" />
+            <span>Return to restaurant</span>
+          </button>
+          {onOpenGallery && (
+            <button type="button" onClick={onOpenGallery} className="btn btn-primary">
+              Explore gallery
+            </button>
+          )}
+        </div>
+      </div>
+
+      {storyPosts.length === 0 ? (
+        <div className="subpage-empty">
+          <p>Journal stories will appear here as soon as they are published.</p>
+        </div>
+      ) : (
+        <div className="editorial-blog-grid">
+          {storyPosts.map(post => {
+            const postImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+            const postItems = postImages.map(url => ({
+              url,
+              title: post.title,
+              caption: post.content || ''
+            }));
+
+            return (
+              <article key={post.id} className="editorial-blog-card">
+                {postImages.length > 0 && (
+                  <button
+                    type="button"
+                    className="editorial-card-cover"
+                    onClick={() => setLightboxState({ items: postItems, index: 0 })}
+                    aria-label={`View ${post.title} cover photo`}
+                  >
+                    <img src={postImages[0]} alt={post.title} loading="lazy" />
+                    {postImages.length > 1 && (
+                      <span className="editorial-photo-count">{postImages.length} photos</span>
+                    )}
+                  </button>
+                )}
+
+                <div className="editorial-card-body">
+                  <div className="blog-post-meta">
+                    <span className="blog-category-badge">{post.category || 'Journal'}</span>
+                    <span>{new Date(post.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  </div>
+
+                  <h2 className="editorial-card-title">{post.title}</h2>
+                  {post.content && <p className="editorial-card-text">{post.content}</p>}
+
+                  {postImages.length > 1 && (
+                    <div className="editorial-thumb-strip">
+                      {postImages.map((url, idx) => (
+                        <button
+                          key={`${post.id}-thumb-${idx}`}
+                          type="button"
+                          className="editorial-thumb-btn"
+                          onClick={() => setLightboxState({ items: postItems, index: idx })}
+                          aria-label={`Open photo ${idx + 1} from ${post.title}`}
+                        >
+                          <img src={url} alt={`${post.title} ${idx + 1}`} loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      <PhotoLightbox lightboxState={lightboxState} setLightboxState={setLightboxState} />
+    </div>
+  );
+}
 export function AdminBlogManager({ apiBase, posts, getStaffHeaders, onRefresh }) {
   const editorRef = useRef(null);
   const [editingPostId, setEditingPostId] = useState(null);

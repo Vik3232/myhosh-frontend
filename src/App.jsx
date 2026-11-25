@@ -3,7 +3,7 @@ import './App.css';
 import { TaglineReveal, useScrollReveal } from './components/DesignPolish';
 import { LoadingOverlay } from './components/PremiumLoader';
 import { LegalModals } from './components/LegalModals';
-import { BlogPage, AdminBlogManager } from './components/BlogSection';
+import { BlogPage, GalleryPage, AdminBlogManager } from './components/BlogSection';
 import { AdminSiteContentManager, EventPosterModal, DEFAULT_SITE_CONTENT } from './components/SiteContentManager';
 import { Download, Mail, UserPlus } from 'lucide-react';
 import { Toast } from './components/Toast';
@@ -144,17 +144,48 @@ function App() {
   }, [view]);
 
   useEffect(() => {
-    const syncFromHash = () => {
-      if (window.location.hash === STAFF_SECRET_HASH) {
+    const syncFromRoute = () => {
+      const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      const hash = window.location.hash;
+
+      if (hash === STAFF_SECRET_HASH) {
         setStaffLinkUnlocked(true);
         setView('admin');
-      } else if (window.location.hash === '#blog') {
+        document.title = 'Staff Portal | MyHosh Salisbury';
+        return;
+      }
+
+      // If user clicks a homepage anchor (#reserve, #space, #visit) while on /gallery or /blog
+      if ((path === '/gallery' || path === '/blog') && hash && hash !== '#gallery' && hash !== '#blog') {
+        window.history.replaceState({}, '', '/' + hash);
+        setView('customer');
+        document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
+        const targetId = hash.slice(1);
+        setTimeout(() => {
+          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+        }, 60);
+        return;
+      }
+
+      if (path === '/gallery' || hash === '#gallery') {
+        setView('gallery');
+        document.title = 'Gallery | MyHosh Salisbury';
+      } else if (path === '/blog' || hash === '#blog') {
         setView('blog');
+        document.title = 'Journal | MyHosh Salisbury';
+      } else {
+        setView('customer');
+        document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
       }
     };
-    syncFromHash();
-    window.addEventListener('hashchange', syncFromHash);
-    return () => window.removeEventListener('hashchange', syncFromHash);
+
+    syncFromRoute();
+    window.addEventListener('popstate', syncFromRoute);
+    window.addEventListener('hashchange', syncFromRoute);
+    return () => {
+      window.removeEventListener('popstate', syncFromRoute);
+      window.removeEventListener('hashchange', syncFromRoute);
+    };
   }, []);
 
   const [tables, setTables] = useState([]);
@@ -177,8 +208,7 @@ function App() {
   const [partySize, setPartySize] = useState(2);
   const [requests, setRequests] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [reviewConsent, setReviewConsent] = useState(false);
-  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [emailUpdatesConsent, setEmailUpdatesConsent] = useState(false);
   const [exportingMarketing, setExportingMarketing] = useState(false);
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
@@ -353,17 +383,31 @@ function App() {
 
   const navigateHome = () => {
     setIsMobileMenuOpen(false);
-    if (window.location.hash !== STAFF_SECRET_HASH) {
-      window.location.hash = '';
+    if (window.location.pathname !== '/' || (window.location.hash && window.location.hash !== STAFF_SECRET_HASH)) {
+      window.history.pushState({}, '', '/');
     }
     setView('customer');
+    document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
+    window.scrollTo(0, 0);
+  };
+
+  const navigateGallery = () => {
+    setIsMobileMenuOpen(false);
+    if (window.location.pathname !== '/gallery') {
+      window.history.pushState({}, '', '/gallery');
+    }
+    setView('gallery');
+    document.title = 'Gallery | MyHosh Salisbury';
     window.scrollTo(0, 0);
   };
 
   const navigateBlog = () => {
     setIsMobileMenuOpen(false);
-    window.location.hash = '#blog';
+    if (window.location.pathname !== '/blog') {
+      window.history.pushState({}, '', '/blog');
+    }
     setView('blog');
+    document.title = 'Journal | MyHosh Salisbury';
     window.scrollTo(0, 0);
   };
 
@@ -957,8 +1001,8 @@ function App() {
       partySize: parseInt(partySize, 10),
       specialRequests: requests,
       idempotencyKey: idempotencyKeyRef.current,
-      reviewConsent: Boolean(email.trim() && reviewConsent),
-      marketingConsent: Boolean(email.trim() && marketingConsent)
+      reviewConsent: Boolean(email.trim() && emailUpdatesConsent),
+      marketingConsent: Boolean(email.trim() && emailUpdatesConsent)
     };
     try {
       const response = await fetch(`${API_BASE}/api/bookings`, {
@@ -979,7 +1023,7 @@ function App() {
         setIsSuccess(true);
         setMessage('');
         idempotencyKeyRef.current = null;
-        setFullName(''); setEmail(''); setPhone(''); setRequests(''); setAcceptedTerms(false); setReviewConsent(false); setMarketingConsent(false);
+        setFullName(''); setEmail(''); setPhone(''); setRequests(''); setAcceptedTerms(false); setEmailUpdatesConsent(false);
       } else {
         const errorText = await response.text();
         setIsSuccess(false);
@@ -1411,11 +1455,19 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
         <a href="#visit" className="nav-link">Visit us</a>
         <button
           type="button"
+          onClick={navigateGallery}
+          className="nav-link"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
+        >
+          Gallery
+        </button>
+        <button
+          type="button"
           onClick={navigateBlog}
           className="nav-link"
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
         >
-          Gallery and blog
+          Blog
         </button>
         {staffLinkUnlocked && (
           <button
@@ -1480,7 +1532,8 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
       <a href="#menu" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '60ms' }}>Menu</a>
       <a href="#space" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '120ms' }}>Our space</a>
       <a href="#visit" onClick={() => setIsMobileMenuOpen(false)} className="mobile-drawer-item" style={{ transitionDelay: '180ms' }}>Visit us</a>
-      <button type="button" onClick={navigateBlog} className="mobile-drawer-item" style={{ transitionDelay: '240ms' }}>Gallery and blog</button>
+      <button type="button" onClick={navigateGallery} className="mobile-drawer-item" style={{ transitionDelay: '240ms' }}>Gallery</button>
+      <button type="button" onClick={navigateBlog} className="mobile-drawer-item" style={{ transitionDelay: '280ms' }}>Blog</button>
       {staffLinkUnlocked && (
         <button type="button" onClick={openStaffPortal} className="mobile-drawer-item" style={{ transitionDelay: '300ms', color: 'var(--clr-gold-pale)' }}>
           {isAuthenticated ? 'Staff dashboard' : 'Staff login'}
@@ -1498,8 +1551,10 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
 </div>
 
       {/* EXPLICIT 3-WAY VIEW SWITCH: Blog | Admin | Customer Home (Safe Default) */}
-      {view === 'blog' ? (
-        <BlogPage posts={blogPosts} onBackHome={navigateHome} />
+      {view === 'gallery' ? (
+        <GalleryPage posts={blogPosts} onBackHome={navigateHome} onOpenBlog={navigateBlog} />
+      ) : view === 'blog' ? (
+        <BlogPage posts={blogPosts} onBackHome={navigateHome} onOpenGallery={navigateGallery} />
       ) : view === 'admin' ? (
         <div className={isAuthenticated ? 'admin-view' : 'staff-login-shell'}>
           <LoadingOverlay show={isProcessing || isLoggingIn} label={isLoggingIn ? 'Signing into Staff Gateway...' : loadingLabel} fullscreen />
@@ -2548,26 +2603,12 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
                           <input
                             type="checkbox"
-                            checked={reviewConsent}
-                            onChange={e => setReviewConsent(e.target.checked)}
-                            style={{ marginTop: '3px' }}
-                          />
-                         <span>
-                            Optional: Send me a one time email after my visit inviting me to leave a Google review for MyHosh Salisbury (requires an email above).
-                          </span>
-                        </label>
-                      </div>
-
-                      <div className="form-group full-width" style={{ marginTop: '2px' }}>
-                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 'normal' }}>
-                          <input
-                            type="checkbox"
-                            checked={marketingConsent}
-                            onChange={e => setMarketingConsent(e.target.checked)}
+                            checked={emailUpdatesConsent}
+                            onChange={e => setEmailUpdatesConsent(e.target.checked)}
                             style={{ marginTop: '3px' }}
                           />
                           <span>
-                            Optional: Keep me updated by email with seasonal menus, events, and offers from MyHosh Salisbury (you can unsubscribe at any time; requires an email above).
+                            Optional:Get a one-time Google review invite after your visit, plus occasional seasonal menus, events and offers from MyHosh Salisbury. Unsubscribe anytime.
                           </span>
                         </label>
                       </div>
@@ -2673,7 +2714,8 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
               <a href="#menu">Menu</a>
               <a href="#reserve">Reserve</a>
               <a href="#visit">Contact</a>
-              <button type="button" onClick={navigateBlog}>Gallery &amp; Blog</button>
+              <button type="button" onClick={navigateGallery}>Gallery</button>
+              <button type="button" onClick={navigateBlog}>Blog</button>
             </div>
 
             <div className="footer-bottom" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
