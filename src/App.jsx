@@ -233,6 +233,8 @@ function App() {
   const [blogPosts, setBlogPosts] = useState([]);
   const [siteContent, setSiteContent] = useState(DEFAULT_SITE_CONTENT);
   const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+  const [googleStats, setGoogleStats] = useState({ rating: 5.0, reviewCount: 293 });
+ 
 
   const [londonNow, setLondonNow] = useState(() => new Date());
   const londonTodayStr = getLondonDateStr(londonNow);
@@ -582,10 +584,19 @@ function App() {
       .catch(err => console.error('Error fetching tables:', err));
 
    
-    loadMenuData(false);
-    loadBlogPosts();
-    loadSiteContent();
-  }, []);
+      loadMenuData(false);
+      loadBlogPosts();
+      loadSiteContent();
+  
+      fetch(`${API_BASE}/api/google-stats`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (data && typeof data.rating === 'number' && typeof data.reviewCount === 'number') {
+            setGoogleStats({ rating: data.rating, reviewCount: data.reviewCount });
+          }
+        })
+        .catch(() => {});
+    }, []);
 
   // --- MERGED FETCH: Staff gets Past + Today + Future so Yesterday / Tomorrow / Arrows always work ---
   const fetchBookings = async () => {
@@ -1304,14 +1315,33 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
     return () => io.disconnect();
   }, [view]);
 
+  const heroTouchStartX = useRef(null);
+  const activeHeroIdx = heroSlideIndex % heroSlides.length;
+
   useEffect(() => {
     if (heroSlides.length <= 1) return;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const id = setInterval(() => {
+    const id = setTimeout(() => {
       setHeroSlideIndex(prev => (prev + 1) % heroSlides.length);
     }, 6500);
-    return () => clearInterval(id);
-  }, [heroSlides.length]);
+    return () => clearTimeout(id);
+  }, [activeHeroIdx, heroSlides.length]);
+
+  const handleHeroTouchStart = (e) => {
+    heroTouchStartX.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleHeroTouchEnd = (e) => {
+    if (heroTouchStartX.current === null || heroSlides.length <= 1) return;
+    const deltaX = (e.changedTouches[0]?.clientX ?? heroTouchStartX.current) - heroTouchStartX.current;
+    heroTouchStartX.current = null;
+    if (Math.abs(deltaX) < 45) return;
+    setHeroSlideIndex(prev =>
+      deltaX < 0
+        ? (prev + 1) % heroSlides.length
+        : (prev - 1 + heroSlides.length) % heroSlides.length
+    );
+  };
 
   return (
     <>
@@ -2046,16 +2076,25 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
         </div>
       ) : (
         <main id="main-content" className="customer-view">
-        <section id="hero" className="hero-section">
-            <img
-              key={currentHeroSlide.imageUrl}
-              src={currentHeroSlide.imageUrl}
-              alt={`${currentHeroSlide.headline} at MyHosh Turkish Restaurant in Salisbury`}
-              className="hero-bg"
-              loading="eager"
-              fetchPriority="high"
-              decoding="sync"
-            />
+       <section
+            id="hero"
+            className="hero-section"
+            onTouchStart={handleHeroTouchStart}
+            onTouchEnd={handleHeroTouchEnd}
+          >
+            <div className="hero-bg-stack" aria-hidden="true">
+              {heroSlides.map((slide, idx) => (
+                <img
+                  key={`${slide.imageUrl}-${idx}`}
+                  src={slide.imageUrl}
+                  alt={idx === activeHeroIdx ? `${slide.headline} at MyHosh Turkish Restaurant in Salisbury` : ''}
+                  className={`hero-bg ${idx === activeHeroIdx ? 'is-active' : ''}`}
+                  loading="eager"
+                  fetchPriority={idx === 0 ? 'high' : 'low'}
+                  decoding={idx === 0 ? 'sync' : 'async'}
+                />
+              ))}
+            </div>
             <div className="hero-overlay"></div>
 
             {heroSlides.length > 1 && (
@@ -2063,7 +2102,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                 <button
                   type="button"
                   className="hero-arrow-btn hero-arrow-btn--prev"
-                  aria-label="Previous promotion"
+                  aria-label="Previous slide"
                   onClick={() => setHeroSlideIndex(prev => (prev - 1 + heroSlides.length) % heroSlides.length)}
                 >
                   ‹
@@ -2071,32 +2110,39 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                 <button
                   type="button"
                   className="hero-arrow-btn hero-arrow-btn--next"
-                  aria-label="Next promotion"
+                  aria-label="Next slide"
                   onClick={() => setHeroSlideIndex(prev => (prev + 1) % heroSlides.length)}
                 >
                   ›
                 </button>
-                <div className="hero-slider-controls" role="tablist" aria-label="Hero promotions">
+                <div className="hero-slider-controls" role="tablist" aria-label="Featured highlights">
                   {heroSlides.map((_, idx) => (
                     <button
                       key={idx}
                       type="button"
-                      aria-label={`Show promotion ${idx + 1}`}
-                      aria-selected={heroSlideIndex % heroSlides.length === idx}
+                      role="tab"
+                      aria-label={`Show slide ${idx + 1}`}
+                      aria-selected={activeHeroIdx === idx}
                       onClick={() => setHeroSlideIndex(idx)}
-                      className={`hero-dot ${heroSlideIndex % heroSlides.length === idx ? 'active' : ''}`}
-                    />
+                      className={`hero-dot ${activeHeroIdx === idx ? 'active' : ''}`}
+                    >
+                      <span className="hero-dot-bar" aria-hidden="true" />
+                    </button>
                   ))}
                 </div>
               </>
             )}
-             <div className="hero-content fade-in">
-              <a href="#reviews" className="hero-proof-chip">
+
+            <div className="hero-content">
+            <a href="#reviews" className="hero-proof-chip">
                 <span className="hero-proof-star" aria-hidden="true">★</span>
-                <span>5.0 on Google (293 reviews) · 99 Fisherton Street, Salisbury</span>
+                <span>{googleStats.rating.toFixed(1)} on Google ({googleStats.reviewCount} reviews) · 99 Fisherton Street, Salisbury</span>
               </a>
-              <h1>{currentHeroSlide.headline}</h1>
-              {currentHeroSlide.subheadline && <p>{currentHeroSlide.subheadline}</p>}
+              <div key={activeHeroIdx} className="hero-copy-stage">
+                <h1>{currentHeroSlide.headline}</h1>
+                {currentHeroSlide.subheadline && <p>{currentHeroSlide.subheadline}</p>}
+              </div>
+
               <div className="hero-actions">
                 <a href="#reserve" className="btn btn-primary">{currentHeroSlide.ctaText || 'Reserve a table'}</a>
               </div>
@@ -2229,8 +2275,11 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                 <h2>Loved across Salisbury</h2>
               </div>
 
-              <div className="reviews-rating-badge" aria-label="Rated 5.0 out of 5 from 293 Google reviews">
-                <span className="reviews-score">5.0</span>
+              <div
+                className="reviews-rating-badge"
+                aria-label={`Rated ${googleStats.rating.toFixed(1)} out of 5 from ${googleStats.reviewCount} Google reviews`}
+              >
+                <span className="reviews-score">{googleStats.rating.toFixed(1)}</span>
                 <div className="reviews-rating-meta">
                   <div className="reviews-stars" aria-hidden="true">
                     {[0, 1, 2, 3, 4].map(i => (
@@ -2239,7 +2288,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                       </svg>
                     ))}
                   </div>
-                  <span className="reviews-count">Based on 293 Google reviews</span>
+                  <span className="reviews-count">Based on {googleStats.reviewCount} Google reviews</span>
                 </div>
               </div>
             </div>
