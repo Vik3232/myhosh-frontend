@@ -3099,6 +3099,66 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
               <button type="button" onClick={() => { setDeleteCustomerStep(0); setEditModalBooking(null); }} className="btn btn-primary">Done</button>
             </div>
 
+            {currentUser?.role === 'ADMIN' && (
+              <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '0.84rem' }}>
+                  <strong>Email Consent (UK GDPR):</strong>{' '}
+                  {editModalBooking.marketingConsent || editModalBooking.reviewConsent
+                    ? 'Opted in to review & marketing emails'
+                    : 'Not opted in (no review or marketing emails)'}
+                </div>
+                {(editModalBooking.marketingConsent || editModalBooking.reviewConsent) && (
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={async () => {
+                      const targetId = editModalBooking.id;
+                      const targetEmail = (editModalBooking.customer?.email || '').trim().toLowerCase();
+                      setLoadingLabel('Withdrawing email consent...');
+                      setIsProcessing(true);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/bookings/${targetId}/withdraw-email-consent`, {
+                          method: 'PUT',
+                          headers: getStaffHeaders(false)
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setAllBookings(prev => prev.map(b => {
+                            const bEmail = (b.customer?.email || '').trim().toLowerCase();
+                            const matches = b.id === targetId || (targetEmail && bEmail === targetEmail);
+                            return matches
+                              ? { ...b, reviewConsent: false, reviewConsentAt: null, marketingConsent: false, marketingConsentAt: null }
+                              : b;
+                          }));
+                          setEditModalBooking(prev => prev ? {
+                            ...prev,
+                            reviewConsent: false,
+                            reviewConsentAt: null,
+                            marketingConsent: false,
+                            marketingConsentAt: null
+                          } : null);
+                          showToast(
+                            `Email consent withdrawn across ${data.updatedCount || 1} booking(s). If previously exported, also blocklist in Brevo.`,
+                            'success'
+                          );
+                        } else {
+                          showToast((await res.text()) || 'Could not withdraw email consent.');
+                        }
+                      } catch (_) {
+                        showToast('Network error while withdrawing email consent.');
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '7px 12px', fontSize: '0.8rem' }}
+                  >
+                    Withdraw Email Consent
+                  </button>
+                )}
+              </div>
+            )}
+
             {deleteCustomerStep > 0 && (
               <div style={{ marginTop: '14px', padding: '14px', borderRadius: '8px', background: 'rgba(179, 64, 47, 0.1)', border: '1px solid var(--clr-error)' }}>
                 <p style={{ fontSize: '0.88rem', color: 'var(--clr-error)', fontWeight: '600', marginBottom: '10px' }}>
