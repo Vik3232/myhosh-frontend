@@ -48,6 +48,33 @@ const FEATURED_GOOGLE_REVIEWS = [
   }
 ];
 
+const SALISBURY_FAQS = [
+  {
+    q: 'Where is MyHosh Turkish Restaurant located in Salisbury?',
+    a: 'MyHosh Salisbury is located at 99 Fisherton Street, Salisbury, Wiltshire SP2 7SP, within easy walking distance of Salisbury railway station and the city centre.'
+  },
+  {
+    q: 'What are the opening hours at MyHosh Salisbury?',
+    a: 'We are open Monday, Wednesday, Thursday, and Friday from 16:00 to 22:30, Saturday from 12:00 to 22:30, and Sunday from 12:00 to 22:00. We are closed on Tuesdays.'
+  },
+  {
+    q: 'Do I need to book a table in advance?',
+    a: 'Booking online is recommended, especially for Friday and Saturday evenings, though we welcome guests without a booking whenever tables are available. Online reservations cover parties of 1 to 20 guests with a standard two hour sitting and a 15 minute hold period.'
+  },
+  {
+    q: 'Can MyHosh accommodate large groups and celebrations?',
+    a: 'Yes. Parties of up to 20 guests can reserve directly on our website, and our Grill Sharing Platter is prepared for groups of 3 to 4 people. For larger events or special group seating, please call +44 7853 404534.'
+  },
+  {
+    q: 'Do you offer vegetarian, vegan, or gluten free Turkish dishes?',
+    a: 'Yes. Our menu includes clearly marked Vegetarian (V), Vegan (VG), and Gluten Free (GF) options across our cold meze, hot meze, and mains. Please let our staff know about any food allergies or intolerances when booking or ordering.'
+  },
+  {
+    q: 'What type of food does MyHosh serve?',
+    a: 'MyHosh serves authentic Turkish and Mediterranean cuisine, featuring live charcoal grilled meats and skewers, fresh daily cold and hot meze, sharing platters, and traditional desserts such as baklava.'
+  }
+];
+
 const getLondonDateStr = (d = new Date()) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/London',
@@ -2427,6 +2454,27 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
             </div>
           </section>
 
+          <section id="faq" className="faq-section" data-reveal>
+            <div className="faq-header">
+              <span className="reviews-eyebrow">Common questions</span>
+              <h2>Dining at MyHosh Salisbury</h2>
+              <p className="text-muted">
+                Quick answers about table bookings, opening hours, group dining, and dietary options on Fisherton Street.
+              </p>
+            </div>
+
+            <div className="faq-list">
+              {SALISBURY_FAQS.map((item, idx) => (
+                <details key={item.q} className="faq-item" open={idx === 0}>
+                  <summary className="faq-question">
+                    <span>{item.q}</span>
+                    <span className="faq-icon" aria-hidden="true">+</span>
+                  </summary>
+                  <p className="faq-answer">{item.a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
           <section id="visit" className="visit-section" data-reveal>
             <img
               src="/images/storefront.webp"

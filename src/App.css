@@ -586,7 +586,73 @@
   .booking-summary-item { display: flex; flex-direction: column; gap: var(--s-25); padding: var(--s-100); border-radius: var(--r-lg); background: var(--bg-raised); text-align: left; }
   .booking-summary-item span { font: var(--t-caption-4); color: var(--text-2); }
   .booking-summary-item strong { font: var(--t-body-4); overflow-wrap: anywhere; }
+  /* ---------- 11b. FAQ SECTION (AEO) ---------- */
+.faq-section {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: var(--s-900) var(--s-300) var(--s-400);
+  }
   
+  .faq-header {
+    max-width: 680px;
+    margin-bottom: var(--s-500);
+  }
+  .faq-header h2 { margin-bottom: var(--s-100); }
+  .faq-header p { font: var(--t-body-3); }
+  
+  .faq-list {
+    display: grid;
+    gap: var(--s-100);
+  }
+  
+  .faq-item {
+    border: 1px solid var(--line);
+    border-radius: var(--r-2xl);
+    background: var(--bg-surface);
+    transition: border-color var(--dur-fast) var(--ease);
+  }
+  .faq-item[open] {
+    border-color: var(--clr-gold);
+  }
+  
+  .faq-question {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-200);
+    padding: var(--s-200) var(--s-300);
+    font: var(--t-title-3);
+    color: var(--text);
+    list-style: none;
+    cursor: pointer;
+  }
+  .faq-question::-webkit-details-marker { display: none; }
+  
+  .faq-icon {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-full);
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--accent-text);
+    transition: transform var(--dur-base) var(--ease), border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+  }
+  .faq-item[open] .faq-icon {
+    transform: rotate(45deg);
+    border-color: var(--clr-gold);
+    background: color-mix(in srgb, var(--clr-gold) 16%, transparent);
+  }
+  
+  .faq-answer {
+    padding: 0 var(--s-300) var(--s-300);
+    font: var(--t-body-3);
+    color: var(--text-2);
+  }
   /* ---------- 12. VISIT + FOOTER ---------- */
   .visit-section { display: grid; grid-template-columns: 1fr; align-items: center; gap: var(--s-500); max-width: 1200px; margin: 0 auto; padding: var(--s-900) var(--s-300); }
   @media (min-width: 900px) { .visit-section { grid-template-columns: 1.1fr 1fr; gap: var(--s-700); } }
@@ -960,14 +1026,18 @@
     h2 { margin-bottom: var(--s-100); }
   
     .time-sheet-backdrop, .modal-overlay, .lightbox-overlay, .blog-lightbox-overlay, .poster-modal-overlay { width: 100%; padding: var(--s-100); }
-  
+  /* FAQ mobile */
+  .faq-section { padding: var(--s-600) var(--s-200) var(--s-300); }
+  .faq-header { margin-bottom: var(--s-300); }
+  .faq-question { padding: var(--s-200); }
+  .faq-answer { padding: 0 var(--s-200) var(--s-200); font: var(--t-body-6); }
     /* Reviews mobile */
   .reviews-section { padding: var(--s-600) var(--s-200); }
   .reviews-header { margin-bottom: var(--s-300); gap: var(--s-200); }
   .reviews-rating-badge { width: 100%; justify-content: flex-start; }
   .reviews-grid { gap: var(--s-200); }
   .reviews-actions .btn { width: 100%; }
-  
+
     /* Header */
     .site-header { top: max(var(--s-100), env(safe-area-inset-top)); width: calc(100% - var(--s-300)); max-width: none; justify-content: space-between; gap: var(--s-100); padding: var(--s-50) var(--s-75) var(--s-50) var(--s-100); border-radius: var(--r-xl); }
     .brand-logo-badge { padding: 0; }
