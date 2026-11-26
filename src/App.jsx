@@ -1746,9 +1746,9 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto' }}>
                         <button type="button" onClick={() => { setViewMode('today'); setAdminDateFilter(londonTodayStr); }} className={`btn-admin-tab ${viewMode === 'today' ? 'active' : ''}`}>Upcoming &amp; Today</button>
-                        {currentUser?.role === 'ADMIN' && (
-                          <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>Booking History</button>
-                        )}
+                        <button type="button" onClick={() => { setViewMode('history'); setAdminDateFilter('ALL'); }} className={`btn-admin-tab ${viewMode === 'history' ? 'active' : ''}`}>
+                          {currentUser?.role === 'ADMIN' ? 'Booking History' : 'Past 15 Days'}
+                        </button>
                       </div>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
                         {currentUser?.role === 'ADMIN' && (
@@ -1979,7 +1979,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                    {displayedBookings.length === 0 && (
                       <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(27,26,23,0.2)', marginTop: '20px' }}>
                         <p style={{ fontSize: '1.1rem', margin: 0 }}>No reservations found for this selection.</p>
-                        {searchQuery.trim() && currentUser?.role === 'ADMIN' && (
+                        {searchQuery.trim() && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1992,7 +1992,7 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                           >
                             {viewMode === 'history'
                               ? `Search "${searchQuery.trim()}" in Upcoming & Today`
-                              : `Search "${searchQuery.trim()}" in Booking History`}
+                              : `Search "${searchQuery.trim()}" in ${currentUser?.role === 'ADMIN' ? 'Booking History' : 'Past 15 Days'}`}
                           </button>
                         )}
                       </div>
