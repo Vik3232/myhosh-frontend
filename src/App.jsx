@@ -1252,23 +1252,43 @@ const handleModalTimeChange = async () => {
   };
 
   const displayedBookings = allBookings
-    .filter(b => {
-      let matchesDate = false;
-      if (adminDateFilter === 'ALL') {
-        matchesDate = viewMode === 'history'
-          ? Boolean(b.bookingDate && b.bookingDate < londonTodayStr)
-          : Boolean(b.bookingDate && b.bookingDate >= londonTodayStr);
-      } else {
-        matchesDate = b.bookingDate === adminDateFilter;
-      }
-      if (!searchQuery.trim()) return matchesDate;
-      const query = searchQuery.toLowerCase().trim();
-      const guestName = (b.customer?.fullName || '').toLowerCase();
-      const guestPhone = (b.customer?.phone || '').toLowerCase();
-      const refCode = `mh-${String(b.id || '').padStart(4, '0')}`.toLowerCase();
-      return matchesDate && (guestName.includes(query) || guestPhone.includes(query) || refCode.includes(query));
-    })
-    .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
+  .filter(b => {
+    const hasSearch = Boolean(searchQuery.trim());
+    let matchesDate = false;
+
+    // When searching, scan all dates in the active tab so managers don't miss bookings on other days
+    if (adminDateFilter === 'ALL' || hasSearch) {
+      matchesDate = viewMode === 'history'
+        ? Boolean(b.bookingDate && b.bookingDate < londonTodayStr)
+        : Boolean(b.bookingDate && b.bookingDate >= londonTodayStr);
+    } else {
+      matchesDate = b.bookingDate === adminDateFilter;
+    }
+
+    if (!hasSearch) return matchesDate;
+    if (!matchesDate) return false;
+
+    const terms = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const guestName = (b.customer?.fullName || '').toLowerCase();
+    const guestEmail = (b.customer?.email || '').toLowerCase();
+    const guestPhone = (b.customer?.phone || '').toLowerCase();
+    const guestPhoneCompact = guestPhone.replace(/\s+/g, '');
+    const rawId = String(b.id || '');
+    const refCode = `mh-${rawId.padStart(4, '0')}`.toLowerCase();
+
+    return terms.every(term => {
+      const cleanTerm = term.replace(/^#/, '');
+      return (
+        guestName.includes(term) ||
+        guestEmail.includes(term) ||
+        guestPhone.includes(term) ||
+        guestPhoneCompact.includes(term) ||
+        refCode.includes(cleanTerm) ||
+        (cleanTerm && rawId === cleanTerm)
+      );
+    });
+  })
+  .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
 
   const sortedDisplayDates = Array.from(new Set(displayedBookings.map(b => b.bookingDate))).sort((a, b) =>
     viewMode === 'history' && adminDateFilter === 'ALL' ? b.localeCompare(a) : a.localeCompare(b)
@@ -1461,18 +1481,16 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
         <button
           type="button"
           onClick={navigateGallery}
-          className="nav-link"
+          className="nav-link nav-link--btn"
           aria-current={view === 'gallery' ? 'page' : undefined}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
         >
           Gallery
         </button>
         <button
           type="button"
           onClick={navigateBlog}
-          className="nav-link"
+          className="nav-link nav-link--btn"
           aria-current={view === 'blog' ? 'page' : undefined}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: '4px 8px' }}
         >
           Blog
         </button>
@@ -1874,15 +1892,25 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                     </div>
                   )}
 
-                  <div style={{ marginBottom: '15px' }}>
+<div style={{ marginBottom: '15px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
                       type="text"
-                      placeholder="Search by guest name, phone, or reference code (e.g. MH-0012)..."
+                      placeholder="Search by name, email, phone, or ref (e.g. sarah@gmail.com or Sarah MH-0012)..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       className="admin-input"
-                      style={{ width: '100%', padding: '12px 16px', fontSize: '0.95rem' }}
+                      style={{ flex: 1, padding: '12px 16px', fontSize: '0.95rem' }}
                     />
+                    {searchQuery.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="btn btn-secondary"
+                        style={{ padding: '10px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
 
                   <div>
@@ -1948,9 +1976,25 @@ const [hideReserveBar, setHideReserveBar] = useState(false);
                         </div>
                       );
                     })}
-                    {displayedBookings.length === 0 && (
+                   {displayedBookings.length === 0 && (
                       <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--clr-grey)', background: 'var(--clr-marble)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(27,26,23,0.2)', marginTop: '20px' }}>
                         <p style={{ fontSize: '1.1rem', margin: 0 }}>No reservations found for this selection.</p>
+                        {searchQuery.trim() && currentUser?.role === 'ADMIN' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextMode = viewMode === 'history' ? 'today' : 'history';
+                              setViewMode(nextMode);
+                              setAdminDateFilter('ALL');
+                            }}
+                            className="btn btn-secondary"
+                            style={{ marginTop: '14px', padding: '8px 16px', fontSize: '0.85rem' }}
+                          >
+                            {viewMode === 'history'
+                              ? `Search "${searchQuery.trim()}" in Upcoming & Today`
+                              : `Search "${searchQuery.trim()}" in Booking History`}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
