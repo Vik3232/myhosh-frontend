@@ -142,16 +142,7 @@ function App() {
     return 'customer';
   });
 
-  const [isReservePage, setIsReservePage] = useState(() => {
-    const isRes = window.location.pathname.replace(/\/+$/, '') === '/reserve';
-    if (isRes) document.body.classList.add('is-reserve-page');
-    return isRes;
-  });
-
-  useEffect(() => {
-    document.body.classList.toggle('is-reserve-page', isReservePage);
-    return () => document.body.classList.remove('is-reserve-page');
-  }, [isReservePage]);
+  
 
   useEffect(() => {
     sessionStorage.setItem('myhosh_session', view);
@@ -162,43 +153,68 @@ function App() {
       const path = window.location.pathname.replace(/\/+$/, '') || '/';
       const hash = window.location.hash;
       if (hash === STAFF_SECRET_HASH) {
-        setIsReservePage(false);
         setStaffLinkUnlocked(true);
         setView('admin');
         document.title = 'Staff Portal | MyHosh Salisbury';
         return;
       }
 
-      // If user clicks a homepage anchor (#reserve, #space, #visit) while on /gallery, /blog, or /reserve
-      if ((path === '/gallery' || path === '/blog' || path === '/reserve') && hash && hash !== '#gallery' && hash !== '#blog') {
+      // If user clicks a homepage anchor (#reserve, #space, #visit) while on /gallery or /blog
+      if ((path === '/gallery' || path === '/blog') && hash && hash !== '#gallery' && hash !== '#blog') {
         window.history.replaceState({}, '', '/' + hash);
-        setIsReservePage(false);
         setView('customer');
         document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
         const targetId = hash.slice(1);
         setTimeout(() => {
-          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 60);
         return;
       }
 
       if (path === '/gallery' || hash === '#gallery') {
-        setIsReservePage(false);
         setView('gallery');
         document.title = 'Gallery | MyHosh Salisbury';
       } else if (path === '/blog' || hash === '#blog') {
-        setIsReservePage(false);
         setView('blog');
         document.title = 'Journal | MyHosh Salisbury';
-      } else if (path === '/reserve') {
-        setIsReservePage(true);
-        setView('customer');
-        document.title = 'Reserve a Table | MyHosh Salisbury';
-        window.scrollTo(0, 0);
       } else {
-        setIsReservePage(false);
         setView('customer');
         document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
+        const targetId = path === '/reserve' ? 'reserve' : (hash && hash.length > 1 ? hash.slice(1) : '');
+        if (targetId) {
+          let cancelled = false;
+          const cancel = () => { cancelled = true; };
+          window.addEventListener('wheel', cancel, { once: true, passive: true });
+          window.addEventListener('touchstart', cancel, { once: true, passive: true });
+
+          const doSmoothScroll = () => {
+            if (cancelled) return;
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            el.classList.add('is-visible');
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          };
+
+          const isFreshLoad = performance.now() < 2500;
+          const ready = isFreshLoad && document.fonts?.ready ? document.fonts.ready : Promise.resolve();
+          ready.then(() => {
+            setTimeout(() => {
+              doSmoothScroll();
+              // Single gentle check after smooth scroll finishes in case slow images shifted layout
+              if (isFreshLoad) {
+                setTimeout(() => {
+                  if (cancelled) return;
+                  const el = document.getElementById(targetId);
+                  if (!el) return;
+                  const pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 88;
+                  if (Math.abs(el.getBoundingClientRect().top - pad) > 80) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 1000);
+              }
+            }, isFreshLoad ? 450 : 0);
+          });
+        }
       }
     };
 
@@ -405,7 +421,7 @@ function App() {
   };
 
   const navigateHome = () => {
-    setIsReservePage(false);
+    
     setIsMobileMenuOpen(false);
     if (window.location.pathname !== '/' || (window.location.hash && window.location.hash !== STAFF_SECRET_HASH)) {
       window.history.pushState({}, '', '/');
@@ -416,7 +432,7 @@ function App() {
   };
 
   const navigateGallery = () => {
-    setIsReservePage(false);
+  
     setIsMobileMenuOpen(false);
     if (window.location.pathname !== '/gallery') {
       window.history.pushState({}, '', '/gallery');
@@ -427,7 +443,7 @@ function App() {
   };
 
   const navigateBlog = () => {
-    setIsReservePage(false);
+   
     setIsMobileMenuOpen(false);
     if (window.location.pathname !== '/blog') {
       window.history.pushState({}, '', '/blog');
@@ -438,7 +454,7 @@ function App() {
   };
 
   const openStaffPortal = () => {
-    setIsReservePage(false);
+  
     setIsMobileMenuOpen(false);
     setStaffLinkUnlocked(true);
     window.location.hash = STAFF_SECRET_HASH;

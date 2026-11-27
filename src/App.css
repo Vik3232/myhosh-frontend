@@ -2561,28 +2561,6 @@ html[data-theme='dark'] .pw-strength-meter[data-strength='strong'] .pw-strength-
   .booking-summary-grid { grid-template-columns: 1fr; }
 }
 
-/* ---------- 19b. DEDICATED /reserve ROUTE ---------- */
-body.is-reserve-page .customer-view > section:not(#reserve),
-body.is-reserve-page .customer-view > .hero-section,
-body.is-reserve-page .customer-view > .feature-strip,
-body.is-reserve-page .customer-view > .tagline-reveal-section,
-body.is-reserve-page .mobile-reserve-bar,
-body.is-reserve-page .poster-modal-overlay {
-  display: none !important;
-}
-body.is-reserve-page #reserve {
-  opacity: 1 !important;
-  transform: none !important;
-  min-height: 100svh;
-  padding-top: calc(var(--s-900) + var(--s-300));
-  animation: fadeIn var(--dur-base) var(--ease) both;
-}
-@media (max-width: 767px) {
-  body.is-reserve-page #reserve {
-    padding-top: calc(var(--s-800) + var(--s-200));
-  }
-}
-
 /* ---------- 20. REDUCED MOTION (STRICTLY LAST) ---------- */
 @media (prefers-reduced-motion: reduce) {
   :root { --mv-sm: 0px; --mv-md: 0px; --mv-lg: 0px; --zoom-from: 1; --pop-from: 1; }
