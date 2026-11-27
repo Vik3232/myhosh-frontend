@@ -181,14 +181,40 @@ function App() {
         document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
         if (hash && hash.length > 1) {
           const targetId = hash.slice(1);
-          const scrollToTarget = () => {
+          let stopped = false;
+          let ro = null;
+          let stopTimer = null;
+
+          const pinToTarget = () => {
+            if (stopped) return;
             const el = document.getElementById(targetId);
             if (!el) return;
             el.classList.add('is-visible');
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            el.scrollIntoView({ behavior: 'instant', block: 'start' });
           };
-          requestAnimationFrame(scrollToTarget);
-          setTimeout(scrollToTarget, 250);
+
+          const stopTracking = () => {
+            stopped = true;
+            ro?.disconnect();
+            clearTimeout(stopTimer);
+            window.removeEventListener('wheel', stopTracking);
+            window.removeEventListener('touchstart', stopTracking);
+            window.removeEventListener('pointerdown', stopTracking);
+            window.removeEventListener('keydown', stopTracking);
+          };
+
+          requestAnimationFrame(() => {
+            pinToTarget();
+            if (typeof ResizeObserver !== 'undefined') {
+              ro = new ResizeObserver(pinToTarget);
+              ro.observe(document.body);
+            }
+            window.addEventListener('wheel', stopTracking, { passive: true });
+            window.addEventListener('touchstart', stopTracking, { passive: true });
+            window.addEventListener('pointerdown', stopTracking, { passive: true });
+            window.addEventListener('keydown', stopTracking, { passive: true });
+            stopTimer = setTimeout(stopTracking, 2000);
+          });
         }
       }
     };
