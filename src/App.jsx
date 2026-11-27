@@ -130,9 +130,12 @@ function App() {
 
   // Only allow valid views: 'customer' | 'blog' | 'admin'
   const [view, setView] = useState(() => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
     const hash = window.location.hash;
     if (hash === STAFF_SECRET_HASH) return 'admin';
-    if (hash === '#blog') return 'blog';
+    if (path === '/gallery' || hash === '#gallery') return 'gallery';
+    if (path === '/blog' || hash === '#blog') return 'blog';
+    if (hash && hash !== STAFF_SECRET_HASH) return 'customer';
     const saved = sessionStorage.getItem('myhosh_session');
     if (saved === 'admin' && sessionStorage.getItem('myhosh_auth') === 'true') return 'admin';
     if (saved === 'blog') return 'blog';
@@ -176,6 +179,17 @@ function App() {
       } else {
         setView('customer');
         document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
+        if (hash && hash.length > 1) {
+          const targetId = hash.slice(1);
+          const scrollToTarget = () => {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            el.classList.add('is-visible');
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          };
+          requestAnimationFrame(scrollToTarget);
+          setTimeout(scrollToTarget, 250);
+        }
       }
     };
 
