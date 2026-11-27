@@ -135,12 +135,23 @@ function App() {
     if (hash === STAFF_SECRET_HASH) return 'admin';
     if (path === '/gallery' || hash === '#gallery') return 'gallery';
     if (path === '/blog' || hash === '#blog') return 'blog';
-    if (hash && hash !== STAFF_SECRET_HASH) return 'customer';
+    if (path === '/reserve' || (hash && hash !== STAFF_SECRET_HASH)) return 'customer';
     const saved = sessionStorage.getItem('myhosh_session');
     if (saved === 'admin' && sessionStorage.getItem('myhosh_auth') === 'true') return 'admin';
     if (saved === 'blog') return 'blog';
     return 'customer';
   });
+
+  const [isReservePage, setIsReservePage] = useState(() => {
+    const isRes = window.location.pathname.replace(/\/+$/, '') === '/reserve';
+    if (isRes) document.body.classList.add('is-reserve-page');
+    return isRes;
+  });
+
+  useEffect(() => {
+    document.body.classList.toggle('is-reserve-page', isReservePage);
+    return () => document.body.classList.remove('is-reserve-page');
+  }, [isReservePage]);
 
   useEffect(() => {
     sessionStorage.setItem('myhosh_session', view);
@@ -150,17 +161,18 @@ function App() {
     const syncFromRoute = () => {
       const path = window.location.pathname.replace(/\/+$/, '') || '/';
       const hash = window.location.hash;
-
       if (hash === STAFF_SECRET_HASH) {
+        setIsReservePage(false);
         setStaffLinkUnlocked(true);
         setView('admin');
         document.title = 'Staff Portal | MyHosh Salisbury';
         return;
       }
 
-      // If user clicks a homepage anchor (#reserve, #space, #visit) while on /gallery or /blog
-      if ((path === '/gallery' || path === '/blog') && hash && hash !== '#gallery' && hash !== '#blog') {
+      // If user clicks a homepage anchor (#reserve, #space, #visit) while on /gallery, /blog, or /reserve
+      if ((path === '/gallery' || path === '/blog' || path === '/reserve') && hash && hash !== '#gallery' && hash !== '#blog') {
         window.history.replaceState({}, '', '/' + hash);
+        setIsReservePage(false);
         setView('customer');
         document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
         const targetId = hash.slice(1);
@@ -171,51 +183,22 @@ function App() {
       }
 
       if (path === '/gallery' || hash === '#gallery') {
+        setIsReservePage(false);
         setView('gallery');
         document.title = 'Gallery | MyHosh Salisbury';
       } else if (path === '/blog' || hash === '#blog') {
+        setIsReservePage(false);
         setView('blog');
         document.title = 'Journal | MyHosh Salisbury';
+      } else if (path === '/reserve') {
+        setIsReservePage(true);
+        setView('customer');
+        document.title = 'Reserve a Table | MyHosh Salisbury';
+        window.scrollTo(0, 0);
       } else {
+        setIsReservePage(false);
         setView('customer');
         document.title = 'MyHosh Salisbury | Authentic Turkish Charcoal Grill & Meze';
-        if (hash && hash.length > 1) {
-          const targetId = hash.slice(1);
-          let stopped = false;
-          let ro = null;
-          let stopTimer = null;
-
-          const pinToTarget = () => {
-            if (stopped) return;
-            const el = document.getElementById(targetId);
-            if (!el) return;
-            el.classList.add('is-visible');
-            el.scrollIntoView({ behavior: 'instant', block: 'start' });
-          };
-
-          const stopTracking = () => {
-            stopped = true;
-            ro?.disconnect();
-            clearTimeout(stopTimer);
-            window.removeEventListener('wheel', stopTracking);
-            window.removeEventListener('touchstart', stopTracking);
-            window.removeEventListener('pointerdown', stopTracking);
-            window.removeEventListener('keydown', stopTracking);
-          };
-
-          requestAnimationFrame(() => {
-            pinToTarget();
-            if (typeof ResizeObserver !== 'undefined') {
-              ro = new ResizeObserver(pinToTarget);
-              ro.observe(document.body);
-            }
-            window.addEventListener('wheel', stopTracking, { passive: true });
-            window.addEventListener('touchstart', stopTracking, { passive: true });
-            window.addEventListener('pointerdown', stopTracking, { passive: true });
-            window.addEventListener('keydown', stopTracking, { passive: true });
-            stopTimer = setTimeout(stopTracking, 2000);
-          });
-        }
       }
     };
 
@@ -422,6 +405,7 @@ function App() {
   };
 
   const navigateHome = () => {
+    setIsReservePage(false);
     setIsMobileMenuOpen(false);
     if (window.location.pathname !== '/' || (window.location.hash && window.location.hash !== STAFF_SECRET_HASH)) {
       window.history.pushState({}, '', '/');
@@ -432,6 +416,7 @@ function App() {
   };
 
   const navigateGallery = () => {
+    setIsReservePage(false);
     setIsMobileMenuOpen(false);
     if (window.location.pathname !== '/gallery') {
       window.history.pushState({}, '', '/gallery');
@@ -442,6 +427,7 @@ function App() {
   };
 
   const navigateBlog = () => {
+    setIsReservePage(false);
     setIsMobileMenuOpen(false);
     if (window.location.pathname !== '/blog') {
       window.history.pushState({}, '', '/blog');
@@ -452,6 +438,7 @@ function App() {
   };
 
   const openStaffPortal = () => {
+    setIsReservePage(false);
     setIsMobileMenuOpen(false);
     setStaffLinkUnlocked(true);
     window.location.hash = STAFF_SECRET_HASH;
